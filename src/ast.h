@@ -38,7 +38,7 @@ typedef struct lgx_ast_node {
     unsigned short op;     // 用于保存 EXPRESSION 的类型
 
     int children;          // 子节点数量
-    int size;
+    int size;              // 已分配空间的长度
     struct lgx_ast_node* child[];
 } lgx_ast_node_t;
 
