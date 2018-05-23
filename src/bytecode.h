@@ -5,9 +5,15 @@
 
 enum {
     OP_MOV,
+    OP_LOAD,
+    OP_STORE,
+
     OP_PUSH,
     OP_POP,
+
     OP_CMP,
+
+    OP_ADD,
 
     OP_TEST, // if a != 0 then pc ++
     OP_JMP,  // pc += c

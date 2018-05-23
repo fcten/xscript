@@ -77,12 +77,27 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             break;
         case BREAK_STATEMENT:
-
+            // 写入跳转指令
+            // 保存指令位置以便未来更新跳转地址
             break;
         case SWITCH_CASE_STATEMENT:
 
             break;
         case RETURN_STATEMENT:
+            // 计算返回值
+            if (node->child[0]) {
+                lgx_bc_gen(node->child[0]);
+            }
+
+            // 释放参数与局部变量
+
+            // 返回值入栈
+            if (node->child[0]) {
+                buf[offset++] = op_create1(OP_PUSH, AX);
+            }
+
+            // 写入返回指令
+            buf[offset++] = op_create1(OP_RET, 0);
 
             break;
         case ASSIGNMENT_STATEMENT:
@@ -90,7 +105,8 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
             break;
         // Declaration
         case FUNCTION_DECLARATION:
-
+            // 跳过函数体
+            lgx_bc_gen(node->child[0]);
             break;
         case VARIABLE_DECLARATION:
 
@@ -109,7 +125,11 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             lgx_bc_gen(node->child[0]);
 
+            buf[offset++] = op_create2(OP_MOV, BX, AX);
+
             lgx_bc_gen(node->child[1]);
+
+            buf[offset++] = op_create2(OP_ADD, AX, BX);
 
             break;
         case UNARY_EXPRESSION:
@@ -119,9 +139,11 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
             break;
         // Other
         case IDENTIFIER_TOKEN:
+            buf[offset++] = op_create2(OP_LOAD, AX, 0);
 
             break;
         case NUMBER_TOKEN:
+            buf[offset++] = op_create2(OP_MOV, AX, 0);
 
             break;
         case STRING_TOKEN:
@@ -149,10 +171,21 @@ void lgx_bc_print() {
             case OP_MOV:
                 printf("%4d MOV %s %s\n", i, R[a], R[b]);
                 break;
+            case OP_LOAD:
+                printf("%4d LOAD %s %d\n", i, R[a], b);
+                break;
             case OP_PUSH:
+                printf("%4d PUSH %s\n", i, R[c]);
+                break;
             case OP_POP:
+                printf("%4d POP %s\n", i, R[c]);
+                break;
             case OP_CMP:
-
+                printf("%4d CMP\n", i);
+                break;
+            case OP_ADD:
+                printf("%4d ADD %s %s\n", i, R[a], R[b]);
+                break;
             case OP_TEST:
                 printf("%4d TEST %s\n", i, R[c]);
                 break;
@@ -160,10 +193,14 @@ void lgx_bc_print() {
                 printf("%4d JMP %d\n", i, c);
                 break;
             case OP_CALL:
+                printf("%4d CALL\n", i);
+                break;
             case OP_RET:
-
-
+                printf("%4d RET\n", i);
+                break;
             case OP_NOP:
+                printf("%4d NOP\n", i);
+                break;
             default:
                 // error
                 break;
