@@ -9,7 +9,7 @@ typedef void lgx_ref_t;
 typedef void lgx_fun_t;
 
 enum {
-    T_UNDEFINED = 1,// 变量尚未定义
+    T_UNDEFINED = 0,// 变量尚未定义
     T_UNINITIALIZED,// 变量尚未初始化
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数

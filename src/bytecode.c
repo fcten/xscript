@@ -94,6 +94,9 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
             // 返回值入栈
             if (node->child[0]) {
                 buf[offset++] = op_create1(OP_PUSH, AX);
+            } else {
+                // 如果没有指定返回值，则返回 undefined
+                buf[offset++] = op_create1(OP_PUSH, AX);
             }
 
             // 写入返回指令

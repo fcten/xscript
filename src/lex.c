@@ -30,11 +30,6 @@ true, false
 
 var
 class
-
-    "+", "-", "*", "/",
-    ">", "<", "==", "!=", ">=", "<=",
-    "!", "&&", "||",
-    "="
 */
 static int is_next(lgx_lex_t* ctx, char n) {
     if (ctx->offset >= ctx->length) {
