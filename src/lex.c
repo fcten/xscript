@@ -145,8 +145,8 @@ struct dict_tree root;
 
 void dict_tree_add(int token, char* s) {
     struct dict_tree* node = &root;
-    int l = strlen(s);
-    for (int i = 0; i < l; ++i) {
+    int l = strlen(s), i;
+    for (i = 0; i < l; ++i) {
         if (node->next[s[i] - 'a'] == NULL) {
             node->next[s[i] - 'a'] = calloc(1, sizeof(struct dict_tree));
         }
@@ -159,8 +159,9 @@ void dict_tree_add(int token, char* s) {
 static int is_reserved(lgx_lex_t* ctx) {
     struct dict_tree* node = &root;
     char n;
+    int i;
 
-    for (int i = ctx->milestone; i < ctx->offset; i++) {
+    for (i = ctx->milestone; i < ctx->offset; i++) {
         n = ctx->source[i];
 
         if (n < 'a' || n > 'z') {
@@ -182,7 +183,8 @@ static int is_reserved(lgx_lex_t* ctx) {
 }
 
 int lgx_lex_init() {
-    for (int i = 0; i < sizeof(reserved_word) / sizeof(struct rw); i++) {
+    int i;
+    for (i = 0; i < sizeof(reserved_word) / sizeof(struct rw); i++) {
         dict_tree_add(reserved_word[i].token, reserved_word[i].s);
     }
     return 0;

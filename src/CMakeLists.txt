@@ -13,11 +13,11 @@ endif (WIN32 OR CYGWIN)
 add_executable(lgx ${LGX_SRCS})
 
 if (UNIX)
-	set (LGX_LIBS ${LGX_LIBS} dl z)
+#	set (LGX_LIBS ${LGX_LIBS} dl z)
 endif (UNIX)
 
 if (WIN32)
-	set (LGX_LIBS ${LGX_LIBS} ws2_32)
+#	set (LGX_LIBS ${LGX_LIBS} ws2_32)
 endif (WIN32)
 
 target_link_libraries(lgx ${LGX_LIBS})
