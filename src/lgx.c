@@ -4,6 +4,14 @@
 #include "lex.h"
 #include "ast.h"
 #include "lgx.h"
+#include "bytecode.h"
+
+int lgx_ctx_init(lgx_ctx_t *ctx) {
+    ctx->stack_size = 1024;
+    ctx->stack_top = 0;
+    ctx->stack = malloc(ctx->stack_size * sizeof(lgx_val_t *));
+    return 0;
+}
 
 int read_file(const char* file, char** p) {
     FILE* fp;
@@ -29,6 +37,10 @@ int main(int argc, char* argv[]) {
     lgx_ast_parser(&ast);
     
     lgx_ast_print(ast.root, 0);
+
+    lgx_bc_gen(ast.root);
+
+    lgx_bc_print();
 
     return 0;
 }
