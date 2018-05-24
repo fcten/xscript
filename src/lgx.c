@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
     lgx_lex_init();
 
     lgx_ast_t ast = { {"test", sizeof("test") - 1, 0, 0, 1, 0}, 0, 0};
-    ast.lex.length = read_file("./test/test1.x", &ast.lex.source);
+    ast.lex.length = read_file(argv[1], &ast.lex.source);
 
     lgx_ast_parser(&ast);
     

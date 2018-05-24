@@ -14,8 +14,11 @@
 unsigned short buf[10240];
 unsigned offset;
 
+unsigned st[32];
+unsigned st_offset;
+
 void lgx_bc_gen(lgx_ast_node_t* node) {
-    int i, p;
+    int i; unsigned t;
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:
@@ -29,20 +32,20 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             // 写入条件跳转
             buf[offset++] = op_create1(OP_TEST, AX);
-            p = offset;
+            st[st_offset++] = offset;
             buf[offset++] = op_create1(OP_JMP, 0);
 
             lgx_bc_gen(node->child[1]);
 
             // 更新条件跳转
-            buf[p] = op_create1(OP_JMP, offset);
+            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
             break;
         case IF_ELSE_STATEMENT:
             lgx_bc_gen(node->child[0]);
 
             // 写入条件跳转
             buf[offset++] = op_create1(OP_TEST, AX);
-            p = offset;
+            st[st_offset++] = offset;
             buf[offset++] = op_create1(OP_JMP, 0);
 
             lgx_bc_gen(node->child[1]);
@@ -50,23 +53,35 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
             // 写入无条件跳转
             buf[offset++] = op_create1(OP_JMP, 0);
             // 更新条件跳转
-            buf[p] = op_create1(OP_JMP, offset);
-            p = offset - 1;
+            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
+            st[st_offset++] = offset - 1;
 
             lgx_bc_gen(node->child[2]);
 
             // 更新无条件跳转
-            buf[p] = op_create1(OP_JMP, offset);
+            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
             break;
         case FOR_STATEMENT:
 
             break;
         case WHILE_STATEMENT:
-            p = offset;
+            t = offset;
 
             lgx_bc_gen(node->child[0]);
 
+            // 写入条件跳转
+            buf[offset++] = op_create1(OP_TEST, AX);
+            st[st_offset++] = offset;
+            buf[offset++] = op_create1(OP_JMP, 0);
+
             lgx_bc_gen(node->child[1]);
+
+            // 写入无条件跳转
+            buf[offset++] = op_create1(OP_JMP, t);
+
+            // 更新条件跳转
+            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
+
             break;
         case DO_WHILE_STATEMENT:
 
