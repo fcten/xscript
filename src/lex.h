@@ -17,7 +17,7 @@ enum {
     TK_SHL,     // 268
     TK_SHR,     // 269
     TK_COMMENT, // 270
-    TK_VAR,     // 271
+    TK_AUTO,    // 271
     TK_FOR,     // 272
     TK_DO,      // 273
     TK_WHILE,   // 274

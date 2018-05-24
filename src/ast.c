@@ -426,7 +426,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case TK_ID:
                 ast_parse_assign_statement(ast, parent);
                 break;
-            case TK_VAR:
+            case TK_AUTO:
                 ast_parse_variable_declaration(ast, parent);
                 break;
             case TK_FUNCTION:

@@ -10,7 +10,7 @@ struct rw {
 
 // 关键字 && 保留字
 const struct rw reserved_word[] = {
-    {TK_VAR, "var"},      {TK_FOR, "for"},         {TK_DO, "do"},
+    {TK_AUTO, "auto"},    {TK_FOR, "for"},         {TK_DO, "do"},
     {TK_WHILE, "while"},  {TK_BREAK, "break"},     {TK_CONTINUE, "continue"},
     {TK_IF, "if"},        {TK_ELSE, "else"},       {TK_SWITCH, "switch"},
     {TK_CASE, "case"},    {TK_DEFAULT, "default"}, {TK_FUNCTION, "function"},
@@ -28,7 +28,6 @@ resource
 
 true, false
 
-var
 class
 */
 static int is_next(lgx_lex_t* ctx, char n) {

@@ -1,6 +1,8 @@
 #ifndef LGX_VAL_H
 #define LGX_VAL_H
 
+#include "list.h"
+
 typedef void lgx_str_t;
 typedef void lgx_arr_t;
 typedef void lgx_obj_t;
@@ -34,5 +36,15 @@ typedef struct {
     } value;
     unsigned type:4;
 } lgx_val_t;
+
+typedef struct {
+    lgx_list_t head;
+    lgx_val_t val;
+} lgx_val_list_t;
+
+typedef struct {
+    lgx_list_t head;
+    lgx_val_list_t val_list;
+} lgx_val_scope_t;
 
 #endif // LGX_VAR_H

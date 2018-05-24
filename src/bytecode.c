@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "lex.h"
+#include "val.h"
 #include "bytecode.h"
 
 #define op_create1(op, a)    ((op << 10) + a)
@@ -17,15 +19,48 @@ unsigned offset;
 unsigned st[32];
 unsigned st_offset;
 
+// 变量与作用域
+lgx_val_scope_t* scope;
+
+// 创建新的变量作用域
+void bc_scope_new() {
+    lgx_val_scope_t* s = malloc(sizeof(lgx_val_scope_t));
+    lgx_list_init(&s->head);
+    lgx_list_init(&s->val_list.head);
+
+    if (scope) {
+        lgx_list_add_tail(&scope->head, &s->head);
+    } else {
+        scope = s;
+    }
+}
+
+// 删除当前变量作用域
+void bc_scope_delete() {
+    // 释放局部变量
+}
+
+// 在当前作用域上创建变量
+lgx_val_t* bc_val_new() {
+    lgx_val_t* v = malloc(sizeof(lgx_val_t));
+
+    //lgx_bc_gen();
+
+    return v;
+}
+
 void lgx_bc_gen(lgx_ast_node_t* node) {
     int i; unsigned t;
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:
-            // TODO 创建新的变量作用域 ？
+            bc_scope_new();
+
             for(i = 0; i < node->children; i++) {
                 lgx_bc_gen(node->child[i]);
             }
+
+            bc_scope_delete();
             break;
         case IF_STATEMENT:
             lgx_bc_gen(node->child[0]);
@@ -91,7 +126,9 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
         case CONTINUE_STATEMENT:
 
             break;
-        case BREAK_STATEMENT:
+        case BREAK_STATEMENT: // break 只应该出现在块级作用域中
+            bc_scope_delete();
+
             // 写入跳转指令
             // 保存指令位置以便未来更新跳转地址
             break;
@@ -119,7 +156,7 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             break;
         case ASSIGNMENT_STATEMENT:
-
+            buf[offset++] = op_create1(OP_PUSH, AX);
             break;
         // Declaration
         case FUNCTION_DECLARATION:
