@@ -42,11 +42,15 @@ void bc_scope_delete() {
 
 // 在当前作用域上创建变量
 lgx_val_t* bc_val_new() {
-    lgx_val_t* v = malloc(sizeof(lgx_val_t));
+    lgx_val_list_t* vl = malloc(sizeof(lgx_val_list_t));
+    lgx_list_init(&vl->head);
 
-    //lgx_bc_gen();
+    vl->val.type = T_UNDEFINED;
+//    vl->val.u.offset =
 
-    return v;
+//    lgx_val_scope_t* s = lgx_list_last_entry(&scope->head, lgx_val_scope_t, head);
+
+    return &vl->val;
 }
 
 void lgx_bc_gen(lgx_ast_node_t* node) {
@@ -177,19 +181,44 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             break;
         case BINARY_EXPRESSION:
-
             lgx_bc_gen(node->child[0]);
-
-            buf[offset++] = op_create2(OP_MOV, BX, AX);
-
             lgx_bc_gen(node->child[1]);
 
-            buf[offset++] = op_create2(OP_ADD, AX, BX);
+            switch (node->op) {
+                case '+':
+                    buf[offset++] = op_create1(OP_ADD, 0);
+                    break;
+                case '-':
+                    buf[offset++] = op_create1(OP_SUB, 0);
+                    break;
+                case '*':
+                    buf[offset++] = op_create1(OP_MUL, 0);
+                    break;
+                case '/':
+                    buf[offset++] = op_create1(OP_DIV, 0);
+                    break;
+                default:
+                    // error
+            }
 
             break;
         case UNARY_EXPRESSION:
 
             lgx_bc_gen(node->child[0]);
+
+            switch (node->op) {
+                case '!':
+                    buf[offset++] = op_create1(OP_ADD, 0);
+                    break;
+                case '~':
+                    buf[offset++] = op_create1(OP_SUB, 0);
+                    break;
+                case '-':
+                    buf[offset++] = op_create1(OP_MUL, 0);
+                    break;
+                default:
+                    // error
+            }
 
             break;
         // Other

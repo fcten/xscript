@@ -13,9 +13,29 @@ enum {
 
     OP_CMP,
 
-    OP_ADD,
+    OP_INC, // a = a + 1
+    OP_DEC, // a = a - 1
 
+    OP_ADD, // a = a + b
+    OP_SUB, // a = a - b
+    OP_MUL, // a = a * b
+    OP_DIV, // a = a / b
+
+    OP_SHL, // a = a << b 逻辑/算术左移
+    OP_SHR, // a = a >> b 算术右移
+
+    OP_NEG, // a = -a
+
+    OP_AND, // a = a & b
+    OP_OR,  // a = a | b
+    OP_XOR, // a = a ^ b
+    OP_NOT, // a = ~a
     OP_TEST, // if a != 0 then pc ++
+
+    OP_LAND, // a = a && b
+    OP_LOR,  // a = a || b
+    OP_LNOT, // a = !a
+
     OP_JMP,  // pc += c
 
     OP_CALL,

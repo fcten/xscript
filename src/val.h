@@ -35,6 +35,9 @@ typedef struct {
         lgx_fun_t        *fun;
     } value;
     unsigned type:4;
+    union {
+        unsigned offset;
+    } u;
 } lgx_val_t;
 
 typedef struct {
