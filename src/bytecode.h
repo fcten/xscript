@@ -1,6 +1,8 @@
 #ifndef LGX_BYTECODE_H
 #define LGX_BYTECODE_H
 
+#include "val.h"
+#include "hash.h"
 #include "ast.h"
 
 enum {
@@ -45,7 +47,29 @@ enum {
     OP_NOP
 };
 
-void lgx_bc_gen(lgx_ast_node_t* node);
-void lgx_bc_print();
+typedef struct {
+    // 待编译的抽象语法树
+    lgx_ast_t* ast;
+
+    // 字节码缓存
+    unsigned *bc;
+    unsigned bc_size;
+    unsigned bc_offset;
+    
+    // 变量与作用域
+    lgx_val_scope_t scope;
+    
+    // 常量表
+    lgx_hash_t constants;
+
+    // 栈内存
+    lgx_val_t *st;
+    unsigned st_size;
+    unsigned st_offset;
+} lgx_bc_t;
+
+int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast);
+int lgx_bc_gen(lgx_bc_t *bc);
+int lgx_bc_print();
 
 #endif // LGX_BYTECODE_H

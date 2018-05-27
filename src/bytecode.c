@@ -3,135 +3,126 @@
 
 #include "lex.h"
 #include "val.h"
+#include "list.h"
 #include "bytecode.h"
 
 #define op_create1(op, a)    ((op << 10) + a)
 #define op_create2(op, a, b) ((op << 10) + (a << 5) + b)
 
-#define AX 0
-#define BX 1
-#define CX 2
-#define DX 3
+int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast) {
+    bc->bc_size = 1024;
+    bc->bc = malloc(bc->bc_size * sizeof(unsigned));
+    if (!bc->bc) {
+        bc->bc_size = 0;
+        return 1;
+    }
 
-unsigned short buf[10240];
-unsigned offset;
+    bc->st_size = 1024;
+    bc->st = malloc(bc->st_size * sizeof(lgx_val_t));
+    if (!bc->st) {
+        free(bc->bc);
+        bc->bc_size = 0;
+        bc->st_size = 0;
+        return 2;
+    }
+    
+    bc->ast = ast;
 
-unsigned st[32];
-unsigned st_offset;
+    lgx_list_init(&bc->scope.head);
+    
+    lgx_hash_init(&bc->constants, 1024);
 
-// 变量与作用域
-lgx_val_scope_t* scope;
+    return 0;
+}
 
 // 创建新的变量作用域
-void bc_scope_new() {
+void bc_scope_new(lgx_bc_t *bc) {
     lgx_val_scope_t* s = malloc(sizeof(lgx_val_scope_t));
     lgx_list_init(&s->head);
-    lgx_list_init(&s->val_list.head);
+    
+    lgx_val_scope_t* parent = lgx_list_last_entry(&bc->scope.head, lgx_val_scope_t, head);
+    
+    s->vr = parent->vr + parent->vr_offset;
+    s->vr_offset = 0;
 
-    if (scope) {
-        lgx_list_add_tail(&scope->head, &s->head);
-    } else {
-        scope = s;
-    }
+    lgx_list_add_tail(&bc->scope.head, &s->head);
 }
 
 // 删除当前变量作用域
-void bc_scope_delete() {
+void bc_scope_delete(lgx_bc_t *bc) {
     // 释放局部变量
 }
 
-// 在当前作用域上创建变量
-lgx_val_t* bc_val_new() {
-    lgx_val_list_t* vl = malloc(sizeof(lgx_val_list_t));
-    lgx_list_init(&vl->head);
+// 在当前作用域上分配变量
+lgx_val_t* bc_val_new(lgx_bc_t *bc) {
+    lgx_val_scope_t* s = lgx_list_last_entry(&bc->scope.head, lgx_val_scope_t, head);
 
-    vl->val.type = T_UNDEFINED;
-//    vl->val.u.offset =
-
-//    lgx_val_scope_t* s = lgx_list_last_entry(&scope->head, lgx_val_scope_t, head);
-
-    return &vl->val;
+    return &s->vr[s->vr_offset++];
 }
 
-void lgx_bc_gen(lgx_ast_node_t* node) {
-    int i; unsigned t;
+int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
+    unsigned i;
+    lgx_val_t k, *v;
+    lgx_str_t s;
+    lgx_ast_node_token_t *token;
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:
-            bc_scope_new();
+            bc_scope_new(bc);
 
             for(i = 0; i < node->children; i++) {
-                lgx_bc_gen(node->child[i]);
+                bc_gen(bc, node->child[i]);
             }
 
-            bc_scope_delete();
+            bc_scope_delete(bc);
             break;
         case IF_STATEMENT:
-            lgx_bc_gen(node->child[0]);
+            bc_gen(bc, node->child[0]);
 
             // 写入条件跳转
-            buf[offset++] = op_create1(OP_TEST, AX);
-            st[st_offset++] = offset;
-            buf[offset++] = op_create1(OP_JMP, 0);
 
-            lgx_bc_gen(node->child[1]);
+            bc_gen(bc, node->child[1]);
 
             // 更新条件跳转
-            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
             break;
         case IF_ELSE_STATEMENT:
-            lgx_bc_gen(node->child[0]);
+            bc_gen(bc, node->child[0]);
 
             // 写入条件跳转
-            buf[offset++] = op_create1(OP_TEST, AX);
-            st[st_offset++] = offset;
-            buf[offset++] = op_create1(OP_JMP, 0);
 
-            lgx_bc_gen(node->child[1]);
+            bc_gen(bc, node->child[1]);
 
             // 写入无条件跳转
-            buf[offset++] = op_create1(OP_JMP, 0);
             // 更新条件跳转
-            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
-            st[st_offset++] = offset - 1;
 
-            lgx_bc_gen(node->child[2]);
+            bc_gen(bc, node->child[2]);
 
             // 更新无条件跳转
-            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
             break;
         case FOR_STATEMENT:
 
             break;
         case WHILE_STATEMENT:
-            t = offset;
-
-            lgx_bc_gen(node->child[0]);
+            bc_gen(bc, node->child[0]);
 
             // 写入条件跳转
-            buf[offset++] = op_create1(OP_TEST, AX);
-            st[st_offset++] = offset;
-            buf[offset++] = op_create1(OP_JMP, 0);
 
-            lgx_bc_gen(node->child[1]);
+            bc_gen(bc, node->child[1]);
 
             // 写入无条件跳转
-            buf[offset++] = op_create1(OP_JMP, t);
 
             // 更新条件跳转
-            buf[st[st_offset--]] = op_create1(OP_JMP, offset);
-
             break;
         case DO_WHILE_STATEMENT:
 
-            lgx_bc_gen(node->child[0]);
-            lgx_bc_gen(node->child[1]);
+            bc_gen(bc, node->child[0]);
+            bc_gen(bc, node->child[1]);
             break;
         case CONTINUE_STATEMENT:
 
             break;
         case BREAK_STATEMENT: // break 只应该出现在块级作用域中
-            bc_scope_delete();
+            bc_scope_delete(bc);
 
             // 写入跳转指令
             // 保存指令位置以便未来更新跳转地址
@@ -142,33 +133,26 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
         case RETURN_STATEMENT:
             // 计算返回值
             if (node->child[0]) {
-                lgx_bc_gen(node->child[0]);
+                bc_gen(bc, node->child[0]);
             }
 
             // 释放参数与局部变量
 
-            // 返回值入栈
-            if (node->child[0]) {
-                buf[offset++] = op_create1(OP_PUSH, AX);
-            } else {
-                // 如果没有指定返回值，则返回 undefined
-                buf[offset++] = op_create1(OP_PUSH, AX);
-            }
+            // 更新返回值寄存器
 
             // 写入返回指令
-            buf[offset++] = op_create1(OP_RET, 0);
 
             break;
         case ASSIGNMENT_STATEMENT:
-            buf[offset++] = op_create1(OP_PUSH, AX);
+
             break;
         // Declaration
         case FUNCTION_DECLARATION:
             // 跳过函数体
-            lgx_bc_gen(node->child[0]);
+            bc_gen(bc, node->child[0]);
             break;
         case VARIABLE_DECLARATION:
-
+            
             break;
         // Expression
         case CALL_EXPRESSION:
@@ -181,54 +165,59 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
 
             break;
         case BINARY_EXPRESSION:
-            lgx_bc_gen(node->child[0]);
-            lgx_bc_gen(node->child[1]);
+            bc_gen(bc, node->child[0]);
+            bc_gen(bc, node->child[1]);
 
             switch (node->op) {
                 case '+':
-                    buf[offset++] = op_create1(OP_ADD, 0);
+
                     break;
                 case '-':
-                    buf[offset++] = op_create1(OP_SUB, 0);
+
                     break;
                 case '*':
-                    buf[offset++] = op_create1(OP_MUL, 0);
+
                     break;
                 case '/':
-                    buf[offset++] = op_create1(OP_DIV, 0);
+
                     break;
                 default:
                     // error
+                    break;
             }
 
             break;
         case UNARY_EXPRESSION:
 
-            lgx_bc_gen(node->child[0]);
+            bc_gen(bc, node->child[0]);
 
             switch (node->op) {
                 case '!':
-                    buf[offset++] = op_create1(OP_ADD, 0);
+
                     break;
                 case '~':
-                    buf[offset++] = op_create1(OP_SUB, 0);
+
                     break;
                 case '-':
-                    buf[offset++] = op_create1(OP_MUL, 0);
+
                     break;
                 default:
                     // error
+                    break;
             }
 
             break;
         // Other
         case IDENTIFIER_TOKEN:
-            buf[offset++] = op_create2(OP_LOAD, AX, 0);
 
             break;
         case NUMBER_TOKEN:
-            buf[offset++] = op_create2(OP_MOV, AX, 0);
+            token = (lgx_ast_node_token_t *)node;
 
+            k.type = T_LONG;
+            k.v.l = atoi(token->tk_start);
+            
+            v = lgx_hash_get(&bc->constants, &k);
             break;
         case STRING_TOKEN:
 
@@ -236,20 +225,26 @@ void lgx_bc_gen(lgx_ast_node_t* node) {
         default:
             printf("%s %d\n", "ERROR!", node->type);
     }
+    
+    return 0;
+}
+
+int lgx_bc_gen(lgx_bc_t *bc) {
+    return bc_gen(bc, bc->ast->root);
 }
 
 char *R[] = {
     "AX", "BX", "CX", "DX"
 };
 
-void lgx_bc_print() {
+int lgx_bc_print(lgx_bc_t *bc) {
     int i = 0;
     unsigned short op, a, b, c;
-    while(i < offset) {
-        op = buf[i] >> 10;
-        a = (buf[i] & 0b0000001111100000) >> 5;
-        b = buf[i] & 0b0000000000011111;
-        c = buf[i] & 0b0000001111111111;
+    while(i < bc->bc_offset) {
+        op = bc->bc[i] >> 10;
+        a = (bc->bc[i] & 0b0000001111100000) >> 5;
+        b = bc->bc[i] & 0b0000000000011111;
+        c = bc->bc[i] & 0b0000001111111111;
 
         switch(op) {
             case OP_MOV:
@@ -292,4 +287,6 @@ void lgx_bc_print() {
 
         i ++;
     }
+    
+    return 0;
 }

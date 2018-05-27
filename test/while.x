@@ -1,5 +1,5 @@
 auto a = 100, b =0
-while(a > 0) {
+while (a > 0) {
     b = b + a
     a = a - 1
 }

@@ -2,8 +2,8 @@
 #define LGX_VAL_H
 
 #include "list.h"
+#include "str.h"
 
-typedef void lgx_str_t;
 typedef void lgx_arr_t;
 typedef void lgx_obj_t;
 typedef void lgx_res_t;
@@ -33,21 +33,25 @@ typedef struct {
         lgx_res_t        *res;
         lgx_ref_t        *ref;
         lgx_fun_t        *fun;
-    } value;
+    } v;
     unsigned type:4;
     union {
-        unsigned offset;
+        unsigned offset; // 保存该变量在栈中的位置，在编译字节码阶段使用
     } u;
 } lgx_val_t;
 
 typedef struct {
     lgx_list_t head;
-    lgx_val_t val;
+    lgx_val_t *v;
 } lgx_val_list_t;
 
 typedef struct {
     lgx_list_t head;
-    lgx_val_list_t val_list;
+    // 虚拟寄存器组
+    // 指向当前栈的起始位置
+    lgx_val_t* vr;
+    // 已分配的虚拟寄存器数量
+    unsigned vr_offset;
 } lgx_val_scope_t;
 
 #endif // LGX_VAR_H

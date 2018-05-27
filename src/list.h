@@ -16,13 +16,13 @@ typedef struct lgx_list_s {
 	for (pos = (head)->next; pos != (head); pos = pos->next)
 
 #define lgx_list_first_entry(ptr, type, member) \
-	wbt_lgx_list_entry((ptr)->next, type, member)
+	lgx_list_entry((ptr)->next, type, member)
 
 #define lgx_list_last_entry(ptr, type, member) \
-	wbt_lgx_list_entry((ptr)->prev, type, member)
+	lgx_list_entry((ptr)->prev, type, member)
 
 #define lgx_list_next_entry(pos, type, member) \
-	wbt_lgx_list_entry((pos)->member.next, type, member)
+	lgx_list_entry((pos)->member.next, type, member)
 
 #define lgx_list_prev_entry(pos, type, member) \
 	lgx_list_entry((pos)->member.prev, type, member)
