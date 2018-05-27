@@ -36,7 +36,7 @@ typedef struct {
     } v;
     unsigned type:4;
     union {
-        unsigned offset; // 保存该变量在栈中的位置，在编译字节码阶段使用
+        lgx_str_ref_t name; // 变量名称
     } u;
 } lgx_val_t;
 

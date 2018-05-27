@@ -441,7 +441,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* variable_declaration;
 
-    // ast->cur_token == TK_VAR
+    // ast->cur_token == TK_AUTO
     ast_step(ast);
 
     while (1) {
@@ -453,14 +453,14 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             printf("[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
             return;
         } else {
-            printf("[Info] [Line:%d] variable `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            //printf("[Info] [Line:%d] variable `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_parse_expression(ast, variable_declaration);
         }
-        ast_step(ast);
         
         if (ast->cur_token == '=') {
             ast_step(ast);
             
-            printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
+            //printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
             ast_parse_expression(ast, variable_declaration);
         }
 
@@ -488,10 +488,10 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     if (ast->cur_token == TK_ID) {
-        printf("[Info] [Line:%d] function `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        //printf("[Info] [Line:%d] function `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
         ast_step(ast);
     } else if (ast->cur_token == '(') {
-        printf("[Info] [Line:%d] anonymous function declared\n", ast->cur_line);
+        //printf("[Info] [Line:%d] anonymous function declared\n", ast->cur_line);
     }
     
     if (ast->cur_token != '(') {
@@ -503,7 +503,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while(ast->cur_token != ')') {      
         switch (ast->cur_token) {
             case TK_ID:
-                printf("[Info] [Line:%d] param `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                //printf("[Info] [Line:%d] param `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
                 ast_step(ast);
                 break;
             default:
@@ -520,7 +520,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
                 ast_parse_expression(ast, function_declaration);
 
-                printf("[Info] [Line:%d] param initialized\n", ast->cur_line);
+                //printf("[Info] [Line:%d] param initialized\n", ast->cur_line);
                 break;
             case ')':
                 break;
@@ -683,6 +683,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case VARIABLE_DECLARATION:
             printf("%*s%s\n", indent, "", "VARIABLE_DECLARATION");
+            lgx_ast_print(node->child[0], indent+2);
+            printf("%*s%s\n", indent+2, "", "=");
+            lgx_ast_print(node->child[1], indent+2);
             break;
         // Expression
         case CALL_EXPRESSION:

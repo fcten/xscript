@@ -59,6 +59,7 @@ static int hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
             for (i = 0 ; i < length ; i ++) {
                 ret = (ret << 5) - ret + k->v.str->buffer[i];
             }
+            ret %= hash->size;
             break;
         default:
             // error
