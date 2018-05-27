@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "bytecode.h"
+#include "../common/bytecode.h"
 #include "vm.h"
 
 void vm_push(lgx_vm_t *vm, lgx_val_t *v) {

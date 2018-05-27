@@ -1,11 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "lex.h"
-#include "ast.h"
-#include "lgx.h"
-#include "bytecode.h"
-#include "vm.h"
+#include "./common/lex.h"
+#include "./common/ast.h"
+#include "./common/bytecode.h"
 
 int read_file(const char* file, char** p) {
     FILE* fp;
@@ -30,15 +28,6 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_parser(&ast);
     lgx_ast_print(ast.root, 0);
-
-    lgx_bc_t bc;
-    lgx_bc_init(&bc, &ast);
-    lgx_bc_gen(&bc);
-    lgx_bc_print(&bc);
-
-    lgx_vm_t vm;
-    lgx_vm_init(&vm, &bc);
-    lgx_vm_start(&vm);
     
     return 0;
 }
