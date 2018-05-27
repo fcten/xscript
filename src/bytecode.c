@@ -6,9 +6,6 @@
 #include "list.h"
 #include "bytecode.h"
 
-#define op_create1(op, a)    ((op << 10) + a)
-#define op_create2(op, a, b) ((op << 10) + (a << 5) + b)
-
 int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast) {
     bc->bc_size = 1024;
     bc->bc = malloc(bc->bc_size * sizeof(unsigned));
@@ -62,7 +59,7 @@ lgx_val_t* bc_val_new(lgx_bc_t *bc) {
 
 int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
     unsigned i;
-    lgx_val_t k, *v;
+    lgx_val_t k, v;
     lgx_str_t s;
     lgx_ast_node_token_t *token;
     switch(node->type) {
@@ -212,12 +209,13 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             break;
         case NUMBER_TOKEN:
+            //bc->bc[bc->bc_offset++] = OP_PUSH;
             token = (lgx_ast_node_token_t *)node;
 
             k.type = T_LONG;
             k.v.l = atoi(token->tk_start);
             
-            v = lgx_hash_get(&bc->constants, &k);
+            i = lgx_hash_get(&bc->constants, &k);
             break;
         case STRING_TOKEN:
 

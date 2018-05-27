@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     lgx_lex_init();
 
     lgx_ast_t ast = { {"test", sizeof("test") - 1, 0, 0, 1, 0}, 0, 0};
-    ast.lex.length = read_file(argv[1], &ast.lex.source);
+    ast.lex.length = read_file("./test/if.x", &ast.lex.source);
 
     lgx_ast_parser(&ast);
     lgx_ast_print(ast.root, 0);
@@ -39,6 +39,6 @@ int main(int argc, char* argv[]) {
     lgx_vm_t vm;
     lgx_vm_init(&vm, &bc);
     lgx_vm_start(&vm);
-
+    
     return 0;
 }

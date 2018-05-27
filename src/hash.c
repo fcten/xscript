@@ -120,7 +120,7 @@ int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
     return 0;
 }
 
-lgx_val_t *lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
+int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
     int k = hash_bkdr(hash, key);
     lgx_val_list_t *p;
     lgx_list_for_each_entry(p, lgx_val_list_t, &hash->key[k].vl.head, head) {
@@ -130,21 +130,21 @@ lgx_val_t *lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
                 case T_DOUBLE:
                     if (p->v->v.l == key->v.l) {
                         // key 存在
-                        return p->v;
+                        return (lgx_hash_node_t *)p->v - hash->table;
                     }
                     break;
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, key->v.str) == 0) {
                         // key 存在
-                        return p->v;
+                        return (lgx_hash_node_t *)p->v - hash->table;
                     }
                     break;
                 default:
                     // key 类型不合法
-                    return NULL;
+                    return -1;
             }
         }
     }
 
-    return NULL;
+    return -1;
 }

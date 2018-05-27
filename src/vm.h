@@ -16,7 +16,7 @@ typedef struct {
     // 程序计数寄存器
     lgx_val_t *pc;
 
-    // 函数返回值寄存器
+    // 返回值寄存器
     lgx_val_t *ret;
 } lgx_vm_t;
 

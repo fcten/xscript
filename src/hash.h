@@ -36,6 +36,6 @@ int lgx_hash_cleanup(lgx_hash_t *hash);
 
 int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node);
 int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v);
-lgx_val_t *lgx_hash_get(lgx_hash_t *hash, lgx_val_t *k);
+int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *k);
 
 #endif	/* LGX_HASH_H */
