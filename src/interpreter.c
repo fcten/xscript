@@ -44,7 +44,7 @@ lgx_val_t* val_get(lgx_str_ref_t *s) {
     }
 }
 
-int execute(lgx_ast_node_t* node) {
+long long execute(lgx_ast_node_t* node) {
     unsigned i;
     lgx_val_t *v;
     lgx_str_ref_t s;
@@ -92,7 +92,7 @@ int execute(lgx_ast_node_t* node) {
         case RETURN_STATEMENT:
             // 计算返回值
             if (node->child[0]) {
-                printf("%d\n", execute(node->child[0]));
+                printf("%lld\n", execute(node->child[0]));
             } else {
                 printf("undefined\n");
             }
@@ -213,7 +213,7 @@ int main(int argc, char* argv[]) {
     lgx_lex_init();
 
     lgx_ast_t ast = { {"test", sizeof("test") - 1, 0, 0, 1, 0}, 0, 0};
-    ast.lex.length = read_file("./test/if.x", &ast.lex.source);
+    ast.lex.length = read_file(argv[1], &ast.lex.source);
 
     lgx_ast_parser(&ast);
     lgx_ast_print(ast.root, 0);
