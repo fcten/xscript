@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "./common/lex.h"
+#include "./tokenizer/lex.h"
 #include "./common/ast.h"
 #include "./common/bytecode.h"
 

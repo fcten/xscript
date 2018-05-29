@@ -1,5 +1,5 @@
-#ifndef LGX_LEX_H
-#define LGX_LEX_H
+#ifndef LGX_TOKENS_H
+#define LGX_TOKENS_H
 
 enum {
     TK_ID = 256,
@@ -34,15 +34,10 @@ enum {
 };
 
 typedef struct {
-    char *source;
-    int length;
-    int offset;
-    int milestone;
-    int line;
-    int row;
-} lgx_lex_t;
+    int token;
+    char* s;
+} lgx_token_t;
 
-int lgx_lex_init();
-int lgx_lex(lgx_lex_t *ctx);
+#define LGX_RESERVED_WORDS  13
 
-#endif // LGX_LEX_H
+#endif // LGX_TOKENS_H

@@ -1,7 +1,7 @@
 #ifndef LGX_AST_H
 #define LGX_AST_H
 
-#include "lex.h"
+#include "../tokenizer/lex.h"
 
 enum {
     // Statement

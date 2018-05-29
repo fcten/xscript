@@ -3,33 +3,8 @@
 
 #include "lex.h"
 
-struct rw {
-    int token;
-    char* s;
-};
+extern const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS];
 
-// 关键字 && 保留字
-const struct rw reserved_word[] = {
-    {TK_AUTO, "auto"},    {TK_FOR, "for"},         {TK_DO, "do"},
-    {TK_WHILE, "while"},  {TK_BREAK, "break"},     {TK_CONTINUE, "continue"},
-    {TK_IF, "if"},        {TK_ELSE, "else"},       {TK_SWITCH, "switch"},
-    {TK_CASE, "case"},    {TK_DEFAULT, "default"}, {TK_FUNCTION, "function"},
-    {TK_RETURN, "return"}};
-
-/*
-string
-number - float, integer
-bool
-function
-array
-object
-null
-resource
-
-true, false
-
-class
-*/
 static int is_next(lgx_lex_t* ctx, char n) {
     if (ctx->offset >= ctx->length) {
         return 0;
@@ -178,8 +153,8 @@ static int is_reserved(lgx_lex_t* ctx) {
 
 int lgx_lex_init() {
     int i;
-    for (i = 0; i < sizeof(reserved_word) / sizeof(struct rw); i++) {
-        dict_tree_add(reserved_word[i].token, reserved_word[i].s);
+    for (i = 0; i < LGX_RESERVED_WORDS; i++) {
+        dict_tree_add(lgx_reserved_words[i].token, lgx_reserved_words[i].s);
     }
     return 0;
 }
