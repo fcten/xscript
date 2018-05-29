@@ -26,6 +26,8 @@ enum {
     TK_ARRAY,
     TK_OBJECT,
 
+    TK_TYPEOF,
+
     TK_TRUE,
     TK_FALSE,
     TK_NULL,

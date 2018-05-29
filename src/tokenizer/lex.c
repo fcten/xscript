@@ -156,6 +156,7 @@ int lgx_lex_init() {
     for (i = 0; i < LGX_RESERVED_WORDS; i++) {
         dict_tree_add(lgx_reserved_words[i].token, lgx_reserved_words[i].s);
     }
+    printf("[Info] %d reserved words\n", LGX_RESERVED_WORDS);
     return 0;
 }
 

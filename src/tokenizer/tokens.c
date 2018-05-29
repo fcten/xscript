@@ -25,10 +25,12 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     {TK_STR, "string"},
     {TK_ARRAY, "array"},
     {TK_OBJECT, "object"},
+    // 类型判断
+    {TK_TYPEOF, "typeof"},
     // 特殊值
-    {TK_TRUE, "true"},
-    {TK_FALSE, "false"},
-    {TK_NULL, "null"},
+    {TK_TRUE, "true"},  // 布尔
+    {TK_FALSE, "false"},// 布尔
+    {TK_NULL, "null"},  // 引用
     // 函数 & 方法
     {TK_FUNCTION, "function"},
     {TK_RETURN, "return"},
