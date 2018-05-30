@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "val.h"
+#include "../common/val.h"
 #include "ast.h"
 
 void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent);

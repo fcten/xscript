@@ -3,7 +3,7 @@
 
 #include "val.h"
 #include "hash.h"
-#include "ast.h"
+#include "../parser/ast.h"
 
 enum {
     OP_MOV,

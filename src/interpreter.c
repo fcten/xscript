@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "./tokenizer/lex.h"
-#include "./common/ast.h"
+#include "./parser/ast.h"
 #include "./common/bytecode.h"
 
 int read_file(const char* file, char** p) {
