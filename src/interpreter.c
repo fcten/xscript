@@ -3,6 +3,7 @@
 
 #include "./tokenizer/lex.h"
 #include "./parser/ast.h"
+#include "./parser/scope.h"
 #include "./common/bytecode.h"
 
 int read_file(const char* file, char** p) {
@@ -20,21 +21,13 @@ int read_file(const char* file, char** p) {
     return fread(*p, 1, flen, fp); /* 一次性读取全部文件内容 */
 }
 
-typedef struct {
-    lgx_scope_t scope_chain;
-} lgx_interpreter_t;
-
-lgx_interpreter_t itp;
-
 long long execute(lgx_ast_node_t* node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT: {
-            lgx_scope_new(&itp.scope_chain);
             for(int i = 0; i < node->children; i++) {
                 execute(node->child[i]);
             }
-            lgx_scope_delete(&itp.scope_chain);
             break;
         }
         case IF_STATEMENT:
@@ -85,7 +78,7 @@ long long execute(lgx_ast_node_t* node) {
 
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            v = lgx_scope_val_get(&itp.scope_chain, &s);
+            v = lgx_scope_val_get(node, &s);
             v->type = T_LONG;
             v->v.l = execute(node->child[1]);
             break;
@@ -104,9 +97,9 @@ long long execute(lgx_ast_node_t* node) {
 
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            lgx_scope_val_set(&itp.scope_chain, &s);
+            lgx_scope_val_add(node, &s);
             if (node->child[1]) {
-                v = lgx_scope_val_get(&itp.scope_chain, &s);
+                v = lgx_scope_val_get(node, &s);
                 v->type = T_LONG;
                 v->v.l = execute(node->child[1]);
             }
@@ -123,7 +116,7 @@ long long execute(lgx_ast_node_t* node) {
 
             break;
         case BINARY_EXPRESSION:
-            switch (node->op) {
+            switch (node->u.op) {
                 case '+':
                     return execute(node->child[0]) + execute(node->child[1]);
                 case '-':
@@ -166,7 +159,7 @@ long long execute(lgx_ast_node_t* node) {
             }
             break;
         case UNARY_EXPRESSION:
-            switch (node->op) {
+            switch (node->u.op) {
                 case '!':
                     return !execute(node->child[0]);
                 case '~':
@@ -186,7 +179,7 @@ long long execute(lgx_ast_node_t* node) {
 
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node)->tk_start;
             s.length = ((lgx_ast_node_token_t *)node)->tk_length;
-            v = lgx_scope_val_get(&itp.scope_chain, &s);
+            v = lgx_scope_val_get(node, &s);
             return v->v.l;
         }
         case NUMBER_TOKEN:
@@ -215,8 +208,7 @@ int main(int argc, char* argv[]) {
     }
 
     lgx_ast_print(ast.root, 0);
-    
-    lgx_scope_init(&itp.scope_chain);
+
     execute(ast.root);
     
     return 0;

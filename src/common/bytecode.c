@@ -25,8 +25,6 @@ int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast) {
     
     bc->ast = ast;
 
-    lgx_scope_init(&bc->scope_chain);
-    
     lgx_hash_init(&bc->constants, 1024);
 
     return 0;
@@ -140,7 +138,7 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_gen(bc, node->child[0]);
             bc_gen(bc, node->child[1]);
 
-            switch (node->op) {
+            switch (node->u.op) {
                 case '+':
 
                     break;
@@ -163,7 +161,7 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             bc_gen(bc, node->child[0]);
 
-            switch (node->op) {
+            switch (node->u.op) {
                 case '!':
 
                     break;

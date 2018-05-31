@@ -4,7 +4,6 @@
 #include "val.h"
 #include "hash.h"
 #include "../parser/ast.h"
-#include "scope.h"
 
 enum {
     OP_MOV,
@@ -56,9 +55,6 @@ typedef struct {
     unsigned *bc;
     unsigned bc_size;
     unsigned bc_offset;
-    
-    // 作用域链
-    lgx_scope_t scope_chain;
     
     // 常量表
     lgx_hash_t constants;

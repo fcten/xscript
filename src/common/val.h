@@ -3,12 +3,12 @@
 
 #include "list.h"
 #include "str.h"
+#include "fun.h"
 
 typedef void lgx_arr_t;
 typedef void lgx_obj_t;
 typedef void lgx_res_t;
 typedef void lgx_ref_t;
-typedef void lgx_fun_t;
 
 enum {
     T_UNDEFINED = 0,// 变量尚未定义

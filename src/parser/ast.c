@@ -42,6 +42,7 @@ lgx_ast_node_t* ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* ch
     }
     
     parent->child[parent->children++] = child;
+    child->parent = parent;
     
     return parent;
 }
@@ -203,7 +204,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         switch (ast->cur_token) {
             case '.':
-                binary_expression->op = TK_ATTR;
+                binary_expression->u.op = TK_ATTR;
                 ast_step(ast);
 
                 if (ast->cur_token != TK_ID) {
@@ -214,7 +215,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case '[':
                 // 数组访问操作符
-                binary_expression->op = TK_INDEX;
+                binary_expression->u.op = TK_INDEX;
                 ast_step(ast);
 
                 ast_parse_expression(ast, binary_expression);
@@ -227,7 +228,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case '(':
                 // 函数调用操作符
-                binary_expression->op = TK_CALL;
+                binary_expression->u.op = TK_CALL;
                 ast_step(ast);
 
                 ast_parse_call_parameter(ast, binary_expression);
@@ -314,7 +315,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
             // 单目运算符
             unary_expression = ast_node_new(1);
             unary_expression->type = UNARY_EXPRESSION;
-            unary_expression->op = ast->cur_token;
+            unary_expression->u.op = ast->cur_token;
             ast_node_append_child(parent, unary_expression);
 
             ast_step(ast);
@@ -330,7 +331,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
     while (p >= 0 && p < precedence) {
         binary_expression = ast_node_new(2);
         binary_expression->type = BINARY_EXPRESSION;
-        binary_expression->op = ast->cur_token;
+        binary_expression->u.op = ast->cur_token;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
         parent->child[parent->children-1] = binary_expression;
 
@@ -349,6 +350,10 @@ void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* block_statement = ast_node_new(128);
     block_statement->type = BLOCK_STATEMENT;
+    // 创建新的作用域
+    block_statement->u.symbols = malloc(sizeof(lgx_hash_t));
+    lgx_hash_init(block_statement->u.symbols, 32);
+
     ast_node_append_child(parent, block_statement);
 
     if (ast->cur_token != '{') {
@@ -651,7 +656,11 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 int lgx_ast_parser(lgx_ast_t* ast) {
     ast->root = ast_node_new(128);
     ast->root->type = BLOCK_STATEMENT;
-    
+
+    // 全局作用域
+    ast->root->u.symbols = malloc(sizeof(lgx_hash_t));
+    lgx_hash_init(ast->root->u.symbols, 32);
+
     ast_step(ast);
 
     ast_parse_statement(ast, ast->root);
@@ -673,7 +682,7 @@ int ast_calculate(lgx_ast_node_t* node) {
         case BINARY_EXPRESSION:
             a = ast_calculate(node->child[0]);
             b = ast_calculate(node->child[1]);
-            switch (node->op) {
+            switch (node->u.op) {
                 case '*':
                     return a * b;
                 case '/':
@@ -717,7 +726,7 @@ int ast_calculate(lgx_ast_node_t* node) {
             break;
         case UNARY_EXPRESSION:
             a = ast_calculate(node->child[0]);
-            switch (node->op) {
+            switch (node->u.op) {
                 case '!': // 逻辑非运算符
                     return !a;
                 case '~': // 按位取反运算符
@@ -820,13 +829,13 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
         case BINARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
             lgx_ast_print(node->child[0], indent+2);
-            printf("%*s%d\n", indent, "", node->op);
+            printf("%*s%d\n", indent, "", node->u.op);
             lgx_ast_print(node->child[1], indent+2);
             printf("%*s%s\n", indent, "", ")");
             break;
         case UNARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
-            printf("%*s%c\n", indent, "", node->op);
+            printf("%*s%c\n", indent, "", node->u.op);
             lgx_ast_print(node->child[0], indent+2);
             printf("%*s%s\n", indent, "", ")");
             break;

@@ -2,6 +2,7 @@
 #define LGX_AST_H
 
 #include "../tokenizer/lex.h"
+#include "../common/hash.h"
 
 enum {
     // Statement
@@ -36,9 +37,15 @@ enum {
 
 typedef struct lgx_ast_node {
     unsigned short type;
-    //int line;            // 在源代码中对应的位置
+    struct lgx_ast_node* parent;
 
-    unsigned short op;     // 用于保存 EXPRESSION 的类型
+    union {
+        // 当节点类型为 BLOCK 时，用于保存符号表
+        lgx_hash_t *symbols;
+
+        // 当节点类型为 EXPRESSION 时，用于保存 EXPRESSION 的类型
+        unsigned short op;
+    } u;
 
     int children;          // 子节点数量
     int size;              // 已分配空间的长度
@@ -47,7 +54,7 @@ typedef struct lgx_ast_node {
 
 typedef struct lgx_ast_node_token {
     unsigned short type;
-    //int line;            // 在源代码中对应的位置
+    struct lgx_ast_node* parent;
 
     char* tk_start;
     int tk_length;
