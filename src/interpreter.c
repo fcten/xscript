@@ -20,41 +20,23 @@ int read_file(const char* file, char** p) {
     return fread(*p, 1, flen, fp); /* 一次性读取全部文件内容 */
 }
 
-lgx_hash_t variable_table;
+typedef struct {
+    lgx_scope_t scope_chain;
+} lgx_interpreter_t;
 
-void val_add(lgx_str_ref_t *s) {
-    lgx_hash_node_t node;
-    node.k.type = T_STRING;
-    node.k.v.str = lgx_str_new(s->buffer,s->length);
-
-    lgx_hash_set(&variable_table, &node);
-}
-
-lgx_val_t* val_get(lgx_str_ref_t *s) {
-    lgx_val_t v;
-    v.type = T_STRING;
-    v.v.str = lgx_str_new(s->buffer,s->length);
-
-    int i = lgx_hash_get(&variable_table, &v);
-    
-    if (i>=0) {
-        return &variable_table.table[i].v;
-    } else {
-        return NULL;
-    }
-}
+lgx_interpreter_t itp;
 
 long long execute(lgx_ast_node_t* node) {
-    unsigned i;
-    lgx_val_t *v;
-    lgx_str_ref_t s;
     switch(node->type) {
         // Statement
-        case BLOCK_STATEMENT:
-            for(i = 0; i < node->children; i++) {
+        case BLOCK_STATEMENT: {
+            lgx_scope_new(&itp.scope_chain);
+            for(int i = 0; i < node->children; i++) {
                 execute(node->child[i]);
             }
+            lgx_scope_delete(&itp.scope_chain);
             break;
+        }
         case IF_STATEMENT:
             if (execute(node->child[0])) {
                 execute(node->child[1]);
@@ -97,32 +79,39 @@ long long execute(lgx_ast_node_t* node) {
                 printf("undefined\n");
             }
             break;
-        case ASSIGNMENT_STATEMENT:
+        case ASSIGNMENT_STATEMENT: {
+            lgx_val_t *v;
+            lgx_str_ref_t s;
+
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            v = val_get(&s);
+            v = lgx_scope_val_get(&itp.scope_chain, &s);
             v->type = T_LONG;
             v->v.l = execute(node->child[1]);
             break;
+        }
         // Declaration
         case FUNCTION_DECLARATION:
-            // 跳过函数体
+            if (node->child[0]) {
 
-            break;
-        case VARIABLE_DECLARATION:
-            if (node->child[0]->type != IDENTIFIER_TOKEN) {
-                printf("error\n");
             } else {
-                s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
-                s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-                val_add(&s);
-                if (node->child[1]) {
-                    v = val_get(&s);
-                    v->type = T_LONG;
-                    v->v.l = execute(node->child[1]);
-                }
+                // 匿名函数暂时不被支持
             }
             break;
+        case VARIABLE_DECLARATION: {
+            lgx_val_t *v;
+            lgx_str_ref_t s;
+
+            s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
+            s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
+            lgx_scope_val_set(&itp.scope_chain, &s);
+            if (node->child[1]) {
+                v = lgx_scope_val_get(&itp.scope_chain, &s);
+                v->type = T_LONG;
+                v->v.l = execute(node->child[1]);
+            }
+            break;
+        }
         // Expression
         case CALL_EXPRESSION:
 
@@ -191,14 +180,17 @@ long long execute(lgx_ast_node_t* node) {
 
             break;
         // Other
-        case IDENTIFIER_TOKEN:
+        case IDENTIFIER_TOKEN: {
+            lgx_val_t *v;
+            lgx_str_ref_t s;
+
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node)->tk_start;
             s.length = ((lgx_ast_node_token_t *)node)->tk_length;
-            v = val_get(&s);
+            v = lgx_scope_val_get(&itp.scope_chain, &s);
             return v->v.l;
+        }
         case NUMBER_TOKEN:
             return atoi(((lgx_ast_node_token_t *)node)->tk_start);
-            break;
         case STRING_TOKEN:
 
             break;
@@ -214,7 +206,7 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_t ast;
     lgx_ast_init(&ast);
-    ast.lex.length = read_file(argv[1], &ast.lex.source);
+    ast.lex.length = read_file("./test/function.x", &ast.lex.source);
 
     lgx_ast_parser(&ast);
     if (ast.errno) {
@@ -223,9 +215,8 @@ int main(int argc, char* argv[]) {
     }
 
     lgx_ast_print(ast.root, 0);
-
-    lgx_hash_init(&variable_table, 1024);
     
+    lgx_scope_init(&itp.scope_chain);
     execute(ast.root);
     
     return 0;

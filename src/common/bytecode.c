@@ -25,36 +25,11 @@ int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast) {
     
     bc->ast = ast;
 
-    lgx_list_init(&bc->scope.head);
+    lgx_scope_init(&bc->scope_chain);
     
     lgx_hash_init(&bc->constants, 1024);
 
     return 0;
-}
-
-// 创建新的变量作用域
-void bc_scope_new(lgx_bc_t *bc) {
-    lgx_val_scope_t* s = malloc(sizeof(lgx_val_scope_t));
-    lgx_list_init(&s->head);
-    
-    lgx_val_scope_t* parent = lgx_list_last_entry(&bc->scope.head, lgx_val_scope_t, head);
-    
-    s->vr = parent->vr + parent->vr_offset;
-    s->vr_offset = 0;
-
-    lgx_list_add_tail(&bc->scope.head, &s->head);
-}
-
-// 删除当前变量作用域
-void bc_scope_delete(lgx_bc_t *bc) {
-    // 释放局部变量
-}
-
-// 在当前作用域上分配变量
-lgx_val_t* bc_val_new(lgx_bc_t *bc) {
-    lgx_val_scope_t* s = lgx_list_last_entry(&bc->scope.head, lgx_val_scope_t, head);
-
-    return &s->vr[s->vr_offset++];
 }
 
 int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
@@ -65,13 +40,13 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:
-            bc_scope_new(bc);
+            //bc_scope_new(bc);
 
             for(i = 0; i < node->children; i++) {
                 bc_gen(bc, node->child[i]);
             }
 
-            bc_scope_delete(bc);
+            //bc_scope_delete(bc);
             break;
         case IF_STATEMENT:
             bc_gen(bc, node->child[0]);
@@ -119,7 +94,7 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             break;
         case BREAK_STATEMENT: // break 只应该出现在块级作用域中
-            bc_scope_delete(bc);
+            //bc_scope_delete(bc);
 
             // 写入跳转指令
             // 保存指令位置以便未来更新跳转地址

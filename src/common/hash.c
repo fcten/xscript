@@ -30,6 +30,16 @@ int lgx_hash_init(lgx_hash_t *hash, unsigned size) {
 }
 
 int lgx_hash_cleanup(lgx_hash_t *hash) {
+    hash->size = 0;
+
+    free(hash->key);
+    hash->key = NULL;
+    hash->key_offset = 0;
+
+    free(hash->table);
+    hash->table = NULL;
+    hash->table_offset = 0;
+
     return 0;
 }
 
@@ -40,7 +50,20 @@ static int hash_resize(lgx_hash_t *hash) {
     }
     
     // resize
-    
+    lgx_hash_t new;
+    lgx_hash_init(&new, hash->size*2);
+
+    for (int i = 0; i < hash->table_offset; i++) {
+        lgx_hash_set(&new, &hash->table[i]);
+    }
+
+    hash->size = new.size;
+
+    free(hash->key);
+    hash->key = new.key;
+
+    free(hash->table);
+    hash->table = new.table;
 
     return 0;
 }
@@ -111,7 +134,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     vl->v = &hash->table[hash->table_offset-1].k;
     lgx_list_init(&vl->head);
 
-    lgx_list_add_tail(&hash->key[k].vl.head, &vl->head);
+    lgx_list_add_tail(&vl->head, &hash->key[k].vl.head);
     hash->key[k].count ++;
     
     return hash_resize(hash);

@@ -45,13 +45,4 @@ typedef struct {
     lgx_val_t *v;
 } lgx_val_list_t;
 
-typedef struct {
-    lgx_list_t head;
-    // 虚拟寄存器组
-    // 指向当前栈的起始位置
-    lgx_val_t* vr;
-    // 已分配的虚拟寄存器数量
-    unsigned vr_offset;
-} lgx_val_scope_t;
-
 #endif // LGX_VAR_H

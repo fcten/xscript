@@ -49,6 +49,7 @@ lgx_ast_node_t* ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* ch
 int lgx_ast_init(lgx_ast_t* ast) {
     memset(ast, 0, sizeof(lgx_ast_t));
 
+    ast->lex.line = 1;
     ast->cur_line = 1;
 
     ast->err_info = malloc(256);

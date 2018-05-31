@@ -1,7 +1,8 @@
-auto a = 0, b= 0
+auto a = 1, b = 2
 
 function add (auto a, auto b) {
-    return a + b
+    auto c = 3, d = 4
+    return a * c + b * d
 }
 
 return add(a, b + 1)
