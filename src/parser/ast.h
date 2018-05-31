@@ -19,6 +19,9 @@ enum {
     // Declaration
     FUNCTION_DECLARATION,
     VARIABLE_DECLARATION,
+    // Parameter
+    DECLARATION_PARAMETER,
+    CALL_PARAMETER,
     // Expression
     CALL_EXPRESSION,
     ARRAY_EXPRESSION,

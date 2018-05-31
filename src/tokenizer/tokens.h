@@ -17,6 +17,9 @@ enum {
     TK_SHL,     // 268 <<
     TK_SHR,     // 269 >>
     TK_COMMENT, // 270 代码注释
+    TK_CALL,    // 271 函数调用
+    TK_ATTR,    // 272 对象属性访问
+    TK_INDEX,   // 273 数组下标访问
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,
