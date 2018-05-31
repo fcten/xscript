@@ -212,10 +212,16 @@ long long execute(lgx_ast_node_t* node) {
 int main(int argc, char* argv[]) {
     lgx_lex_init();
 
-    lgx_ast_t ast = { {"test", sizeof("test") - 1, 0, 0, 1, 0}, 0, 0};
+    lgx_ast_t ast;
+    lgx_ast_init(&ast);
     ast.lex.length = read_file(argv[1], &ast.lex.source);
 
     lgx_ast_parser(&ast);
+    if (ast.errno) {
+        printf("%.*s\n", ast.err_len, ast.err_info);
+        return 1;
+    }
+
     lgx_ast_print(ast.root, 0);
 
     lgx_hash_init(&variable_table, 1024);

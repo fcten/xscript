@@ -20,14 +20,16 @@ enum {
     TK_CALL,    // 271 函数调用
     TK_ATTR,    // 272 对象属性访问
     TK_INDEX,   // 273 数组下标访问
+    TK_ARRAY,   // 274 数组常量
+    TK_OBJECT,  // 275 对象常量
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,
     TK_FLOAT,
     TK_BOOL,
     TK_STR,
-    TK_ARRAY,
-    TK_OBJECT,
+    TK_ARR,
+    TK_OBJ,
 
     TK_TYPEOF,
 

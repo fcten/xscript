@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#include <memory.h>
 
 #include "../common/val.h"
 #include "ast.h"
@@ -44,8 +46,29 @@ lgx_ast_node_t* ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* ch
     return parent;
 }
 
-void ast_error() {
+int lgx_ast_init(lgx_ast_t* ast) {
+    memset(ast, 0, sizeof(lgx_ast_t));
 
+    ast->cur_line = 1;
+
+    ast->err_info = malloc(256);
+    ast->err_len = 0;
+
+    return 0;
+}
+
+void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
+    va_list   args;
+
+    if (ast->errno) {
+        return;
+    }
+
+    va_start(args, fmt);
+    ast->err_len = vsnprintf(ast->err_info, 256, fmt, args);
+    va_end(args);
+    
+    ast->errno = 1;
 }
 
 int ast_next(lgx_ast_t* ast) {
@@ -77,53 +100,65 @@ void ast_parse_id_token(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 }
 
-void ast_parse_call_param(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* param_list = ast_node_new(128);
-    param_list->type = CALL_PARAMETER;
+    param_list->type = FUNCTION_DECL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
-    do {
-        switch (ast->cur_token) {
-            case TK_ID:
-                //printf("[Info] [Line:%d] param `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                ast_step(ast);
-                break;
-            default:
-                printf("[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
+    while (1) {
+        lgx_ast_node_t* variable_declaration = ast_node_new(2);
+        variable_declaration->type = VARIABLE_DECLARATION;
+        ast_node_append_child(param_list, variable_declaration);
+
+        if (ast->cur_token != TK_AUTO) {
+            ast_error(ast, "[Error] [Line:%d] type declaration expected\n", ast->cur_line);
+            return;
+        }
+        ast_step(ast);
+
+        if (ast->cur_token != TK_ID) {
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        } else {
+            ast_parse_expression(ast, variable_declaration);
         }
         
-        switch (ast->cur_token) {
-            case ',':
-                ast_step(ast);
-                break;
-            case '=':
-                ast_step(ast);
+        if (ast->cur_token == '=') {
+            ast_step(ast);
 
-                ast_parse_expression(ast, param_list);
-
-                //printf("[Info] [Line:%d] param initialized\n", ast->cur_line);
-                break;
-            case ')':
-                break;
-            default:
-                printf("[Error] [Line:%d] '=', ',' or ')' expected\n", ast->cur_line);
-                return;
+            ast_parse_expression(ast, variable_declaration);
         }
-    } while(ast->cur_token == ',');
+
+        if (ast->cur_token != ',') {
+            return;
+        }
+        ast_step(ast);
+    }
 }
 
-void ast_parse_decl_param(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* param_list = ast_node_new(128);
-    param_list->type = DECLARATION_PARAMETER;
+    param_list->type = FUNCTION_CALL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
     while (1) {
         ast_parse_expression(ast, param_list);
-        
-        if (ast->cur_token != ',') {
-            break;
+
+        if (ast->cur_token == '=') {
+            ast_step(ast);
+
+            lgx_ast_node_t* assign_statement = ast_node_new(2);
+            assign_statement->type = ASSIGNMENT_STATEMENT;
+            ast_node_append_child(assign_statement, parent->child[parent->children-1]);
+            parent->child[parent->children-1] = assign_statement;
+
+            ast_parse_expression(ast, assign_statement);
         }
+
+        if (ast->cur_token != ',') {
+            return;
+        }
+        ast_step(ast);
     }
 }
 
@@ -136,7 +171,7 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_parse_expression(ast, parent);
 
             if (ast->cur_token != ')') {
-                printf("[Error] [Line:%d] ')' expected\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
                 return;
             }
             ast_step(ast);
@@ -150,7 +185,7 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-// suf_expr -> pri_expr { '.' ID | '[' sub_expr ']' | ':' NAME funcargs | funcargs }
+// suf_expr -> pri_expr { '.' ID | '[' sub_expr ']' | funcargs }
 void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_pri_expression(ast, parent);
 
@@ -171,7 +206,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_step(ast);
 
                 if (ast->cur_token != TK_ID) {
-                    printf("[Error] [Line:%d] ']' <identifier> expected\n", ast->cur_line);
+                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected\n", ast->cur_line);
                     return;
                 }
                 ast_parse_id_token(ast, binary_expression);
@@ -184,7 +219,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_parse_expression(ast, binary_expression);
 
                 if (ast->cur_token != ']') {
-                    printf("[Error] [Line:%d] ']' expected\n", ast->cur_line);
+                    ast_error(ast, "[Error] [Line:%d] ']' expected\n", ast->cur_line);
                     return;
                 }
                 ast_step(ast);
@@ -194,10 +229,10 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 binary_expression->op = TK_CALL;
                 ast_step(ast);
 
-                ast_parse_call_param(ast, binary_expression);
+                ast_parse_call_parameter(ast, binary_expression);
 
                 if (ast->cur_token != ')') {
-                    printf("[Error] [Line:%d] ')' expected\n", ast->cur_line);
+                    ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
                     return;
                 }
                 ast_step(ast);
@@ -316,7 +351,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_node_append_child(parent, block_statement);
 
     if (ast->cur_token != '{') {
-        printf("[Error] [Line:%d] '{' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '{' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -324,7 +359,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_statement(ast, block_statement);
 
     if (ast->cur_token != '}') {
-        printf("[Error] [Line:%d] '}' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '}' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -339,7 +374,7 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     if (ast->cur_token != '(') {
-        printf("[Error] [Line:%d] '(' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -347,7 +382,7 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, if_statement);
 
     if (ast->cur_token != ')') {
-        printf("[Error] [Line:%d] ')' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -376,7 +411,7 @@ void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     if (ast->cur_token != '(') {
-        printf("[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -384,7 +419,7 @@ void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, while_statement);
 
     if (ast->cur_token != ')') {
-        printf("[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -403,13 +438,13 @@ void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_block_statement(ast, do_statement);
 
     if (ast->cur_token != TK_WHILE) {
-        printf("[Error] [Line:%d] 'while' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] 'while' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
     
     if (ast->cur_token != '(') {
-        printf("[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -417,7 +452,7 @@ void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, do_statement);
 
     if (ast->cur_token != ')') {
-        printf("[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -474,7 +509,7 @@ void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     if (ast->cur_token != '=') {
-        printf("[Error] [Line:%d] '=' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] '=' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -482,7 +517,7 @@ void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, assign_statement);
 
     if (ast->cur_token != ';' && ast->cur_token != TK_EOL) {
-        printf("[Error] [Line:%d] ';' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -547,7 +582,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         ast_node_append_child(parent, variable_declaration);
 
         if (ast->cur_token != TK_ID) {
-            printf("[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
             return;
         } else {
             //printf("[Info] [Line:%d] variable `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
@@ -570,7 +605,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_step(ast);
                 return;
             default:
-                printf("[Error] [Line:%d] ,' or ';' expected\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] ,' or ';' expected\n", ast->cur_line);
                 return;
         }
     }
@@ -596,15 +631,15 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     
     if (ast->cur_token != '(') {
-        printf("[Error] [Line:%d] '(' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
 
-    ast_parse_decl_param(ast, function_declaration);
+    ast_parse_decl_parameter(ast, function_declaration);
 
     if (ast->cur_token != ')') {
-        printf("[Error] [Line:%d] ')' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
         return;
     }
     ast_step(ast);
@@ -624,7 +659,7 @@ int lgx_ast_parser(lgx_ast_t* ast) {
         case TK_EOF:
             break;
         default:
-            printf("[Error] [Line:%d] unexpected `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] unexpected `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
     }
 
     return 0;
@@ -760,12 +795,16 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
         case FUNCTION_DECLARATION:
             printf("%*s%s\n", indent, "", "FUNCTION_DECLARATION");
             lgx_ast_print(node->child[0], indent+2);
+            lgx_ast_print(node->child[1], indent+2);
+            lgx_ast_print(node->child[2], indent+2);
             break;
         case VARIABLE_DECLARATION:
             printf("%*s%s\n", indent, "", "VARIABLE_DECLARATION");
             lgx_ast_print(node->child[0], indent+2);
-            printf("%*s%s\n", indent+2, "", "=");
-            lgx_ast_print(node->child[1], indent+2);
+            if (node->child[1]) {
+                printf("%*s%s\n", indent+2, "", "=");
+                lgx_ast_print(node->child[1], indent+2);
+            }
             break;
         // Expression
         case CALL_EXPRESSION:
@@ -779,31 +818,15 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case BINARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
-
-            if (node->child[0])
-                lgx_ast_print(node->child[0], indent+2);
-            else
-                printf("%*s%s\n", indent+2, "", "null");
-
-            printf("%*s%c\n", indent, "", node->op);
-
-            if (node->child[1])
-                lgx_ast_print(node->child[1], indent+2);
-            else
-                printf("%*s%s\n", indent+2, "", "null");
-
+            lgx_ast_print(node->child[0], indent+2);
+            printf("%*s%d\n", indent, "", node->op);
+            lgx_ast_print(node->child[1], indent+2);
             printf("%*s%s\n", indent, "", ")");
             break;
         case UNARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
-
             printf("%*s%c\n", indent, "", node->op);
-
-            if (node->child[0])
-                lgx_ast_print(node->child[0], indent+2);
-            else
-                printf("%*s%s\n", indent+2, "", "null");
-
+            lgx_ast_print(node->child[0], indent+2);
             printf("%*s%s\n", indent, "", ")");
             break;
         // Other
@@ -815,6 +838,14 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case STRING_TOKEN:
             printf("%*s%s\n", indent, "", "STRING_TOKEN");
+            break;
+        case FUNCTION_CALL_PARAMETER:
+        case FUNCTION_DECL_PARAMETER:
+            printf("%*s%s\n", indent, "", "(");
+            for(i = 0; i < node->children; i++) {
+                lgx_ast_print(node->child[i], indent+2);
+            }
+            printf("%*s%s\n", indent, "", ")");
             break;
         default:
             printf("%*s%s %d\n", indent, "", "ERROR!", node->type);
