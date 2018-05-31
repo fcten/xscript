@@ -151,6 +151,7 @@ void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
             lgx_ast_node_t* assign_statement = ast_node_new(2);
             assign_statement->type = ASSIGNMENT_STATEMENT;
+            assign_statement->parent = parent;
             ast_node_append_child(assign_statement, parent->child[parent->children-1]);
             parent->child[parent->children-1] = assign_statement;
 
@@ -199,6 +200,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         binary_expression = ast_node_new(2);
         binary_expression->type = BINARY_EXPRESSION;
+        binary_expression->parent = parent;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
         parent->child[parent->children-1] = binary_expression;
 
@@ -331,6 +333,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
     while (p >= 0 && p < precedence) {
         binary_expression = ast_node_new(2);
         binary_expression->type = BINARY_EXPRESSION;
+        binary_expression->parent = parent;
         binary_expression->u.op = ast->cur_token;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
         parent->child[parent->children-1] = binary_expression;

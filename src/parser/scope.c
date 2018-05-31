@@ -32,8 +32,8 @@ lgx_val_t* lgx_scope_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
         if (i >= 0) {
             return &cur->u.symbols->table[i].v;
         } else {
-            if (node->parent) {
-                cur = find_scope(node->parent);
+            if (cur->parent) {
+                cur = find_scope(cur->parent);
             } else {
                 return NULL;
             }
