@@ -125,12 +125,6 @@ int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             
             break;
         // Expression
-        case CALL_EXPRESSION:
-
-            break;
-        case ARRAY_EXPRESSION:
-
-            break;
         case CONDITIONAL_EXPRESSION:
 
             break;

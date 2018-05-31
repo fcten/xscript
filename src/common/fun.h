@@ -7,7 +7,11 @@ typedef struct {
 
 typedef struct {
     lgx_fun_args_t args;
-    void* block;
+    union {
+        struct lgx_ast_node_s* ast;
+    } u;
 } lgx_fun_t;
+
+lgx_fun_t* lgx_fun_new();
 
 #endif // LGX_FUN_H

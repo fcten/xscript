@@ -24,20 +24,21 @@ enum {
     FUNCTION_CALL_PARAMETER,
     FUNCTION_DECL_PARAMETER,
     // Expression
-    CALL_EXPRESSION,
-    ARRAY_EXPRESSION,
     CONDITIONAL_EXPRESSION,
     BINARY_EXPRESSION,
     UNARY_EXPRESSION,
     // Other
     IDENTIFIER_TOKEN,
     NUMBER_TOKEN,
-    STRING_TOKEN
+    STRING_TOKEN,
+    FUNCTION_TOKEN, // 匿名函数
+    ARRAY_TOKEN,
+    OBJECT_TOKEN
 };
 
-typedef struct lgx_ast_node {
+typedef struct lgx_ast_node_s {
     unsigned short type;
-    struct lgx_ast_node* parent;
+    struct lgx_ast_node_s* parent;
 
     union {
         // 当节点类型为 BLOCK 时，用于保存符号表
@@ -49,12 +50,12 @@ typedef struct lgx_ast_node {
 
     int children;          // 子节点数量
     int size;              // 已分配空间的长度
-    struct lgx_ast_node* child[];
+    struct lgx_ast_node_s* child[];
 } lgx_ast_node_t;
 
-typedef struct lgx_ast_node_token {
+typedef struct lgx_ast_node_token_s {
     unsigned short type;
-    struct lgx_ast_node* parent;
+    struct lgx_ast_node_s* parent;
 
     char* tk_start;
     int tk_length;

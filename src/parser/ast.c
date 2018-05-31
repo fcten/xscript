@@ -4,6 +4,7 @@
 #include <memory.h>
 
 #include "../common/val.h"
+#include "scope.h"
 #include "ast.h"
 
 void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent);
@@ -595,7 +596,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return;
         } else {
             //printf("[Info] [Line:%d] variable `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
-            ast_parse_expression(ast, variable_declaration);
+            ast_parse_id_token(ast, variable_declaration);
         }
         
         if (ast->cur_token == '=') {
@@ -604,6 +605,13 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             //printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
             ast_parse_expression(ast, variable_declaration);
         }
+
+        // 创建变量加入作用域
+        lgx_val_t *v;
+        lgx_str_ref_t s;
+        s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
+        s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
+        lgx_scope_val_add(variable_declaration, &s);
 
         switch (ast->cur_token) {
             case ',':
@@ -820,12 +828,6 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             }
             break;
         // Expression
-        case CALL_EXPRESSION:
-            printf("%*s%s\n", indent, "", "CALL_EXPRESSION");
-            break;
-        case ARRAY_EXPRESSION:
-            printf("%*s%s\n", indent, "", "ARRAY_EXPRESSION");
-            break;
         case CONDITIONAL_EXPRESSION:
             printf("%*s%s\n", indent, "", "CONDITIONAL_EXPRESSION");
             break;

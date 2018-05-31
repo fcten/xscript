@@ -85,33 +85,24 @@ long long execute(lgx_ast_node_t* node) {
         }
         // Declaration
         case FUNCTION_DECLARATION:
-            if (node->child[0]) {
+            // 执行一次赋值操作
 
-            } else {
-                // 匿名函数暂时不被支持
-            }
             break;
-        case VARIABLE_DECLARATION: {
-            lgx_val_t *v;
-            lgx_str_ref_t s;
-
-            s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
-            s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            lgx_scope_val_add(node, &s);
+        case VARIABLE_DECLARATION:
+            // 如果声明中附带初始化，则执行一次赋值操作
             if (node->child[1]) {
+                lgx_val_t *v;
+                lgx_str_ref_t s;
+
+                s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
+                s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
+            
                 v = lgx_scope_val_get(node, &s);
                 v->type = T_LONG;
                 v->v.l = execute(node->child[1]);
             }
             break;
-        }
         // Expression
-        case CALL_EXPRESSION:
-
-            break;
-        case ARRAY_EXPRESSION:
-
-            break;
         case CONDITIONAL_EXPRESSION:
 
             break;
