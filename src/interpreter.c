@@ -26,52 +26,57 @@ long long execute(lgx_ast_node_t* node) {
         // Statement
         case BLOCK_STATEMENT: {
             for(int i = 0; i < node->children; i++) {
-                execute(node->child[i]);
+                int ret = execute(node->child[i]);
+                if (ret != 0) {
+                    return ret;
+                }
             }
             break;
         }
         case IF_STATEMENT:
             if (execute(node->child[0])) {
-                execute(node->child[1]);
+                return execute(node->child[1]);
             }
             break;
         case IF_ELSE_STATEMENT:
             if (execute(node->child[0])) {
-                execute(node->child[1]);
+                return execute(node->child[1]);
             } else {
-                execute(node->child[2]);
+                return execute(node->child[2]);
             }
-            break;
         case FOR_STATEMENT:
 
             break;
         case WHILE_STATEMENT:
             while (execute(node->child[0])) {
-                execute(node->child[1]);
+                int ret = execute(node->child[1]);
+                if (ret == 1) {
+                    break;
+                }
             }
             break;
         case DO_WHILE_STATEMENT:
             do {
-                execute(node->child[0]);
+                int ret = execute(node->child[0]);
+                if (ret == 1) {
+                    break;
+                }
             } while(execute(node->child[1]));
             break;
         case CONTINUE_STATEMENT:
-
-            break;
-        case BREAK_STATEMENT: // break 只应该出现在块级作用域中
-
-            break;
+            return 2;
+        case BREAK_STATEMENT:
+            return 1;
         case SWITCH_CASE_STATEMENT:
 
             break;
         case RETURN_STATEMENT:
             // 计算返回值
             if (node->child[0]) {
-                printf("%lld\n", execute(node->child[0]));
+                return execute(node->child[0]);
             } else {
-                printf("undefined\n");
+                return 0;
             }
-            break;
         case ASSIGNMENT_STATEMENT: {
             lgx_val_t *v;
             lgx_str_ref_t s;
@@ -145,6 +150,10 @@ long long execute(lgx_ast_node_t* node) {
                     return a && b;
                 case TK_OR:
                     return a || b;
+                case TK_CALL:
+
+                case TK_INDEX:
+                case TK_ATTR:
                 default:
                     // error
                     return 0;
@@ -210,7 +219,7 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_print(ast.root, 0);
 
-    execute(ast.root);
+    printf("%lld\n", execute(ast.root));
     
     return 0;
 }
