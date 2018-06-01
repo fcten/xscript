@@ -230,9 +230,6 @@ int lgx_bc_print(lgx_bc_t *bc) {
             case OP_ADD:
                 printf("%4d ADD %s %s\n", i, R[a], R[b]);
                 break;
-            case OP_TEST:
-                printf("%4d TEST %s\n", i, R[c]);
-                break;
             case OP_JMP:
                 printf("%4d JMP %d\n", i, c);
                 break;

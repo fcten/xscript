@@ -27,6 +27,7 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     {TK_OBJ, "object"},
     // 类型判断
     {TK_TYPEOF, "typeof"},
+    {TK_INSTANCEOF, "instanceof"},
     // 特殊值
     {TK_TRUE, "true"},  // 布尔
     {TK_FALSE, "false"},// 布尔
