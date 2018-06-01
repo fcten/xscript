@@ -106,49 +106,51 @@ long long execute(lgx_ast_node_t* node) {
         case CONDITIONAL_EXPRESSION:
 
             break;
-        case BINARY_EXPRESSION:
+        case BINARY_EXPRESSION: {
+            long long a = execute(node->child[0]), b = execute(node->child[1]);
             switch (node->u.op) {
                 case '+':
-                    return execute(node->child[0]) + execute(node->child[1]);
+                    return a + b;
                 case '-':
-                    return execute(node->child[0]) - execute(node->child[1]);
+                    return a - b;
                 case '*':
-                    return execute(node->child[0]) * execute(node->child[1]);
+                    return a * b;
                 case '/':
-                    return execute(node->child[0]) / execute(node->child[1]);
+                    return a / b;
                 case '%':
-                    return execute(node->child[0]) % execute(node->child[1]);
+                    return a % b;
                 case TK_SHL:
-                    return execute(node->child[0]) << execute(node->child[1]);
+                    return a << b;
                 case TK_SHR:
-                    return execute(node->child[0]) >> execute(node->child[1]);
+                    return a >> b;
                 case '>':
-                    return execute(node->child[0]) > execute(node->child[1]);
+                    return a > b;
                 case '<':
-                    return execute(node->child[0]) < execute(node->child[1]);
+                    return a < b;
                 case TK_GE:
-                    return execute(node->child[0]) >= execute(node->child[1]);
+                    return a >= b;
                 case TK_LE:
-                    return execute(node->child[0]) <= execute(node->child[1]);
+                    return a <= b;
                 case TK_EQ:
-                    return execute(node->child[0]) == execute(node->child[1]);
+                    return a == b;
                 case TK_NE:
-                    return execute(node->child[0]) != execute(node->child[1]);
+                    return a != b;
                 case '&':
-                    return execute(node->child[0]) & execute(node->child[1]);
+                    return a & b;
                 case '^':
-                    return execute(node->child[0]) ^ execute(node->child[1]);
+                    return a ^ b;
                 case '|':
-                    return execute(node->child[0]) | execute(node->child[1]);
+                    return a | b;
                 case TK_AND:
-                    return execute(node->child[0]) && execute(node->child[1]);
+                    return a && b;
                 case TK_OR:
-                    return execute(node->child[0]) || execute(node->child[1]);
+                    return a || b;
                 default:
                     // error
                     return 0;
             }
             break;
+        }
         case UNARY_EXPRESSION:
             switch (node->u.op) {
                 case '!':
@@ -171,12 +173,20 @@ long long execute(lgx_ast_node_t* node) {
             s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node)->tk_start;
             s.length = ((lgx_ast_node_token_t *)node)->tk_length;
             v = lgx_scope_val_get(node, &s);
-            return v->v.l;
+            if (v) {
+                return v->v.l;
+            } else {
+                printf("[Error] use undefined variable `%.*s`\n", s.length, s.buffer);
+                return 0;
+            }
         }
         case NUMBER_TOKEN:
             return atoi(((lgx_ast_node_token_t *)node)->tk_start);
         case STRING_TOKEN:
 
+            break;
+        case FUNCTION_CALL_PARAMETER:
+        case FUNCTION_DECL_PARAMETER:
             break;
         default:
             printf("%s %d\n", "ERROR!", node->type);
