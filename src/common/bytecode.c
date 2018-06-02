@@ -224,9 +224,6 @@ int lgx_bc_print(lgx_bc_t *bc) {
             case OP_POP:
                 printf("%4d POP %s\n", i, R[c]);
                 break;
-            case OP_CMP:
-                printf("%4d CMP\n", i);
-                break;
             case OP_ADD:
                 printf("%4d ADD %s %s\n", i, R[a], R[b]);
                 break;

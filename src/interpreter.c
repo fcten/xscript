@@ -5,6 +5,7 @@
 #include "./parser/ast.h"
 #include "./parser/scope.h"
 #include "./common/bytecode.h"
+#include "./interpreter/vm.h"
 
 int read_file(const char* file, char** p) {
     FILE* fp;
@@ -204,7 +205,22 @@ long long execute(lgx_ast_node_t* node) {
     return 0;
 }
 
+unsigned char opcode[] = {
+    OP_MOVI, 0, 0, 0,
+    OP_MOVI, 1, 10000, 10000 >> 8,
+    OP_MULI, 1, 1000, 1000 >> 8,
+    OP_GTI,  2, 1, 0,
+    OP_TEST, 2, 0, 0,
+    OP_JMPI, 9, 0, 0,
+    OP_ADD,  0, 1, 0,
+    OP_SUBI, 1, 1, 0,
+    OP_JMPI, 3, 0, 0,
+    OP_ECHO, 0, 0, 0,
+    OP_HLT,  0, 0, 0
+};
+
 int main(int argc, char* argv[]) {
+    /*
     lgx_lex_init();
 
     lgx_ast_t ast;
@@ -220,6 +236,11 @@ int main(int argc, char* argv[]) {
     lgx_ast_print(ast.root, 0);
 
     printf("%lld\n", execute(ast.root));
+    */
     
+    lgx_vm_t vm;
+    lgx_vm_init(&vm, (unsigned *)opcode, sizeof(opcode)/4);
+    lgx_vm_start(&vm);
+
     return 0;
 }

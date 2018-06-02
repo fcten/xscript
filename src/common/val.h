@@ -15,6 +15,7 @@ enum {
     T_UNINITIALIZED,// 变量尚未初始化
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数
+    T_BOOL,
     T_STRING,
     T_ARRAY,
     T_OBJECT,

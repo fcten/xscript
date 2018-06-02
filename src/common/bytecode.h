@@ -31,13 +31,13 @@ enum {
 
     // 数学运算
     OP_ADD,   // ADD  R R R
-    OP_ADDI,  // ADD  R R I
+    OP_ADDI,  // ADDI R R I
     OP_SUB,   // SUB  R R R
-    OP_SUBI,  // SUB  R R I
+    OP_SUBI,  // SUBI R R I
     OP_MUL,   // MUL  R R R
-    OP_MULI,  // MUL  R R I
+    OP_MULI,  // MULI R R I
     OP_DIV,   // DIV  R R R
-    OP_DIVI,  // DIV  R R I
+    OP_DIVI,  // DIVI R R I
     OP_NEG,   // NEG  R
 
     // 位运算
@@ -54,23 +54,34 @@ enum {
     OP_NOT,   // NOT  R
 
     // 逻辑运算
-    OP_CMP,   // CMP  R R R
-    OP_GE,    // GE   R R R
+    OP_EQ,    // EQ   R R R
     OP_LE,    // LE   R R R
-    OP_GT,    // GT   R R R
     OP_LT,    // LT   R R R
+    OP_EQI,   // EQI  R R I
+    OP_GEI,   // GEI  R R I
+    OP_LEI,   // LE   R R I
+    OP_GTI,   // GTI  R R I
+    OP_LTI,   // LTI  R R I
     OP_LAND,  // LAND R R R
     OP_LOR,   // LOR  R R R
     OP_LNOT,  // LNOT R
 
     // 跳转
-    OP_JC,    // JC   R
-    OP_JMP,   // JMP  L
+    OP_TEST,  // TEST R
+    OP_JMP,   // JMP  R
+    OP_JMPI,  // JMPI L
 
     // 函数调用
-    OP_CALL,  // CALL L
+    OP_CALL,  // CALL R
+    OP_CALI,  // CALI L
     OP_RET,   // RET
-    OP_SCAL   // SCAL C
+    OP_SCAL,  // SCAL C
+
+    // 终止执行
+    OP_HLT,
+
+    // DEBUG
+    OP_ECHO   // ECHO R
 };
 
 typedef struct {

@@ -5,7 +5,7 @@
 
 typedef struct {
     // 字节码
-    unsigned char *bc;
+    unsigned *bc;
     unsigned bc_size;
 
     // 运行时堆栈
@@ -21,7 +21,7 @@ typedef struct {
     unsigned pc;
 } lgx_vm_t;
 
-int lgx_vm_init(lgx_vm_t *vm, unsigned char *bc, unsigned bc_size);
+int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size);
 int lgx_vm_start(lgx_vm_t *vm);
 
 #endif // LGX_VM_H
