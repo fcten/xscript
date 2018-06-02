@@ -4,14 +4,6 @@
 #include "../common/bytecode.h"
 #include "vm.h"
 
-void vm_push(lgx_vm_t *vm, lgx_val_t *v) {
-    vm->stack[vm->stack_top++] = *v;
-}
-
-lgx_val_t* vm_pop(lgx_vm_t *vm) {
-    return &vm->stack[vm->stack_top--];
-}
-
 int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
     vm->stack_size = 1024;
     vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t*));
@@ -65,150 +57,7 @@ void lgx_vardump(lgx_val_t* v) {
     }
 }
 
-static inline unsigned read32(lgx_vm_t *vm) {
-    unsigned ret = vm->bc[vm->pc++];
-    ret = vm->bc[vm->pc++] + (ret << 8);
-    ret = vm->bc[vm->pc++] + (ret << 8);
-    ret = vm->bc[vm->pc++] + (ret << 8);
-    return ret;
-}
-
-static inline unsigned short read16(lgx_vm_t *vm) {
-    unsigned short ret = vm->bc[vm->pc++];
-    ret = vm->bc[vm->pc++] + (ret << 8);
-    return ret;
-}
-
-#define read8(vm) vm->bc[vm->pc++]
-
-#define R(r) vm->stack[vm->stack_top + r]
-
-// LOAD R C
-static inline void op_load(lgx_vm_t *vm) {
-    unsigned char  r = read8(vm);
-    unsigned short c = read16(vm);
-
-}
-
-// MOV  R R
-static inline void op_mov(lgx_vm_t *vm) {
-    unsigned char  r1 = read8(vm);
-    unsigned char  r2 = read8(vm);
-
-    vm->stack[vm->stack_top + r1].type = vm->stack[vm->stack_top + r2].type;
-    vm->stack[vm->stack_top + r1].v.l = vm->stack[vm->stack_top + r2].v.l;
-}
-
-// PUSH R
-
-// POP  R
-
-// INC  R
-
-// DEC  R
-
-// ADDI R R I
-static inline void op_addi(lgx_vm_t *vm) {
-    unsigned char r1 = read8(vm);
-    unsigned char r2 = read8(vm);
-    short i = (short)read16(vm);
-
-    switch (vm->stack[vm->stack_top + r2].type) {
-        case T_LONG:
-            vm->stack[vm->stack_top + r1].v.l = vm->stack[vm->stack_top + r2].v.l + i;
-            break;
-        case T_DOUBLE:
-            vm->stack[vm->stack_top + r1].v.d = vm->stack[vm->stack_top + r2].v.d + i;
-            break;
-        default:
-            // error
-            return;
-    }
-    vm->stack[vm->stack_top + r1].type = vm->stack[vm->stack_top + r2].type;
-}
-
-// SUB  R R R
-
-// MUL  R R R
-
-// DIV  R R R
-// DIVI R R I
-// NEG  R
-
-// SHL  R R R
-// SHLI R R I
-// SHR  R R R
-// SHRI R R I
-// AND  R R R
-// ANDI R R I
-// OR   R R R
-// ORI  R R I
-// XOR  R R R
-// XORI R R I
-// NOT  R
-
-// EQ   R R R
-static inline void op_eq(lgx_vm_t *vm) {
-    unsigned char r1 = read8(vm);
-    unsigned char r2 = read8(vm);
-    unsigned char r3 = read8(vm);
-
-    vm->stack[vm->stack_top + r1].type = T_BOOL;
-    vm->stack[vm->stack_top + r1].v.l = 0;
-
-    if (vm->stack[vm->stack_top + r2].type == vm->stack[vm->stack_top + r3].type &&
-        vm->stack[vm->stack_top + r2].v.l == vm->stack[vm->stack_top + r3].v.l) {
-        vm->stack[vm->stack_top + r1].v.l = 1;
-    }
-}
-
-// LE   R R R
-static inline void op_le(lgx_vm_t *vm) {
-    unsigned char r1 = read8(vm);
-    unsigned char r2 = read8(vm);
-    unsigned char r3 = read8(vm);
-
-    vm->stack[vm->stack_top + r1].type = T_BOOL;
-    vm->stack[vm->stack_top + r1].v.l = 0;
-
-    if (vm->stack[vm->stack_top + r2].type == vm->stack[vm->stack_top + r3].type) {
-        switch (vm->stack[vm->stack_top + r2].type) {
-            case T_LONG:
-                if (vm->stack[vm->stack_top + r2].v.l <= vm->stack[vm->stack_top + r3].v.l) {
-                    vm->stack[vm->stack_top + r1].v.l = 1;
-                }
-                break;
-            case T_DOUBLE:
-                if (vm->stack[vm->stack_top + r2].v.d <= vm->stack[vm->stack_top + r3].v.d) {
-                    vm->stack[vm->stack_top + r1].v.l = 1;
-                }
-                break;
-        }
-    }
-}
-
-// LT   R R R
-
-
-// EQI  R R I
-// GEI  R R I
-// LE   R R I
-
-// LTI  R R I
-
-// LAND R R R
-// LOR  R R R
-// LNOT R
-
-
-// JMP  R
-
-
-// CALL R
-// CALI L
-// RET
-// SCAL C
-
+#define R(r)  (vm->stack[vm->stack_top + r])
 #define OP(i) ((i) & 0xFF)
 #define PA(i) (((i)>>8) & 0xFF)
 #define PB(i) (((i)>>16) & 0xFF)
@@ -223,9 +72,13 @@ int lgx_vm_start(lgx_vm_t *vm) {
         i = vm->bc[vm->pc++];
 
         switch(OP(i)) {
-            case OP_NOP:  break;
+            case OP_NOP: break;
             case OP_LOAD: break;
-            case OP_MOV:  break;
+            case OP_MOV:{
+                R(PA(i)).type = R(PB(i)).type;
+                R(PA(i)).v.l = R(PB(i)).v.l;
+                break;
+            }
             case OP_MOVI:{
                 R(PA(i)).type = T_LONG;
                 R(PA(i)).v.l = PD(i);
@@ -233,8 +86,6 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_PUSH: break;
             case OP_POP:  break;
-            case OP_INC:  break;
-            case OP_DEC:  break;
             case OP_ADD:{
                 if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
                     R(PA(i)).v.l += R(PB(i)).v.l;
@@ -246,8 +97,17 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 break;
             }
-            case OP_ADDI: op_addi(vm); break;
-            case OP_SUB:  op_mov(vm);  break;
+            case OP_ADDI:{
+                if (R(PA(i)).type == T_LONG) {
+                    R(PA(i)).v.l += PD(i);
+                } else if (R(PA(i)).type == T_DOUBLE) {
+                    R(PA(i)).v.d += PD(i);
+                } else {
+                    // 类型转换
+                }
+                break;
+            }
+            case OP_SUB: break;
             case OP_SUBI:{
                 if (R(PA(i)).type == T_LONG) {
                     R(PA(i)).v.l -= PD(i);
@@ -283,8 +143,28 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_XOR:  break;
             case OP_XORI:   break;
             case OP_NOT:   break;
-            case OP_EQ:     break;
-            case OP_LE:    break;
+            case OP_EQ:{
+                R(PA(i)).type = T_BOOL;
+
+                if (R(PB(i)).type == R(PC(i)).type && R(PB(i)).v.l == R(PC(i)).v.l) {
+                    R(PA(i)).v.l = 1;
+                } else {
+                    R(PA(i)).v.l = 0;
+                }
+                break;
+            }
+            case OP_LE:{
+                R(PA(i)).type = T_BOOL;
+
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).v.l = R(PB(i)).v.l > R(PC(i)).v.l;
+                } else if (R(PB(i)).type == T_DOUBLE && R(PC(i)).type == T_DOUBLE) {
+                    R(PA(i)).v.l = R(PB(i)).v.d > R(PC(i)).v.d;
+                } else {
+                    // 类型转换
+                }
+                break;
+            }
             case OP_LT:     break;
             case OP_EQI:   break;
             case OP_GEI:   break;

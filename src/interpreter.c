@@ -205,18 +205,23 @@ long long execute(lgx_ast_node_t* node) {
     return 0;
 }
 
-unsigned char opcode[] = {
-    OP_MOVI, 0, 0, 0,
-    OP_MOVI, 1, 10000, 10000 >> 8,
-    OP_MULI, 1, 1000, 1000 >> 8,
-    OP_GTI,  2, 1, 0,
-    OP_TEST, 2, 0, 0,
-    OP_JMPI, 9, 0, 0,
-    OP_ADD,  0, 1, 0,
-    OP_SUBI, 1, 1, 0,
-    OP_JMPI, 3, 0, 0,
-    OP_ECHO, 0, 0, 0,
-    OP_HLT,  0, 0, 0
+#define I0(op)          (op)
+#define I1(op, e)       (op + (e << 8))
+#define I2(op, a, d)    (op + (a << 8) + (d << 16))
+#define I3(op, a, b, c) (op + (a << 8) + (b << 16) + (c << 24))
+
+unsigned opcode[] = {
+    I2(OP_MOVI, 0, 0),
+    I2(OP_MOVI, 1, 10000),
+    I2(OP_MULI, 1, 1000),
+    I3(OP_GTI,  2, 1, 0),
+    I1(OP_TEST, 2),
+    I1(OP_JMPI, 9),
+    I2(OP_ADD,  0, 1),
+    I2(OP_SUBI, 1, 1),
+    I1(OP_JMPI, 3),
+    I1(OP_ECHO, 0),
+    I0(OP_HLT)
 };
 
 int main(int argc, char* argv[]) {

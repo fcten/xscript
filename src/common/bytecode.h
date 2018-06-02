@@ -25,32 +25,28 @@ enum {
     // 出栈
     OP_POP,   // POP  R
 
-    // 自增 & 自减
-    OP_INC,   // INC  R
-    OP_DEC,   // DEC  R
-
     // 数学运算
-    OP_ADD,   // ADD  R R R
-    OP_ADDI,  // ADDI R R I
-    OP_SUB,   // SUB  R R R
-    OP_SUBI,  // SUBI R R I
-    OP_MUL,   // MUL  R R R
-    OP_MULI,  // MULI R R I
-    OP_DIV,   // DIV  R R R
-    OP_DIVI,  // DIVI R R I
+    OP_ADD,   // ADD  R R
+    OP_ADDI,  // ADDI R I
+    OP_SUB,   // SUB  R R
+    OP_SUBI,  // SUBI R I
+    OP_MUL,   // MUL  R R
+    OP_MULI,  // MULI R I
+    OP_DIV,   // DIV  R R
+    OP_DIVI,  // DIVI R I
     OP_NEG,   // NEG  R
 
     // 位运算
-    OP_SHL,   // SHL  R R R
-    OP_SHLI,  // SHLI R R I
-    OP_SHR,   // SHR  R R R
-    OP_SHRI,  // SHRI R R I
-    OP_AND,   // AND  R R R
-    OP_ANDI,  // ANDI R R I
-    OP_OR,    // OR   R R R
-    OP_ORI,   // ORI  R R I
-    OP_XOR,   // XOR  R R R
-    OP_XORI,  // XORI R R I
+    OP_SHL,   // SHL  R R
+    OP_SHLI,  // SHLI R I
+    OP_SHR,   // SHR  R R
+    OP_SHRI,  // SHRI R I
+    OP_AND,   // AND  R R
+    OP_ANDI,  // ANDI R I
+    OP_OR,    // OR   R R
+    OP_ORI,   // ORI  R I
+    OP_XOR,   // XOR  R R
+    OP_XORI,  // XORI R I
     OP_NOT,   // NOT  R
 
     // 逻辑运算
