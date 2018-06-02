@@ -5,10 +5,6 @@
 #include "hash.h"
 #include "../parser/ast.h"
 
-// C: 16位 常量编号
-// R:  8位 寄存器编号
-// I: 16位 立即数
-// L: 32位 立即数
 enum {
     // 空指令
     OP_NOP,   // NOP
@@ -19,11 +15,6 @@ enum {
     // 寄存器赋值
     OP_MOV,   // MOV  R R
     OP_MOVI,  // MOVI R I
-
-    // 压栈
-    OP_PUSH,  // PUSH R
-    // 出栈
-    OP_POP,   // POP  R
 
     // 数学运算
     OP_ADD,   // ADD  R R
@@ -42,11 +33,8 @@ enum {
     OP_SHR,   // SHR  R R
     OP_SHRI,  // SHRI R I
     OP_AND,   // AND  R R
-    OP_ANDI,  // ANDI R I
     OP_OR,    // OR   R R
-    OP_ORI,   // ORI  R I
     OP_XOR,   // XOR  R R
-    OP_XORI,  // XORI R I
     OP_NOT,   // NOT  R
 
     // 逻辑运算
@@ -71,7 +59,6 @@ enum {
     OP_CALL,  // CALL R
     OP_CALI,  // CALI L
     OP_RET,   // RET
-    OP_SCAL,  // SCAL C
 
     // 终止执行
     OP_HLT,
@@ -80,26 +67,18 @@ enum {
     OP_ECHO   // ECHO R
 };
 
-typedef struct {
-    // 待编译的抽象语法树
-    lgx_ast_t* ast;
+#define I0(op)          (op)
+#define I1(op, e)       (op + (e << 8))
+#define I2(op, a, d)    (op + (a << 8) + (d << 16))
+#define I3(op, a, b, c) (op + (a << 8) + (b << 16) + (c << 24))
 
-    // 字节码缓存
-    unsigned *bc;
-    unsigned bc_size;
-    unsigned bc_offset;
-    
-    // 常量表
-    lgx_hash_t constants;
+#define OP(i) (   (i)         & 0xFF)
+#define PA(i) ( ( (i) >>  8 ) & 0xFF)
+#define PB(i) ( ( (i) >> 16 ) & 0xFF)
+#define PC(i) (   (i) >> 24         )
+#define PD(i) (   (i) >> 16         )
+#define PE(i) (   (i) >>  8         )
 
-    // 栈内存
-    lgx_val_t *st;
-    unsigned st_size;
-    unsigned st_offset;
-} lgx_bc_t;
-
-int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast);
-int lgx_bc_gen(lgx_bc_t *bc);
-int lgx_bc_print();
+int lgx_bc_print(unsigned *bc, unsigned bc_size);
 
 #endif // LGX_BYTECODE_H

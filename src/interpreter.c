@@ -205,11 +205,6 @@ long long execute(lgx_ast_node_t* node) {
     return 0;
 }
 
-#define I0(op)          (op)
-#define I1(op, e)       (op + (e << 8))
-#define I2(op, a, d)    (op + (a << 8) + (d << 16))
-#define I3(op, a, b, c) (op + (a << 8) + (b << 16) + (c << 24))
-
 unsigned opcode[] = {
     I2(OP_MOVI, 0, 0),
     I2(OP_MOVI, 1, 10000),
@@ -242,9 +237,10 @@ int main(int argc, char* argv[]) {
 
     printf("%lld\n", execute(ast.root));
     */
-    
+    lgx_bc_print(opcode, sizeof(opcode)/sizeof(unsigned));
+
     lgx_vm_t vm;
-    lgx_vm_init(&vm, (unsigned *)opcode, sizeof(opcode)/4);
+    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
     lgx_vm_start(&vm);
 
     return 0;

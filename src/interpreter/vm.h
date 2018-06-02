@@ -15,7 +15,7 @@ typedef struct {
 
     // 常量表
     lgx_val_t *constant;
-    unsigned short constant_top;
+    unsigned short constant_size;
 
     // 程序计数
     unsigned pc;

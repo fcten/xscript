@@ -6,245 +6,116 @@
 #include "list.h"
 #include "bytecode.h"
 
-int lgx_bc_init(lgx_bc_t *bc, lgx_ast_t* ast) {
-    bc->bc_size = 1024;
-    bc->bc = malloc(bc->bc_size * sizeof(unsigned));
-    if (!bc->bc) {
-        bc->bc_size = 0;
-        return 1;
-    }
-
-    bc->st_size = 1024;
-    bc->st = malloc(bc->st_size * sizeof(lgx_val_t));
-    if (!bc->st) {
-        free(bc->bc);
-        bc->bc_size = 0;
-        bc->st_size = 0;
-        return 2;
-    }
-    
-    bc->ast = ast;
-
-    lgx_hash_init(&bc->constants, 1024);
-
-    return 0;
-}
-
-int bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
-    unsigned i;
-    lgx_val_t k, v;
-    lgx_str_t s;
-    lgx_ast_node_token_t *token;
-    switch(node->type) {
-        // Statement
-        case BLOCK_STATEMENT:
-            //bc_scope_new(bc);
-
-            for(i = 0; i < node->children; i++) {
-                bc_gen(bc, node->child[i]);
-            }
-
-            //bc_scope_delete(bc);
-            break;
-        case IF_STATEMENT:
-            bc_gen(bc, node->child[0]);
-
-            // 写入条件跳转
-
-            bc_gen(bc, node->child[1]);
-
-            // 更新条件跳转
-            break;
-        case IF_ELSE_STATEMENT:
-            bc_gen(bc, node->child[0]);
-
-            // 写入条件跳转
-
-            bc_gen(bc, node->child[1]);
-
-            // 写入无条件跳转
-            // 更新条件跳转
-
-            bc_gen(bc, node->child[2]);
-
-            // 更新无条件跳转
-            break;
-        case FOR_STATEMENT:
-
-            break;
-        case WHILE_STATEMENT:
-            bc_gen(bc, node->child[0]);
-
-            // 写入条件跳转
-
-            bc_gen(bc, node->child[1]);
-
-            // 写入无条件跳转
-
-            // 更新条件跳转
-            break;
-        case DO_WHILE_STATEMENT:
-
-            bc_gen(bc, node->child[0]);
-            bc_gen(bc, node->child[1]);
-            break;
-        case CONTINUE_STATEMENT:
-
-            break;
-        case BREAK_STATEMENT: // break 只应该出现在块级作用域中
-            //bc_scope_delete(bc);
-
-            // 写入跳转指令
-            // 保存指令位置以便未来更新跳转地址
-            break;
-        case SWITCH_CASE_STATEMENT:
-
-            break;
-        case RETURN_STATEMENT:
-            // 计算返回值
-            if (node->child[0]) {
-                bc_gen(bc, node->child[0]);
-            }
-
-            // 释放参数与局部变量
-
-            // 更新返回值寄存器
-
-            // 写入返回指令
-
-            break;
-        case ASSIGNMENT_STATEMENT:
-
-            break;
-        // Declaration
-        case FUNCTION_DECLARATION:
-            // 跳过函数体
-            bc_gen(bc, node->child[0]);
-            break;
-        case VARIABLE_DECLARATION:
-            
-            break;
-        // Expression
-        case CONDITIONAL_EXPRESSION:
-
-            break;
-        case BINARY_EXPRESSION:
-            bc_gen(bc, node->child[0]);
-            bc_gen(bc, node->child[1]);
-
-            switch (node->u.op) {
-                case '+':
-
-                    break;
-                case '-':
-
-                    break;
-                case '*':
-
-                    break;
-                case '/':
-
-                    break;
-                default:
-                    // error
-                    break;
-            }
-
-            break;
-        case UNARY_EXPRESSION:
-
-            bc_gen(bc, node->child[0]);
-
-            switch (node->u.op) {
-                case '!':
-
-                    break;
-                case '~':
-
-                    break;
-                case '-':
-
-                    break;
-                default:
-                    // error
-                    break;
-            }
-
-            break;
-        // Other
-        case IDENTIFIER_TOKEN:
-
-            break;
-        case NUMBER_TOKEN:
-            //bc->bc[bc->bc_offset++] = OP_PUSH;
-            token = (lgx_ast_node_token_t *)node;
-
-            k.type = T_LONG;
-            k.v.l = atoi(token->tk_start);
-            
-            i = lgx_hash_get(&bc->constants, &k);
-            break;
-        case STRING_TOKEN:
-
-            break;
-        default:
-            printf("%s %d\n", "ERROR!", node->type);
-    }
-    
-    return 0;
-}
-
-int lgx_bc_gen(lgx_bc_t *bc) {
-    return bc_gen(bc, bc->ast->root);
-}
-
-char *R[] = {
-    "AX", "BX", "CX", "DX"
+const char* op_name[] = {
+    "NOP",
+    "LOAD",
+    "MOV",
+    "MOVI",
+    "ADD",
+    "ADDI",
+    "SUB",
+    "SUBI",
+    "MUL",
+    "MULI",
+    "DIV",
+    "DIVI",
+    "NEG",
+    "SHL",
+    "SHLI",
+    "SHR",
+    "SHRI",
+    "AND",
+    "OR",
+    "XOR",
+    "NOT",
+    "EQ",
+    "LE",
+    "LT",
+    "EQI",
+    "GEI",
+    "LEI",
+    "GTI",
+    "LTI",
+    "LAND",
+    "LOR",
+    "LNOT",
+    "TEST",
+    "JMP",
+    "JMPI",
+    "CALL",
+    "CALI",
+    "RET",
+    "HLT",
+    "ECHO"
 };
 
-int lgx_bc_print(lgx_bc_t *bc) {
-    int i = 0;
-    unsigned short op, a, b, c;
-    while(i < bc->bc_offset) {
-        op = bc->bc[i] >> 10;
-        a = (bc->bc[i] & 0b0000001111100000) >> 5;
-        b = bc->bc[i] & 0b0000000000011111;
-        c = bc->bc[i] & 0b0000001111111111;
+int lgx_bc_print(unsigned *bc, unsigned bc_size) {
+    unsigned i, n = 0;
 
-        switch(op) {
-            case OP_MOV:
-                printf("%4d MOV %s %s\n", i, R[a], R[b]);
+    while (n < bc_size) {
+        i = bc[n];
+
+        switch(OP(i)) {
+            case OP_EQ:
+            case OP_LE:
+            case OP_LT:
+            case OP_LAND:
+            case OP_LOR:
+                printf("%4d %4s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
+                break;
+            case OP_EQI:
+            case OP_GEI:
+            case OP_LEI:
+            case OP_GTI:
+            case OP_LTI:
+                printf("%4d %4s R[%d] R[%d] %d\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
+                break;
+            case OP_MOV:  
+            case OP_ADD:
+            case OP_SUB:
+            case OP_MUL:
+            case OP_DIV:
+            case OP_SHL:
+            case OP_SHR:
+            case OP_AND:
+            case OP_OR:
+            case OP_XOR:
+                printf("%4d %4s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
-                printf("%4d LOAD %s %d\n", i, R[a], b);
+                printf("%4d %4s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
-            case OP_PUSH:
-                printf("%4d PUSH %s\n", i, R[c]);
+            case OP_MOVI:
+            case OP_ADDI:
+            case OP_SUBI:
+            case OP_MULI:
+            case OP_DIVI:
+            case OP_SHLI:
+            case OP_SHRI:
+                printf("%4d %4s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
-            case OP_POP:
-                printf("%4d POP %s\n", i, R[c]);
-                break;
-            case OP_ADD:
-                printf("%4d ADD %s %s\n", i, R[a], R[b]);
-                break;
+            case OP_NEG:
+            case OP_NOT:
+            case OP_LNOT:
+            case OP_TEST:
             case OP_JMP:
-                printf("%4d JMP %d\n", i, c);
-                break;
             case OP_CALL:
-                printf("%4d CALL\n", i);
+            case OP_ECHO:
+                printf("%4d %4s R[%d]\n", n, op_name[OP(i)], PA(i));
+                break;
+            case OP_JMPI:
+            case OP_CALI:
+                printf("%4d %4s %d\n", n, op_name[OP(i)], PE(i));
                 break;
             case OP_RET:
-                printf("%4d RET\n", i);
-                break;
             case OP_NOP:
-                printf("%4d NOP\n", i);
+            case OP_HLT:
+                printf("%4d %4s\n", n, op_name[OP(i)]);
                 break;
             default:
-                // error
-                break;
+                printf("%4d UNKNOWN\n", n);
         }
-
-        i ++;
+        n ++;
     }
     
     return 0;
