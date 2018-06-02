@@ -12,7 +12,7 @@ lgx_val_t* vm_pop(lgx_vm_t *vm) {
     return &vm->stack[vm->stack_top--];
 }
 
-int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
+int lgx_vm_init(lgx_vm_t *vm, unsigned char *bc, unsigned bc_size) {
     vm->stack_size = 1024;
     vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t*));
     if (!vm->stack) {
@@ -20,14 +20,10 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
         return 1;
     }
 
-    // 为虚拟内部寄存器分配地址
-    vm->pc = &vm->stack[0];
-    vm->ret = &vm->stack[1];
-
-    vm->stack_top = 2;
+    vm->stack_top = 0;
     
-    vm->bc = bc->bc;
-    vm->bc_size = bc->bc_size;
+    vm->bc = bc;
+    vm->bc_size = bc_size;
 
     return 0;
 }
@@ -69,54 +65,137 @@ void lgx_vardump(lgx_val_t* v) {
     }
 }
 
+static inline unsigned read32(lgx_vm_t *vm) {
+    unsigned ret = vm->bc[vm->pc++];
+    ret = vm->bc[vm->pc++] + (ret << 8);
+    ret = vm->bc[vm->pc++] + (ret << 8);
+    ret = vm->bc[vm->pc++] + (ret << 8);
+    return ret;
+}
+
+static inline unsigned short read16(lgx_vm_t *vm) {
+    unsigned short ret = vm->bc[vm->pc++];
+    ret = vm->bc[vm->pc++] + (ret << 8);
+    return ret;
+}
+
+static inline unsigned char read8(lgx_vm_t *vm) {
+    return vm->bc[vm->pc++];
+}
+
+// LOAD R C
+static inline void op_load(lgx_vm_t *vm) {
+    unsigned char  r = read8(vm);
+    unsigned short c = read16(vm);
+
+}
+
+// MOV  R R
+static inline void op_mov(lgx_vm_t *vm) {
+    unsigned char  r1 = read8(vm);
+    unsigned char  r2 = read8(vm);
+
+}
+
+// MOVI R I
+
+// PUSH R
+
+// POP  R
+
+// INC  R
+
+// DEC  R
+
+// ADD  R R R
+// ADD  R R I
+// SUB  R R R
+// SUB  R R I
+// MUL  R R R
+// MUL  R R I
+// DIV  R R R
+// DIV  R R I
+// NEG  R
+
+// SHL  R R R
+// SHLI R R I
+// SHR  R R R
+// SHRI R R I
+// AND  R R R
+// ANDI R R I
+// OR   R R R
+// ORI  R R I
+// XOR  R R R
+// XORI R R I
+// NOT  R
+
+// CMP  R R R
+// GE   R R R
+// LE   R R R
+// GT   R R R
+// LT   R R R
+// LAND R R R
+// LOR  R R R
+// LNOT R
+
+// JC   R
+// JMP  L
+
+// CALL L
+// RET
+// SCAL C
+
 int lgx_vm_start(lgx_vm_t *vm) {
-    unsigned char op;//, a, b, c;
-    while(vm->pc->v.l < vm->bc_size) {
-        op = vm->bc[vm->pc->v.l] >> 10;
-        //a = (vm->bc[vm->pc->v.l] & 0b0000001111100000) >> 5;
-        //b = vm->bc[vm->pc->v.l] & 0b0000000000011111;
-        //c = vm->bc[vm->pc->v.l] & 0b0000001111111111;
+    unsigned char op;
+
+    while(vm->pc < vm->bc_size) {
+        op = read8(vm);
 
         switch(op) {
-            case OP_MOV:
-
-                break;
-            case OP_LOAD:
-
-                break;
-            case OP_PUSH:
-
-                break;
-            case OP_POP:
-
-                break;
-            case OP_CMP:
-
-                break;
-            case OP_ADD:
-
-                break;
-            case OP_TEST:
-
-                break;
-            case OP_JMP:
-
-                break;
-            case OP_CALL:
-
-                break;
-            case OP_RET:
-
-                break;
-            case OP_NOP:
-
-                break;
+            case OP_NOP:  break;
+            case OP_LOAD: op_load(vm); break;
+            case OP_MOV:  op_mov(vm);  break;
+            case OP_MOVI: op_mov(vm);  break;
+            case OP_PUSH: op_mov(vm);  break;
+            case OP_POP:  op_mov(vm);  break;
+            case OP_INC:  op_mov(vm);  break;
+            case OP_DEC:  op_mov(vm);  break;
+            case OP_ADD:  op_mov(vm);  break;
+            case OP_ADDI: op_mov(vm);  break;
+            case OP_SUB:  op_mov(vm);  break;
+            case OP_SUBI: op_mov(vm);  break;
+            case OP_MUL:  op_mov(vm);  break;
+            case OP_MULI: op_mov(vm);  break;
+            case OP_DIV:  op_mov(vm);  break;
+            case OP_DIVI: op_mov(vm);  break;
+            case OP_NEG:  op_mov(vm);  break;
+            case OP_SHL:  op_mov(vm);  break;
+            case OP_SHLI: op_mov(vm);  break;
+            case OP_SHR:  op_mov(vm);  break;
+            case OP_SHRI: op_mov(vm);  break;
+            case OP_AND:  op_mov(vm);  break;
+            case OP_ANDI: op_mov(vm);  break;
+            case OP_OR:   op_mov(vm);  break;
+            case OP_ORI:  op_mov(vm);  break;
+            case OP_XOR:  op_mov(vm);  break;
+            case OP_XORI: op_mov(vm);  break;
+            case OP_NOT:  op_mov(vm);  break;
+            case OP_CMP:  op_mov(vm);  break;
+            case OP_GE:   op_mov(vm);  break;
+            case OP_LE:   op_mov(vm);  break;
+            case OP_GT:   op_mov(vm);  break;
+            case OP_LT:   op_mov(vm);  break;
+            case OP_LAND: op_mov(vm);  break;
+            case OP_LOR:  op_mov(vm);  break;
+            case OP_LNOT: op_mov(vm);  break;
+            case OP_JC:   op_mov(vm);  break;
+            case OP_JMP:  op_mov(vm);  break;
+            case OP_CALL: op_mov(vm);  break;
+            case OP_RET:  op_mov(vm);  break;
             default:
-                // error
-                break;
+                printf("unknown op %d @ %d\n", op, vm->pc);
+                return 1;
         }
-
-        vm->pc->v.l ++;
     }
     
     return 0;

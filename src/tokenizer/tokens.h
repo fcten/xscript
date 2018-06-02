@@ -32,6 +32,7 @@ enum {
     TK_OBJ,
 
     TK_TYPEOF,
+    TK_INSTANCEOF,
 
     TK_TRUE,
     TK_FALSE,

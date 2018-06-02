@@ -4,6 +4,9 @@ set(INTERPRETER_SRCS interpreter.c)
 aux_source_directory(common INTERPRETER_SRCS)
 aux_source_directory(tokenizer INTERPRETER_SRCS)
 aux_source_directory(parser INTERPRETER_SRCS)
+aux_source_directory(optimizer INTERPRETER_SRCS)
+aux_source_directory(compiler INTERPRETER_SRCS)
+aux_source_directory(interpreter INTERPRETER_SRCS)
 
 # Target
 add_executable(interpreter ${INTERPRETER_SRCS})

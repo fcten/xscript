@@ -5,46 +5,72 @@
 #include "hash.h"
 #include "../parser/ast.h"
 
+// C: 16位 常量编号
+// R:  8位 寄存器编号
+// I: 16位 立即数
+// L: 32位 立即数
 enum {
-    OP_MOV,
-    OP_LOAD,
-    OP_STORE,
+    // 空指令
+    OP_NOP,   // NOP
 
-    OP_PUSH,
-    OP_POP,
+    // 读取一个常量
+    OP_LOAD,  // LOAD R C
 
-    OP_CMP,
+    // 寄存器赋值
+    OP_MOV,   // MOV  R R
+    OP_MOVI,  // MOVI R I
 
-    OP_INC, // a = a + 1
-    OP_DEC, // a = a - 1
+    // 压栈
+    OP_PUSH,  // PUSH R
+    // 出栈
+    OP_POP,   // POP  R
 
-    OP_ADD, // a = a + b
-    OP_SUB, // a = a - b
-    OP_MUL, // a = a * b
-    OP_DIV, // a = a / b
+    // 自增 & 自减
+    OP_INC,   // INC  R
+    OP_DEC,   // DEC  R
 
-    OP_SHL, // a = a << b 逻辑/算术左移
-    OP_SHR, // a = a >> b 算术右移
+    // 数学运算
+    OP_ADD,   // ADD  R R R
+    OP_ADDI,  // ADD  R R I
+    OP_SUB,   // SUB  R R R
+    OP_SUBI,  // SUB  R R I
+    OP_MUL,   // MUL  R R R
+    OP_MULI,  // MUL  R R I
+    OP_DIV,   // DIV  R R R
+    OP_DIVI,  // DIV  R R I
+    OP_NEG,   // NEG  R
 
-    OP_NEG, // a = -a
+    // 位运算
+    OP_SHL,   // SHL  R R R
+    OP_SHLI,  // SHLI R R I
+    OP_SHR,   // SHR  R R R
+    OP_SHRI,  // SHRI R R I
+    OP_AND,   // AND  R R R
+    OP_ANDI,  // ANDI R R I
+    OP_OR,    // OR   R R R
+    OP_ORI,   // ORI  R R I
+    OP_XOR,   // XOR  R R R
+    OP_XORI,  // XORI R R I
+    OP_NOT,   // NOT  R
 
-    OP_AND, // a = a & b
-    OP_OR,  // a = a | b
-    OP_XOR, // a = a ^ b
-    OP_NOT, // a = ~a
-    OP_TEST, // if a != 0 then pc ++
+    // 逻辑运算
+    OP_CMP,   // CMP  R R R
+    OP_GE,    // GE   R R R
+    OP_LE,    // LE   R R R
+    OP_GT,    // GT   R R R
+    OP_LT,    // LT   R R R
+    OP_LAND,  // LAND R R R
+    OP_LOR,   // LOR  R R R
+    OP_LNOT,  // LNOT R
 
-    OP_LAND, // a = a && b
-    OP_LOR,  // a = a || b
-    OP_LNOT, // a = !a
+    // 跳转
+    OP_JC,    // JC   R
+    OP_JMP,   // JMP  L
 
-    OP_JMP,  // pc += c
-
-    OP_CALL,
-    OP_RET,
-
-
-    OP_NOP
+    // 函数调用
+    OP_CALL,  // CALL L
+    OP_RET,   // RET
+    OP_SCAL   // SCAL C
 };
 
 typedef struct {

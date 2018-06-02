@@ -513,10 +513,7 @@ void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_node_append_child(parent, assign_statement);
     
     // ast->cur_token == TK_ID
-    lgx_ast_node_token_t* id = ast_node_token_new(ast);
-    id->type = IDENTIFIER_TOKEN;
-    ast_node_append_child(assign_statement, (lgx_ast_node_t*)id);
-    ast_step(ast);
+    ast_parse_id_token(ast, assign_statement);
     
     if (ast->cur_token != '=') {
         ast_error(ast, "[Error] [Line:%d] '=' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
@@ -607,11 +604,16 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
 
         // 创建变量加入作用域
-        lgx_val_t *v;
         lgx_str_ref_t s;
         s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
-        lgx_scope_val_add(variable_declaration, &s);
+
+        if (lgx_scope_local_val_get(variable_declaration, &s) == NULL) {
+            lgx_scope_val_add(variable_declaration, &s);
+        } else {
+            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
 
         switch (ast->cur_token) {
             case ',':
@@ -636,16 +638,11 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // ast->cur_token == TK_FUNCTION
     ast_step(ast);
 
-    if (ast->cur_token == TK_ID) {
-        //printf("[Info] [Line:%d] function `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        ast_parse_id_token(ast, function_declaration);
-    } else {
-        //printf("[Info] [Line:%d] anonymous function declared\n", ast->cur_line);
-        lgx_ast_node_token_t* id = ast_node_token_new(ast);
-        id->type = IDENTIFIER_TOKEN;
-        id->tk_length = 0;
-        ast_node_append_child(parent, (lgx_ast_node_t*)id);
+    if (ast->cur_token != TK_ID) {
+        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected\n", ast->cur_line);
+        return;
     }
+    ast_parse_id_token(ast, function_declaration);
     
     if (ast->cur_token != '(') {
         ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
@@ -662,6 +659,34 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     ast_parse_block_statement(ast, function_declaration);
+
+    // 把函数参数添加到函数体作用域中
+    lgx_str_ref_t s;
+    lgx_ast_node_token_t *n;
+    for (int i = 0; i < function_declaration->child[1]->children; i++) {
+        n = (lgx_ast_node_token_t *)function_declaration->child[1]->child[i]->child[0];
+        s.buffer = (unsigned char *)n->tk_start;
+        s.length = n->tk_length;
+
+        if (lgx_scope_local_val_get(function_declaration->child[2], &s) == NULL) {
+            lgx_scope_val_add(function_declaration->child[2], &s);
+        } else {
+            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+            return;
+        }
+    }
+
+    // 创建函数加入作用域
+    n = (lgx_ast_node_token_t *)function_declaration->child[0];
+    s.buffer = (unsigned char *)n->tk_start;
+    s.length = n->tk_length;
+
+    if (lgx_scope_local_val_get(function_declaration, &s) == NULL) {
+        lgx_scope_val_add(function_declaration, &s);
+    } else {
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        return;
+    }
 }
 
 int lgx_ast_parser(lgx_ast_t* ast) {
@@ -686,80 +711,6 @@ int lgx_ast_parser(lgx_ast_t* ast) {
     return 0;
 }
 
-int ast_calculate(lgx_ast_node_t* node) {
-    int a, b;
-    switch(node->type) {
-        // Expression
-        case BINARY_EXPRESSION:
-            a = ast_calculate(node->child[0]);
-            b = ast_calculate(node->child[1]);
-            switch (node->u.op) {
-                case '*':
-                    return a * b;
-                case '/':
-                    return a / b;
-                case '%':
-                    return a % b;
-                case '+':
-                    return a + b;
-                case '-':
-                    return a - b;
-                case TK_SHL:
-                    return a << b;
-                case TK_SHR:
-                    return a >> b;
-                case '>':
-                    return a > b;
-                case '<':
-                    return a < b;
-                case TK_GE:
-                    return a >= b;
-                case TK_LE:
-                    return a <= b;
-                case TK_EQ:
-                    return a == b;
-                case TK_NE:
-                    return a != b;
-                case '&':
-                    return a & b;
-                case '^':
-                    return a ^ b;
-                case '|':
-                    return a | b;
-                case TK_AND:
-                    return a && b;
-                case TK_OR:
-                    return a || b;
-                default:
-                    // error
-                    return 0;
-            }
-            break;
-        case UNARY_EXPRESSION:
-            a = ast_calculate(node->child[0]);
-            switch (node->u.op) {
-                case '!': // 逻辑非运算符
-                    return !a;
-                case '~': // 按位取反运算符
-                    return ~a;
-                case '-': // 负号运算符
-                    return -a;
-                default:
-                    // error
-                    return 0;
-            }
-            break;
-        case IDENTIFIER_TOKEN:
-            return 0;
-        case NUMBER_TOKEN:
-            return atoi(((lgx_ast_node_token_t*)node)->tk_start);
-        case STRING_TOKEN:
-            return 0;
-        default:
-            return 0;
-    }
-}
-
 void lgx_ast_print(lgx_ast_node_t* node, int indent) {
     int i;
     switch(node->type) {
@@ -772,12 +723,12 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "}");
             break;
         case IF_STATEMENT:
-            printf("%*s%s(%d)\n", indent, "", "IF_STATEMENT", ast_calculate(node->child[0]));
+            printf("%*s%s\n", indent, "", "IF_STATEMENT");
             lgx_ast_print(node->child[0], indent+2);
             lgx_ast_print(node->child[1], indent+2);
             break;
         case IF_ELSE_STATEMENT:
-            printf("%*s%s(%d)\n", indent, "", "IF_ELSE_STATEMENT", ast_calculate(node->child[0]));
+            printf("%*s%s\n", indent, "", "IF_ELSE_STATEMENT");
             lgx_ast_print(node->child[0], indent+2);
             lgx_ast_print(node->child[1], indent+2);
             lgx_ast_print(node->child[2], indent+2);
