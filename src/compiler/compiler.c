@@ -29,7 +29,7 @@ static void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i) {
     bc->bc[pos] = i;
 }
 
-static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
+static void bc_gen(lgx_bc_t *bc, unsigned char r, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
@@ -40,7 +40,7 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             for(i = 0; i < node->children; i++) {
-                bc_gen(bc, node->child[i]);
+                bc_gen(bc, 0, node->child[i]);
             }
 
             // 释放局部变量的寄存器
@@ -50,25 +50,25 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case IF_STATEMENT:
-            bc_gen(bc, node->child[0]);
+            //bc_gen(bc, node->child[0]);
 
             // 写入条件跳转
 
-            bc_gen(bc, node->child[1]);
+            //bc_gen(bc, node->child[1]);
 
             // 更新条件跳转
             break;
         case IF_ELSE_STATEMENT:
-            bc_gen(bc, node->child[0]);
+            //bc_gen(bc, node->child[0]);
 
             // 写入条件跳转
 
-            bc_gen(bc, node->child[1]);
+            //bc_gen(bc, node->child[1]);
 
             // 写入无条件跳转
             // 更新条件跳转
 
-            bc_gen(bc, node->child[2]);
+            //bc_gen(bc, node->child[2]);
 
             // 更新无条件跳转
             break;
@@ -78,14 +78,15 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case WHILE_STATEMENT:{
             unsigned pos1 = bc->bc_top;
             // todo 如果条件是立即数，则不需要递归调用
-            unsigned char r = bc_gen(bc, node->child[0]);
+            unsigned char r = reg_pop(bc);
+            bc_gen(bc, r, node->child[0]);
             
             // 写入条件跳转
             unsigned pos2 = bc->bc_top;
             bc_append(bc, I2(OP_TEST, r, 0));
             reg_push(bc, r);
 
-            bc_gen(bc, node->child[1]);
+            bc_gen(bc, 0, node->child[1]);
 
             // 写入无条件跳转
             bc_append(bc, I1(OP_JMPI, pos1));
@@ -96,8 +97,8 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case DO_WHILE_STATEMENT:
 
-            bc_gen(bc, node->child[0]);
-            bc_gen(bc, node->child[1]);
+            //bc_gen(bc, node->child[0]);
+            //bc_gen(bc, node->child[1]);
             break;
         case CONTINUE_STATEMENT:
 
@@ -114,7 +115,8 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case RETURN_STATEMENT:{
             // 计算返回值
             if (node->child[0]) {
-                unsigned char r = bc_gen(bc, node->child[0]);
+                unsigned char r = reg_pop(bc);
+                bc_gen(bc, r, node->child[0]);
                 bc_append(bc, I1(OP_ECHO, r));
                 reg_push(bc, r);
             }
@@ -135,12 +137,8 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             s.length = ((lgx_ast_node_token_t *)node->child[0])->tk_length;
             // todo 非局部变量需要特殊处理
             v = lgx_scope_val_get(node, &s);
-            // todo 非表达式优化
-            unsigned char r = bc_gen(bc, node->child[1]);
-            
-            bc_append(bc, I2(OP_MOV, v->u.reg, r));
-            
-            reg_push(bc, r);
+
+            bc_gen(bc, v->u.reg, node->child[1]);
             break;
         }
         // Declaration
@@ -160,10 +158,7 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             
                 v = lgx_scope_val_get(node, &s);
 
-                // todo 如果右侧是立即数，则不需要递归调用
-                unsigned char r = bc_gen(bc, node->child[1]);
-                bc_append(bc, I2(OP_MOV, v->u.reg, r));
-                reg_push(bc, r);
+                bc_gen(bc, v->u.reg, node->child[1]);
             }
             break;
         }
@@ -173,39 +168,48 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         case BINARY_EXPRESSION: {
             // todo 非表达式优化
-            unsigned char r1 = bc_gen(bc, node->child[0]);
-            unsigned char r2 = bc_gen(bc, node->child[1]);
-            unsigned char r3;
+;
 
+            lgx_ast_node_token_t *token = (lgx_ast_node_token_t *)node->child[1];
+            long long num = atol(token->tk_start);
+            
             switch (node->u.op) {
                 case '+':
-                    bc_append(bc, I2(OP_ADD, r1, r2));
-                    reg_push(bc, r2);
-                    return r1;
+                    bc_gen(bc, r, node->child[0]);
+                    bc_append(bc, I2(OP_ADD, r, 0));
+                    return;
                 case '-':
-                    bc_append(bc, I2(OP_SUB, r1, r2));
-                    reg_push(bc, r2);
-                    return r1;
+                    bc_gen(bc, r, node->child[0]);
+                    bc_append(bc, I2(OP_SUBI, r, num));
+                    return;
                 case '*':
-                    bc_append(bc, I2(OP_MUL, r1, r2));
-                    reg_push(bc, r2);
-                    return r1;
+
+                    return;
                 case '/':
-                    bc_append(bc, I2(OP_DIV, r1, r2));
-                    reg_push(bc, r2);
-                    return r1;
-                case '>':
-                    r3 = reg_pop(bc);
-                    bc_append(bc, I3(OP_LT, r3, r2, r1));
-                    reg_push(bc, r1);
-                    reg_push(bc, r2);
-                    return r3;
-                case '<':
-                    r3 = reg_pop(bc);
-                    bc_append(bc, I3(OP_LT, r3, r1, r2));
-                    reg_push(bc, r1);
-                    reg_push(bc, r2);
-                    return r3;
+
+                    return;
+                case '>':{
+                    lgx_val_t *v;
+                    lgx_str_ref_t s;
+
+                    s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node->child[0])->tk_start;
+                    s.length = ((lgx_ast_node_token_t *)node->child[0])->tk_length;
+                    // todo 非局部变量需要特殊处理
+                    v = lgx_scope_val_get(node, &s);
+                    bc_append(bc, I3(OP_GTI, r, v->u.reg, 0));
+                    return;
+                }
+                case '<':{
+                    lgx_val_t *v;
+                    lgx_str_ref_t s;
+
+                    s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node->child[0])->tk_start;
+                    s.length = ((lgx_ast_node_token_t *)node->child[0])->tk_length;
+                    // todo 非局部变量需要特殊处理
+                    v = lgx_scope_val_get(node, &s);
+                    bc_append(bc, I3(OP_LTI, r, v->u.reg, 0));
+                    return;
+                }
                 default:
                     // error
                     break;
@@ -214,7 +218,7 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case UNARY_EXPRESSION:
 
-            bc_gen(bc, node->child[0]);
+            //bc_gen(bc, node->child[0]);
 
             switch (node->u.op) {
                 case '!':
@@ -242,15 +246,15 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // todo 非局部变量需要特殊处理
             v = lgx_scope_val_get(node, &s);
             
-            unsigned char r = reg_pop(bc);
-            bc_append(bc, I2(OP_MOV, r, v->u.reg));
+            if (r != v->u.reg) {
+                bc_append(bc, I2(OP_MOV, r, v->u.reg));
+            }
             
-            return r;
+            return;
         }
         case NUMBER_TOKEN:{
             lgx_ast_node_token_t *token = (lgx_ast_node_token_t *)node;
             long long num = atol(token->tk_start);
-            unsigned char r = reg_pop(bc);
 
             // todo 大整数从常量表中读取
             //printf("%lld %lld\n",num, num & 0xFFFF);
@@ -261,9 +265,8 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             } else {
                 bc_append(bc, I2(OP_MOVI, r, (unsigned)(num & 0xFFFF)));
             }
-            
 
-            return r;
+            return;
         }
         case STRING_TOKEN:
 
@@ -271,8 +274,6 @@ static unsigned char bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         default:
             printf("%s %d\n", "ERROR!", node->type);
     }
-    
-    return 0;
 }
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
@@ -285,7 +286,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->bc_top = 0;
     bc->bc = malloc(bc->bc_size);
     
-    bc_gen(bc, ast->root);
+    bc_gen(bc, 0, ast->root);
     bc_append(bc, I0(OP_HLT));
     
     return 0;

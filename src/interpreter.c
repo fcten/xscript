@@ -210,7 +210,7 @@ unsigned opcode[] = {
     I2(OP_MOVI, 0, 0),
     I2(OP_MOVI, 1, 10000),
     I2(OP_MULI, 1, 1000),
-    I2(OP_TEST, 1, 8),
+    I2(OP_TEST, 1, 7),
     I2(OP_ADD,  0, 1),
     I2(OP_SUBI, 1, 1),
     I1(OP_JMPI, 3),
@@ -241,8 +241,8 @@ int main(int argc, char* argv[]) {
     lgx_bc_print(bc.bc, bc.bc_top);
 
     lgx_vm_t vm;
-//    lgx_vm_init(&vm, bc.bc, bc.bc_top);
-    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
+    lgx_vm_init(&vm, bc.bc, bc.bc_top);
+//    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
     lgx_vm_start(&vm);
 
     return 0;
