@@ -6,6 +6,7 @@
 #include "./parser/scope.h"
 #include "./common/bytecode.h"
 #include "./interpreter/vm.h"
+#include "./compiler/compiler.h"
 
 int read_file(const char* file, char** p) {
     FILE* fp;
@@ -209,9 +210,7 @@ unsigned opcode[] = {
     I2(OP_MOVI, 0, 0),
     I2(OP_MOVI, 1, 10000),
     I2(OP_MULI, 1, 1000),
-    I3(OP_GTI,  2, 1, 0),
-    I1(OP_TEST, 2),
-    I1(OP_JMPI, 9),
+    I2(OP_TEST, 1, 8),
     I2(OP_ADD,  0, 1),
     I2(OP_SUBI, 1, 1),
     I1(OP_JMPI, 3),
@@ -220,12 +219,12 @@ unsigned opcode[] = {
 };
 
 int main(int argc, char* argv[]) {
-    /*
     lgx_lex_init();
 
     lgx_ast_t ast;
     lgx_ast_init(&ast);
-    ast.lex.length = read_file(argv[1], &ast.lex.source);
+    //ast.lex.length = read_file(argv[1], &ast.lex.source);
+    ast.lex.length = read_file("./test/while.x", &ast.lex.source);
 
     lgx_ast_parser(&ast);
     if (ast.errno) {
@@ -235,11 +234,14 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_print(ast.root, 0);
 
-    printf("%lld\n", execute(ast.root));
-    */
-    lgx_bc_print(opcode, sizeof(opcode)/sizeof(unsigned));
+    //printf("%lld\n", execute(ast.root));
+
+    lgx_bc_t bc;
+    lgx_bc_compile(&ast, &bc);
+    lgx_bc_print(bc.bc, bc.bc_top);
 
     lgx_vm_t vm;
+//    lgx_vm_init(&vm, bc.bc, bc.bc_top);
     lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
     lgx_vm_start(&vm);
 

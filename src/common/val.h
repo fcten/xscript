@@ -38,6 +38,7 @@ typedef struct {
     unsigned type:4;
     union {
         lgx_str_ref_t name; // 变量名称
+        unsigned char reg;  // 分配的寄存器
     } u;
 } lgx_val_t;
 

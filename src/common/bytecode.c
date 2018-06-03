@@ -92,12 +92,12 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_DIVI:
             case OP_SHLI:
             case OP_SHRI:
+            case OP_TEST:
                 printf("%4d %4s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_NEG:
             case OP_NOT:
             case OP_LNOT:
-            case OP_TEST:
             case OP_JMP:
             case OP_CALL:
             case OP_ECHO:

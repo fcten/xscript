@@ -16,6 +16,8 @@ int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
     
     vm->bc = bc;
     vm->bc_size = bc_size;
+    
+    vm->pc = 0;
 
     return 0;
 }
@@ -358,8 +360,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_TEST:{
-                if (R(PA(i)).v.l) {
-                    vm->pc ++;
+                if (!R(PA(i)).v.l) {
+                    vm->pc = PD(i);
                 }
                 break;
             }

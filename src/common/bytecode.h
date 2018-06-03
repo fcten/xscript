@@ -51,7 +51,7 @@ enum {
     OP_LNOT,  // LNOT R
 
     // 跳转
-    OP_TEST,  // TEST R
+    OP_TEST,  // TEST R I
     OP_JMP,   // JMP  R
     OP_JMPI,  // JMPI L
 
