@@ -142,34 +142,22 @@ static void bc_expr_gen(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
     }
 }
 
-static void bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, expr_t *e1, expr_t *e2) {
-    // todo 折叠常量表达式 constant-fold
+static void bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, expr_t *e) {
 
 
-    // 如果是立即数
-    if (node->type == NUMBER_TOKEN) {
-        bc_number8(node, e1);
-        bc_movi(e0->u.reg, e1->u.instant);
-    }
-    // 如果是变量
-    else if (node->type == IDENTIFIER_TOKEN) {
-        bc_identifier(node, e1);
-        if (e0->u.reg != e1->u.reg) {
-            bc_mov(e0->u.reg, e1->u.reg);
-        }
-    }
-    // 如果是单目表达式
-    else if (node->type == UNARY_EXPRESSION) {
-        bc_expr(node->child[1], &e1, &e2);
-    }
-    // 如果是双目表达式
-    else if (node->type == BINARY_EXPRESSION) {
-        bc_expr(node->child[1], &e1, &e2);
+}
+
+static void bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, expr_t *e) {
+    switch(node->u.op) {
+        case '+':
+            
+        case '-':
     }
 }
 
 static void bc_stat_assign(lgx_bc_t *bc, lgx_ast_node_t *node) {
-    expr_t e0, e1, e2;
+    // todo 折叠常量表达式 constant-fold
+    expr_t e0, e1;
 
     bc_identifier(node->child[0], &e0);
 
@@ -187,17 +175,12 @@ static void bc_stat_assign(lgx_bc_t *bc, lgx_ast_node_t *node) {
     }
     // 如果右侧是单目表达式
     else if (node->child[0]->type == UNARY_EXPRESSION) {
-        bc_expr(node->child[1], &e1, &e2);
+        bc_expr_unary(bc, node->child[1], &e0);
     }
     // 如果右侧是双目表达式
     else if (node->child[0]->type == BINARY_EXPRESSION) {
-        bc_expr(node->child[1], &e1, &e2);
+        bc_expr_binary(bc, node->child[1], &e0);
     }
-
-    bc_expr_gen(node->child[1]->u.op, &e0, &e1, &e2);
-
-    reg_free(&e1);
-    reg_free(&e2);
 }
 
 static void bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
