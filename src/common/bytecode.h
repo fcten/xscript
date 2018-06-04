@@ -17,15 +17,15 @@ enum {
     OP_MOVI,  // MOVI R I
 
     // 数学运算
-    OP_ADD,   // ADD  R R
-    OP_ADDI,  // ADDI R I
-    OP_SUB,   // SUB  R R
-    OP_SUBI,  // SUBI R I
-    OP_MUL,   // MUL  R R
-    OP_MULI,  // MULI R I
-    OP_DIV,   // DIV  R R
-    OP_DIVI,  // DIVI R I
-    OP_NEG,   // NEG  R
+    OP_ADD,   // ADD  R R R
+    OP_ADDI,  // ADDI R R I
+    OP_SUB,   // SUB  R R R
+    OP_SUBI,  // SUBI R R I
+    OP_MUL,   // MUL  R R R
+    OP_MULI,  // MULI R R I
+    OP_DIV,   // DIV  R R R
+    OP_DIVI,  // DIVI R R I
+    OP_NEG,   // NEG  R R
 
     // 位运算
     OP_SHL,   // SHL  R R

@@ -209,10 +209,10 @@ long long execute(lgx_ast_node_t* node) {
 unsigned opcode[] = {
     I2(OP_MOVI, 0, 0),
     I2(OP_MOVI, 1, 10000),
-    I2(OP_MULI, 1, 1000),
+    I3(OP_MULI, 1, 1, 100),
     I2(OP_TEST, 1, 7),
-    I2(OP_ADD,  0, 1),
-    I2(OP_SUBI, 1, 1),
+    I3(OP_ADD,  0, 0, 1),
+    I3(OP_SUBI, 1, 1, 1),
     I1(OP_JMPI, 3),
     I1(OP_ECHO, 0),
     I0(OP_HLT)
