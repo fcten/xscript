@@ -16,7 +16,13 @@ static unsigned char reg_pop(lgx_bc_t *bc) {
     return bc->regs[bc->reg_top];
 }
 
-static void bc_append(lgx_bc_t *bc, unsigned i) {
+static void reg_free(lgx_bc_t *bc, lgx_val_t *e) {
+    if (e->type == T_REGISTER) {
+        reg_push(bc, e->u.l);
+    }
+}
+
+static int bc_append(lgx_bc_t *bc, unsigned i) {
     if (bc->bc_top >= bc->bc_size) {
         bc->bc_size *= 2;
         bc->bc = realloc(bc->bc, bc->bc_size);
@@ -24,13 +30,19 @@ static void bc_append(lgx_bc_t *bc, unsigned i) {
 
     bc->bc[bc->bc_top] = i;
     bc->bc_top ++;
+
+    return 0;
 }
 
 static void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i) {
     bc->bc[pos] = i;
 }
 
+#define bc_nop()         bc_append(bc, I0(OP_NOP))
+
 #define bc_mov(a, b)     bc_append(bc, I2(OP_MOV, a, b))
+#define bc_movi(a, b)    bc_append(bc, I2(OP_MOVI, a, b))
+
 #define bc_add(a, b, c)  bc_append(bc, I3(OP_ADD, a, b, c))
 #define bc_sub(a, b, c)  bc_append(bc, I3(OP_SUB, a, b, c))
 #define bc_mul(a, b, c)  bc_append(bc, I3(OP_MUL, a, b, c))
@@ -39,24 +51,37 @@ static void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i) {
 #define bc_subi(a, b, c) bc_append(bc, I3(OP_SUBI, a, b, c))
 #define bc_muli(a, b, c) bc_append(bc, I3(OP_MULI, a, b, c))
 #define bc_divi(a, b, c) bc_append(bc, I3(OP_DIVI, a, b, c))
+#define bc_neg(a, b)     bc_append(bc, I2(OP_NEG, a, b))
+
+#define bc_shl(a, b)     bc_append(bc, I2(OP_SHL, a, b))
 #define bc_shli(a, b)    bc_append(bc, I2(OP_SHLI, a, b))
+#define bc_shr(a, b)     bc_append(bc, I2(OP_SHR, a, b))
+#define bc_shri(a, b)    bc_append(bc, I2(OP_SHRI, a, b))
+#define bc_and(a, b)     bc_append(bc, I2(OP_AND, a, b))
+#define bc_or(a, b)      bc_append(bc, I2(OP_OR, a, b))
+#define bc_xor(a, b)     bc_append(bc, I2(OP_XOR, a, b))
+#define bc_not(a, b)     bc_append(bc, I2(OP_NOT, a, b))
+
 #define bc_eq(a, b, c)   bc_append(bc, I3(OP_EQ, a, b, c))
 #define bc_le(a, b, c)   bc_append(bc, I3(OP_LE, a, b, c))
 #define bc_lt(a, b, c)   bc_append(bc, I3(OP_LT, a, b, c))
+#define bc_eqi(a, b, c)  bc_append(bc, I3(OP_EQI, a, b, c))
 #define bc_gti(a, b, c)  bc_append(bc, I3(OP_GTI, a, b, c))
 #define bc_gei(a, b, c)  bc_append(bc, I3(OP_GEI, a, b, c))
 #define bc_lti(a, b, c)  bc_append(bc, I3(OP_LTI, a, b, c))
 #define bc_lei(a, b, c)  bc_append(bc, I3(OP_LEI, a, b, c))
+#define bc_land(a, b, c) bc_append(bc, I3(OP_LAND, a, b, c))
+#define bc_lor(a, b, c)  bc_append(bc, I3(OP_LOR, a, b, c))
+#define bc_lnot(a, b, c) bc_append(bc, I3(OP_LNOT, a, b, c))
+
 #define bc_test(a, b)    bc_append(bc, I2(OP_TEST, a, b))
 #define bc_jmpi(a)       bc_append(bc, I1(OP_JMPI, a))
+
 #define bc_echo(a)       bc_append(bc, I1(OP_ECHO, a))
 #define bc_hlt(a)        bc_append(bc, I0(OP_HLT))
 
-static void reg_free(lgx_bc_t *bc, lgx_val_t *e) {
-    if (e->type == T_REGISTER) {
-        reg_push(bc, e->u.l);
-    }
-}
+#define is_instant8(e) (e->type == T_LONG && e->v.l >= 0 && e->v.l <= 255)
+#define is_instant16(e) (e->type == T_LONG && e->v.l >= 0 && e->v.l <= 65535)
 
 static int bc_identifier(lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
@@ -81,51 +106,96 @@ static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
-static int bc_expr_unary(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
-    return 0;
-}
+static int bc_expr_unary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1) {
+    e->type = T_REGISTER;
+    e->v.l = reg_pop(bc);
 
-static int bc_expr_binary(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
     switch (op) {
-        case '+':
-            if (e2->type == ET_INSTANT) {
-                bc_addi(e0->u.reg, e1->u.reg, e2->u.instant);
-            } else {
-                bc_add(e0->u.reg, e1->u.reg, e2->u.reg);
-            }
-            break;
-        case '-':
-            if (e2->type == ET_INSTANT) {
-                bc_subi(e0->u.reg, e1->u.reg, e2->u.instant);
-            } else {
-                bc_sub(e0->u.reg, e1->u.reg, e2->u.reg);
-            }
-            break;
-        case '*':
-
-            break;
-        case '/':
-
-            break;
-        case '>':{
-            if (e2->type == ET_INSTANT) {
-                bc_gti(e0->u.reg, e1->u.reg, e2->u.instant);
-            } else {
-                bc_lt(e0->u.reg, e2->u.reg, e1->u.reg);
-            }
-            break;
-        }
-        case '<':{
-            if (e2->type == ET_INSTANT) {
-                bc_lti(e0->u.reg, e1->u.reg, e2->u.instant);
-            } else {
-                bc_lt(e0->u.reg, e1->u.reg, e2->u.reg);
-            }
-            break;
-        }
+        case '!': return bc_lnot(e->v.l, e1->->v.l);
+        case '~': return bc_not(e->v.l, e1->->v.l);
+        case '-': return bc_neg(e->v.l, e1->->v.l);
         default:
             // error
-            break;
+            return 1;
+    }
+}
+
+static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx_val_t *e2) {
+    e->type = T_REGISTER;
+    e->v.l = reg_pop(bc);
+
+    switch (op) {
+        case '+':
+            if (is_instant8(e2)) {
+                return bc_addi(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_add(e->v.l, e1->->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case '-':
+            if (is_instant8(e2)) {
+                return bc_subi(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_sub(e->v.l, e1->->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case '*':
+            if (is_instant8(e2)) {
+                return bc_muli(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_mul(e->v.l, e1->->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case '/':
+            if (is_instant8(e2)) {
+                return bc_divi(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_div(e->v.l, e1->->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case '%':
+            return 1;
+        case '>':
+            if (is_instant8(e2)) {
+                return bc_gti(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_lt(e->v.l, e2->v.l, e1->->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case '<':
+            if (is_instant8(e2)) {
+                return bc_lti(e->v.l, e1->->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_lt(e->v.l, e1->v.l, e2->->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        default:
+            // error
+            return 1;
     }
 }
 
@@ -154,11 +224,11 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             } else if (e1.type == T_REGISTER || e1.type == T_IDENTIFIER) {
-                if (bc_expr_binary(node->u.op, e, &e1, &e2)) {
+                if (bc_expr_binary(bc, node->u.op, e, &e1, &e2)) {
                     return 1;
                 }
             } else {
-                if (bc_expr_binary(node->u.op, e, &e2, &e1)) {
+                if (bc_expr_binary(bc, node->u.op, e, &e2, &e1)) {
                     return 1;
                 }
             }
@@ -175,7 +245,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             } else {
-                if (bc_expr_unary(node->u.op, e, &e1)) {
+                if (bc_expr_unary(bc, node->u.op, e, &e1)) {
                     return 1;
                 }
             }
