@@ -21,7 +21,10 @@ enum {
     T_OBJECT,
     T_RESOURCE,
     T_REDERENCE,
-    T_FUNCTION
+    T_FUNCTION,
+    // --------
+    T_REGISTER,     // 临时寄存器，仅在编译时使用
+    T_IDENTIFIER    // 变量寄存器，仅在编译时使用
 };
 
 typedef struct {

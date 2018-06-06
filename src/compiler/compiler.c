@@ -3,6 +3,7 @@
 
 #include "../parser/scope.h"
 #include "../common/bytecode.h"
+#include "../common/val.h"
 #include "compiler.h"
 
 static void reg_push(lgx_bc_t *bc, unsigned char i) {
@@ -51,27 +52,13 @@ static void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i) {
 #define bc_echo(a)       bc_append(bc, I1(OP_ECHO, a))
 #define bc_hlt(a)        bc_append(bc, I0(OP_HLT))
 
-enum {
-    ET_INSTANT,
-    ET_REG,
-    ET_ID,
-};
-
-typedef struct {
-    unsigned char type;
-    union {
-        unsigned char instant;
-        unsigned char reg;
-    } u;
-} expr_t;
-
-static void reg_free(expr_t *e) {
-    if (e->type == ET_REG) {
-        reg_push(r->u.reg);
+static void reg_free(lgx_bc_t *bc, lgx_val_t *e) {
+    if (e->type == T_REGISTER) {
+        reg_push(bc, e->u.l);
     }
 }
 
-static void bc_identifier(lgx_ast_node_t *node, expr_t *expr) {
+static int bc_identifier(lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
     lgx_str_ref_t s;
 
@@ -80,25 +67,25 @@ static void bc_identifier(lgx_ast_node_t *node, expr_t *expr) {
     // todo 非局部变量需要特殊处理
     v = lgx_scope_val_get(node, &s);
 
-    expr->type = ET_ID;
+    expr->type = T_IDENTIFIER;
     expr->u.reg = v->u.reg;
+
+    return 0;
 }
 
-static void bc_number8(lgx_ast_node_t *node, expr_t *expr) {
+static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
     // TODO 处理浮点数
-    long long num = atol(((lgx_ast_node_token_t *)node)->tk_start);
+    expr->type = T_LONG;
+    expr->u.l = atol(((lgx_ast_node_token_t *)node)->tk_start);
 
-    if (num >= 0 && num <= 255) {
-        expr->type = ET_INSTANT;
-        expr->u.instant = num;
-    } else {
-        // 超过范围的立即数无法写入到指令中
-        // todo 从常量表中读取
-        expr->type = ET_REG;
-    }
+    return 0;
 }
 
-static void bc_expr_gen(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
+static int bc_expr_unary(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
+    return 0;
+}
+
+static int bc_expr_binary(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
     switch (op) {
         case '+':
             if (e2->type == ET_INSTANT) {
@@ -142,48 +129,67 @@ static void bc_expr_gen(int op, expr_t *e0, expr_t *e1, expr_t *e2) {
     }
 }
 
-static void bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, expr_t *e) {
+static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    switch (node->type) {
+        case STRING_TOKEN:
+            break;
+        case NUMBER_TOKEN:
+            return bc_number(node, e);
+        case IDENTIFIER_TOKEN:
+            return bc_identifier(node, e);
+        case CONDITIONAL_EXPRESSION:
+            break;
+        case BINARY_EXPRESSION:{
+            lgx_val_t e1, e2;
+            if (bc_expr(bc, node->child[0], &e1)) {
+                return 1;
+            }
+            if (bc_expr(bc, node->child[1], &e2)) {
+                return 1;
+            }
 
-
-}
-
-static void bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, expr_t *e) {
-    switch(node->u.op) {
-        case '+':
-            
-        case '-':
-    }
-}
-
-static void bc_stat_assign(lgx_bc_t *bc, lgx_ast_node_t *node) {
-    // todo 折叠常量表达式 constant-fold
-    expr_t e0, e1;
-
-    bc_identifier(node->child[0], &e0);
-
-    // 如果右侧是立即数
-    if (node->child[0]->type == NUMBER_TOKEN) {
-        bc_number8(node, e1);
-        bc_movi(e0->u.reg, e1->u.instant);
-    }
-    // 如果右侧是变量
-    else if (node->child[0]->type == IDENTIFIER_TOKEN) {
-        bc_identifier(node, e1);
-        if (e0->u.reg != e1->u.reg) {
-            bc_mov(e0->u.reg, e1->u.reg);
+            if ( (e1.type == T_LONG || e1.type == T_DOUBLE || e1.type == T_BOOL) &&
+                (e2.type == T_LONG || e2.type == T_DOUBLE || e2.type == T_BOOL) ) {
+                if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
+                    return 1;
+                }
+            } else if (e1.type == T_REGISTER || e1.type == T_IDENTIFIER) {
+                if (bc_expr_binary(node->u.op, e, &e1, &e2)) {
+                    return 1;
+                }
+            } else {
+                if (bc_expr_binary(node->u.op, e, &e2, &e1)) {
+                    return 1;
+                }
+            }
+            break;
         }
+        case UNARY_EXPRESSION:{
+            lgx_val_t e1;
+            if (bc_expr(bc, node->child[0], &e1)) {
+                return 1;
+            }
+
+            if (e1.type == T_LONG || e1.type == T_DOUBLE || e1.type == T_BOOL) {
+                if (lgx_op_unary(node->u.op, e, &e1)) {
+                    return 1;
+                }
+            } else {
+                if (bc_expr_unary(node->u.op, e, &e1)) {
+                    return 1;
+                }
+            }
+            break;
+        }
+        default:
+            // error
+            return 1;
     }
-    // 如果右侧是单目表达式
-    else if (node->child[0]->type == UNARY_EXPRESSION) {
-        bc_expr_unary(bc, node->child[1], &e0);
-    }
-    // 如果右侧是双目表达式
-    else if (node->child[0]->type == BINARY_EXPRESSION) {
-        bc_expr_binary(bc, node->child[1], &e0);
-    }
+
+    return 0;
 }
 
-static void bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
+static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
@@ -233,14 +239,14 @@ static void bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             unsigned pos1 = bc->bc_top;
             // todo 如果条件是立即数，则不需要递归调用
             unsigned char r = reg_pop(bc);
-            bc_gen(bc, r, node->child[0]);
+            bc_expr(bc, r, node->child[0]);
             
             // 写入条件跳转
             unsigned pos2 = bc->bc_top;
             bc_test(r, 0);
             reg_push(bc, r);
 
-            bc_gen(bc, 0, node->child[1]);
+            bc_gen(bc, node->child[1]);
 
             // 写入无条件跳转
             bc_jmpi(pos1);
@@ -284,7 +290,30 @@ static void bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case ASSIGNMENT_STATEMENT:
-            bc_stat_assign(bc, node);
+    expr_t e0, e1;
+
+    bc_identifier(node->child[0], &e0);
+
+    // 如果右侧是立即数
+    if (node->child[0]->type == NUMBER_TOKEN) {
+        bc_number8(node, e1);
+        bc_movi(e0->u.reg, e1->u.instant);
+    }
+    // 如果右侧是变量
+    else if (node->child[0]->type == IDENTIFIER_TOKEN) {
+        bc_identifier(node, e1);
+        if (e0->u.reg != e1->u.reg) {
+            bc_mov(e0->u.reg, e1->u.reg);
+        }
+    }
+    // 如果右侧是单目表达式
+    else if (node->child[0]->type == UNARY_EXPRESSION) {
+        bc_expr_unary(bc, node->child[1], &e0);
+    }
+    // 如果右侧是双目表达式
+    else if (node->child[0]->type == BINARY_EXPRESSION) {
+        bc_expr_binary(bc, node->child[1], &e0);
+    }
             break;
         // Declaration
         case FUNCTION_DECLARATION:{
@@ -295,46 +324,10 @@ static void bc_gen(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case VARIABLE_DECLARATION:{
             // 如果声明中附带初始化，则执行一次赋值操作
             if (node->child[1]) {
-                lgx_val_t *v;
-                lgx_str_ref_t s;
-
-                s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
-                s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            
-                v = lgx_scope_val_get(node, &s);
-
-                bc_gen(bc, v->u.reg, node->child[1]);
+                bc_stat_assign(bc, node);
             }
             break;
         }
-        // Expression
-        case CONDITIONAL_EXPRESSION:
-
-            break;
-        case UNARY_EXPRESSION:
-
-            //bc_gen(bc, node->child[0]);
-
-            switch (node->u.op) {
-                case '!':
-
-                    break;
-                case '~':
-
-                    break;
-                case '-':
-
-                    break;
-                default:
-                    // error
-                    break;
-            }
-
-            break;
-        // Other
-        case STRING_TOKEN:
-
-            break;
         default:
             printf("%s %d\n", "ERROR!", node->type);
     }
