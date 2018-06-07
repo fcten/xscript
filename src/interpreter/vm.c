@@ -188,64 +188,72 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHL:{
-                if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
-                    R(PA(i)).v.l <<= R(PB(i)).v.l;
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l << R(PC(i)).v.l;
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_SHR:{
-                if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
-                    R(PA(i)).v.l >>= R(PB(i)).v.l;
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l >> R(PC(i)).v.l;
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_SHLI:{
-                if (R(PA(i)).type == T_LONG) {
-                    R(PA(i)).v.l <<= PD(i);
+                if (R(PB(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l << PC(i);
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_SHRI:{
-                if (R(PA(i)).type == T_LONG) {
-                    R(PA(i)).v.l >>= PD(i);
+                if (R(PB(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l >> PC(i);
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_AND:{
-                if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
-                    R(PA(i)).v.l &= R(PB(i)).v.l;
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l & R(PC(i)).v.l;
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_OR:{
-                if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
-                    R(PA(i)).v.l |= R(PB(i)).v.l;
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l | R(PC(i)).v.l;
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_XOR:{
-                if (R(PA(i)).type == T_LONG && R(PB(i)).type == T_LONG) {
-                    R(PA(i)).v.l ^= R(PB(i)).v.l;
+                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = R(PB(i)).v.l ^ R(PC(i)).v.l;
                 } else {
                     // 类型转换
                 }
                 break;
             }
             case OP_NOT:{
-                if (R(PA(i)).type == T_LONG) {
-                    R(PA(i)).v.l = ~R(PA(i)).v.l;
+                if (R(PB(i)).type == T_LONG) {
+                    R(PA(i)).type = T_LONG;
+                    R(PA(i)).v.l = ~R(PB(i)).v.l;
                 } else {
                     // 类型转换
                 }
@@ -366,8 +374,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LNOT:{
-                if (R(PA(i)).type == T_BOOL) {
-                    R(PA(i)).v.l = !R(PA(i)).v.l;
+                R(PA(i)).type = T_BOOL;
+
+                if (R(PB(i)).type == T_BOOL) {
+                    R(PA(i)).v.l = !R(PB(i)).v.l;
                 } else {
                     // 类型转换
                 }

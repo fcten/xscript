@@ -1,4 +1,4 @@
-auto a = 10000000, b = 0
+auto a = 100, b = 0
 while (a > 0) {
     b = b + a
     a = a - 1

@@ -28,14 +28,14 @@ enum {
     OP_NEG,   // NEG  R R
 
     // 位运算
-    OP_SHL,   // SHL  R R
-    OP_SHLI,  // SHLI R I
-    OP_SHR,   // SHR  R R
-    OP_SHRI,  // SHRI R I
-    OP_AND,   // AND  R R
-    OP_OR,    // OR   R R
-    OP_XOR,   // XOR  R R
-    OP_NOT,   // NOT  R
+    OP_SHL,   // SHL  R R R
+    OP_SHLI,  // SHLI R R I
+    OP_SHR,   // SHR  R R R
+    OP_SHRI,  // SHRI R R I
+    OP_AND,   // AND  R R R
+    OP_OR,    // OR   R R R
+    OP_XOR,   // XOR  R R R
+    OP_NOT,   // NOT  R R
 
     // 逻辑运算
     OP_EQ,    // EQ   R R R
@@ -48,7 +48,7 @@ enum {
     OP_LTI,   // LTI  R R I
     OP_LAND,  // LAND R R R
     OP_LOR,   // LOR  R R R
-    OP_LNOT,  // LNOT R
+    OP_LNOT,  // LNOT R R
 
     // 跳转
     OP_TEST,  // TEST R I

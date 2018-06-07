@@ -65,6 +65,11 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LT:
             case OP_LAND:
             case OP_LOR:
+            case OP_SHL:
+            case OP_SHR:
+            case OP_AND:
+            case OP_OR:
+            case OP_XOR:
                 printf("%4d %4s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_ADDI:
@@ -76,28 +81,23 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LEI:
             case OP_GTI:
             case OP_LTI:
+            case OP_SHLI:
+            case OP_SHRI:
                 printf("%4d %4s R[%d] R[%d] %d\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_MOV:
-            case OP_SHL:
-            case OP_SHR:
-            case OP_AND:
-            case OP_OR:
-            case OP_XOR:
             case OP_NEG:
+            case OP_NOT:
+            case OP_LNOT:
                 printf("%4d %4s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
                 printf("%4d %4s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_MOVI:
-            case OP_SHLI:
-            case OP_SHRI:
             case OP_TEST:
                 printf("%4d %4s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
-            case OP_NOT:
-            case OP_LNOT:
             case OP_JMP:
             case OP_CALL:
             case OP_ECHO:
