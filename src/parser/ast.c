@@ -246,7 +246,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-// bsc_expr -> NUMBER | STRING | suf_expr
+// bsc_expr -> NUMBER | STRING | true | false | suf_expr
 void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_token_t* id;
     switch (ast->cur_token) {
@@ -260,6 +260,20 @@ void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         case TK_STRING:
             id = ast_node_token_new(ast);
             id->type = STRING_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(ast);
+            break;
+        case TK_TRUE:
+            id = ast_node_token_new(ast);
+            id->type = TRUE_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(ast);
+            break;
+        case TK_FALSE:
+            id = ast_node_token_new(ast);
+            id->type = FALSE_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
             ast_step(ast);
@@ -804,6 +818,12 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case STRING_TOKEN:
             printf("%*s%s\n", indent, "", "STRING_TOKEN");
+            break;
+        case TRUE_TOKEN:
+            printf("%*s%s\n", indent, "", "TRUE_TOKEN");
+            break;
+        case FALSE_TOKEN:
+            printf("%*s%s\n", indent, "", "FALSE_TOKEN");
             break;
         case FUNCTION_CALL_PARAMETER:
         case FUNCTION_DECL_PARAMETER:

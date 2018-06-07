@@ -112,6 +112,22 @@ static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
+static int bc_true(lgx_ast_node_t *node, lgx_val_t *expr) {
+    // TODO 处理浮点数
+    expr->type = T_BOOL;
+    expr->v.l = 1;
+
+    return 0;
+}
+
+static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
+    // TODO 处理浮点数
+    expr->type = T_BOOL;
+    expr->v.l = 0;
+
+    return 0;
+}
+
 static int bc_expr_unary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1) {
     e->type = T_REGISTER;
     e->v.l = reg_pop(bc);
@@ -213,6 +229,10 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             return bc_number(node, e);
         case IDENTIFIER_TOKEN:
             return bc_identifier(node, e);
+        case TRUE_TOKEN:
+            return bc_true(node, e);
+        case FALSE_TOKEN:
+            return bc_false(node, e);
         case CONDITIONAL_EXPRESSION:
             break;
         case BINARY_EXPRESSION:{
@@ -324,7 +344,7 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     // 写入无条件跳转
                     bc_jmpi(pos1);
                 }
-            } else {
+            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
                 unsigned pos2 = bc->bc_top; // 循环跳出指令位置
                 bc_test(e.v.l, 0);
                 reg_free(bc, &e);
@@ -334,6 +354,8 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_jmpi(pos1);
                 // 更新条件跳转
                 bc_set(bc, pos2, I2(OP_TEST, e.v.l, bc->bc_top));
+            } else {
+                // error
             }
             break;
         }

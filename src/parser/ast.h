@@ -33,7 +33,9 @@ enum {
     STRING_TOKEN,
     FUNCTION_TOKEN, // 匿名函数
     ARRAY_TOKEN,
-    OBJECT_TOKEN
+    OBJECT_TOKEN,
+    TRUE_TOKEN,
+    FALSE_TOKEN
 };
 
 typedef struct lgx_ast_node_s {
