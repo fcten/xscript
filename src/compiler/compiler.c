@@ -193,6 +193,10 @@ static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx
             }
         case '%':
             return 1;
+        case TK_SHL:
+            return 1;
+        case TK_SHR:
+            return 1;
         case '>':
             if (is_instant8(e2)) {
                 return bc_gti(e->v.l, e1->v.l, e2->v.l);
@@ -215,6 +219,48 @@ static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx
                     return 1;
                 }
             }
+        case TK_GE:
+            if (is_instant8(e2)) {
+                return bc_gei(e->v.l, e1->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_le(e->v.l, e2->v.l, e1->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case TK_LE:
+            if (is_instant8(e2)) {
+                return bc_lei(e->v.l, e1->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_le(e->v.l, e1->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case TK_EQ:
+            if (is_instant8(e2)) {
+                return bc_eqi(e->v.l, e1->v.l, e2->v.l);
+            } else {
+                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                    return bc_eq(e->v.l, e1->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
+        case TK_NE: return 1;
+        case '&': return 1;
+        case '^': return 1;
+        case '|': return 1;
+        case TK_AND: return 1;
+        case TK_OR: return 1;
+        case TK_CALL:
+        case TK_INDEX:
+        case TK_ATTR:
         default:
             // error
             return 1;
@@ -305,29 +351,58 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
             break;
         }
-        case IF_STATEMENT:
-            //bc_gen(bc, node->child[0]);
+        case IF_STATEMENT:{
+            lgx_val_t e;
+            bc_expr(bc, node->child[0], &e);
 
-            // 写入条件跳转
+            if (e.type == T_BOOL) {
+                if (e.v.l == 0) {
+                    break;
+                } else {
+                    bc_stat(bc, node->child[1]);
+                }
+            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+                unsigned pos = bc->bc_top; // 跳出指令位置
+                bc_test(e.v.l, 0);
+                reg_free(bc, &e);
 
-            //bc_gen(bc, node->child[1]);
+                bc_stat(bc, node->child[1]);
 
-            // 更新条件跳转
+                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
+            } else {
+                // error
+            }
             break;
-        case IF_ELSE_STATEMENT:
-            //bc_gen(bc, node->child[0]);
+        }
+        case IF_ELSE_STATEMENT:{
+            lgx_val_t e;
+            bc_expr(bc, node->child[0], &e);
 
-            // 写入条件跳转
+            if (e.type == T_BOOL) {
+                if (e.v.l == 0) {
+                    bc_stat(bc, node->child[2]);
+                } else {
+                    bc_stat(bc, node->child[1]);
+                }
+            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+                unsigned pos1 = bc->bc_top; // 跳转指令位置
+                bc_test(e.v.l, 0);
+                reg_free(bc, &e);
 
-            //bc_gen(bc, node->child[1]);
+                bc_stat(bc, node->child[1]);
 
-            // 写入无条件跳转
-            // 更新条件跳转
+                unsigned pos2 = bc->bc_top; // 跳转指令位置
+                bc_jmpi(0);
+                bc_set(bc, pos1, I2(OP_TEST, e.v.l, bc->bc_top));
 
-            //bc_gen(bc, node->child[2]);
+                bc_stat(bc, node->child[2]);
 
-            // 更新无条件跳转
+                bc_set(bc, pos2, I1(OP_JMPI, bc->bc_top));
+            } else {
+                // error
+            }
             break;
+        }
         case FOR_STATEMENT:
 
             break;
@@ -359,11 +434,33 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
             break;
         }
-        case DO_WHILE_STATEMENT:
+        case DO_WHILE_STATEMENT:{
+            unsigned pos1 = bc->bc_top; // 循环起始位置
 
-            //bc_gen(bc, node->child[0]);
-            //bc_gen(bc, node->child[1]);
+            bc_stat(bc, node->child[0]);
+
+            lgx_val_t e;
+            bc_expr(bc, node->child[1], &e);
+
+            if (e.type == T_BOOL) {
+                if (e.v.l == 0) {
+                    break;
+                } else {
+                    // 写入无条件跳转
+                    bc_jmpi(pos1);
+                }
+            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+                unsigned pos2 = bc->bc_top;
+                bc_test(e.v.l, 0);
+                bc_jmpi(pos1);
+                reg_free(bc, &e);
+
+                bc_set(bc, pos2, I2(OP_TEST, e.v.l, bc->bc_top));
+            } else {
+                // error
+            }
             break;
+        }
         case CONTINUE_STATEMENT:
 
             break;

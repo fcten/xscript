@@ -4,7 +4,7 @@ auto b, c
 do {
     auto a = 2
     b = a
-} while (0)
+} while (false)
 
 c = a
 
