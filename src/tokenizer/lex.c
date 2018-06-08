@@ -186,7 +186,13 @@ int lgx_lex(lgx_lex_t* ctx) {
             step_to_eot(ctx);
             return TK_SPACE;
         case '+':
+            return n;
         case '-':
+            if (is_next(ctx, '>')) {
+                return TK_PTR;
+            } else {
+                return n;
+            }
         case '*':
             return n;
         case '/':

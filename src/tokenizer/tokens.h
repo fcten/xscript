@@ -22,6 +22,7 @@ enum {
     TK_INDEX,   // 273 数组下标访问
     TK_ARRAY,   // 274 数组常量
     TK_OBJECT,  // 275 对象常量
+    TK_PTR,     // 276 -> 指针运算符
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,
