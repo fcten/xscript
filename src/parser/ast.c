@@ -362,7 +362,12 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
 }
 
 void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    int c = parent->children;
     ast_parse_sub_expression(ast, parent, 15);
+
+    if (c == parent->children) {
+        ast_error(ast, "[Error] [Line:%d] expression expected\n", ast->cur_line);
+    }
 }
 
 void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -521,6 +526,17 @@ void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* echo_statement = ast_node_new(1);
+    echo_statement->type = ECHO_STATEMENT;;
+    ast_node_append_child(parent, echo_statement);
+
+    // ast->cur_token == TK_ECHO
+    ast_step(ast);
+    
+    ast_parse_expression(ast, echo_statement);
+}
+
 void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* assign_statement = ast_node_new(2);
     assign_statement->type = ASSIGNMENT_STATEMENT;
@@ -575,6 +591,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case TK_RETURN:
                 ast_parse_return_statement(ast, parent);
+                break;
+            case TK_ECHO:
+                ast_parse_echo_statement(ast, parent);
                 break;
             case TK_ID:
                 ast_parse_assign_statement(ast, parent);
@@ -771,6 +790,11 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case RETURN_STATEMENT:
             printf("%*s%s\n", indent, "", "RETURN_STATEMENT");
+            if (node->child[0])
+                lgx_ast_print(node->child[0], indent+2);
+            break;
+        case ECHO_STATEMENT:
+            printf("%*s%s\n", indent, "", "ECHO_STATEMENT");
             if (node->child[0])
                 lgx_ast_print(node->child[0], indent+2);
             break;

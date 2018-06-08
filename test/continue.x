@@ -6,4 +6,4 @@ while (a < 10) {
     }
     b = b + 3
 }
-return b
+echo b

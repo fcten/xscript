@@ -8,5 +8,5 @@ do {
 
 c = a
 
-return b + c
+echo b + c
 

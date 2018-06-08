@@ -6,4 +6,4 @@ if (a > 0) {
 if (b < 0) {
     b = b + 1
 }
-return a + b
+echo a + b

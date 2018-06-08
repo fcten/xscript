@@ -5,4 +5,4 @@ function add (auto c, auto d) {
     return a + b + c + d + e + f
 }
 
-return add(a, b + 1)
+echo add(a, b + 1)

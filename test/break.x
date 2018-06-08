@@ -5,4 +5,4 @@ while (true) {
         break
     }
 }
-return a
+echo a

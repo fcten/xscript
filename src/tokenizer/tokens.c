@@ -69,6 +69,8 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     // 模块
     {TK_IMPORT, "import"},
     {TK_EXPORT, "export"},
+    // IO (测试使用，可能会移除)
+    {TK_ECHO, "echo"},
 
     {TK_CONST, "const"},
     {TK_STATIC, "static"},

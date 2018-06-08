@@ -9,4 +9,4 @@ if (b < 0) {
 } else {
     b = b + 2
 }
-return a + b
+echo c

@@ -75,6 +75,8 @@ enum {
     TK_IMPORT,
     TK_EXPORT,
 
+    TK_ECHO,
+
     TK_CONST,
     TK_STATIC,
 
