@@ -55,6 +55,11 @@ int main(int argc, char* argv[]) {
 
     lgx_bc_t bc;
     lgx_bc_compile(&ast, &bc);
+    if (bc.errno) {
+        printf("%.*s\n", bc.err_len, bc.err_info);
+        return 1;
+    }
+
     lgx_bc_print(bc.bc, bc.bc_top);
 
     lgx_vm_t vm;

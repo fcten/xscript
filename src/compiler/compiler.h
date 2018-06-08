@@ -10,6 +10,10 @@ typedef struct {
     unsigned *bc;
     unsigned bc_size;
     unsigned bc_top;
+
+    int errno;
+    char *err_info;
+    int err_len;
 } lgx_bc_t;
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc);

@@ -1,11 +1,27 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "../parser/scope.h"
 #include "../common/bytecode.h"
 #include "../common/val.h"
 #include "../common/operator.h"
 #include "compiler.h"
+
+void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
+    va_list   args;
+
+    if (bc->errno) {
+        return;
+    }
+
+    va_start(args, fmt);
+    bc->err_len = vsnprintf(bc->err_info, 256, fmt, args);
+    va_end(args);
+    
+    bc->errno = 1;
+}
+
 
 static void reg_push(lgx_bc_t *bc, unsigned char i) {
     bc->regs[bc->reg_top] = i;
@@ -128,25 +144,25 @@ static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
-static int bc_expr_unary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1) {
+static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1) {
     e->type = T_REGISTER;
     e->v.l = reg_pop(bc);
 
-    switch (op) {
+    switch (node->u.op) {
         case '!': return bc_lnot(e->v.l, e1->v.l);
         case '~': return bc_not(e->v.l, e1->v.l);
         case '-': return bc_neg(e->v.l, e1->v.l);
         default:
-            // error
+            bc_error(bc, "[Error] [Line:%d] unknown unary operation\n", node->line);
             return 1;
     }
 }
 
-static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx_val_t *e2) {
+static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1, lgx_val_t *e2) {
     e->type = T_REGISTER;
     e->v.l = reg_pop(bc);
 
-    switch (op) {
+    switch (node->u.op) {
         case '+':
             if (is_instant8(e2)) {
                 return bc_addi(e->v.l, e1->v.l, e2->v.l);
@@ -263,6 +279,7 @@ static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx
         case TK_ATTR:
         default:
             // error
+            bc_error(bc, "[Error] [Line:%d] unknown binary operation\n", node->line);
             return 1;
     }
 }
@@ -281,14 +298,18 @@ static lgx_ast_node_t *jmp_find_loop_or_switch(lgx_ast_node_t *node) {
     return node;
 }
 
-static int jmp_add(lgx_ast_node_t *node) {
+static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
     lgx_ast_node_t *loop = NULL;
     if (node->type == CONTINUE_STATEMENT) {
         loop = jmp_find_loop(node);
     } else if (node->type == BREAK_STATEMENT) {
         loop = jmp_find_loop_or_switch(node);
+    } else {
+        bc_error(bc, "[Error] [Line:%d] break or continue statement expected\n", node->line);
+        return 1;
     }
     if (!loop) {
+        bc_error(bc, "[Error] [Line:%d] illegal break or continue statement\n", node->line);
         return 1;
     }
 
@@ -299,6 +320,7 @@ static int jmp_add(lgx_ast_node_t *node) {
             lgx_list_init(&loop->u.jmps->head);
             loop->u.jmps->node = NULL;
         } else {
+            bc_error(bc, "[Error] [Line:%d] out of memory\n", node->line);
             return 1;
         }
     }
@@ -311,6 +333,7 @@ static int jmp_add(lgx_ast_node_t *node) {
 
         return 0;
     } else {
+        bc_error(bc, "[Error] [Line:%d] out of memory\n", node->line);
         return 1;
     }
 }
@@ -320,6 +343,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
         node->type != WHILE_STATEMENT && 
         node->type != DO_WHILE_STATEMENT &&
         node->type != SWITCH_CASE_STATEMENT) {
+        bc_error(bc, "[Error] [Line:%d] switch or loop statement expected\n", node->line);
         return 1;
     }
 
@@ -331,6 +355,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
             bc_set(bc, n->node->u.pos, I1(OP_JMPI, start));
         } else {
             // error
+            bc_error(bc, "[Error] [Line:%d] break or continue statement expected\n", n->node->line);
             return 1;
         }
     }
@@ -367,11 +392,11 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             } else if (e1.type == T_REGISTER || e1.type == T_IDENTIFIER) {
-                if (bc_expr_binary(bc, node->u.op, e, &e1, &e2)) {
+                if (bc_expr_binary(bc, node, e, &e1, &e2)) {
                     return 1;
                 }
             } else {
-                if (bc_expr_binary(bc, node->u.op, e, &e2, &e1)) {
+                if (bc_expr_binary(bc, node, e, &e2, &e1)) {
                     return 1;
                 }
             }
@@ -388,21 +413,21 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             } else {
-                if (bc_expr_unary(bc, node->u.op, e, &e1)) {
+                if (bc_expr_unary(bc, node, e, &e1)) {
                     return 1;
                 }
             }
             break;
         }
         default:
-            // error
+            bc_error(bc, "[Error] [Line:%d] expression expected\n", node->line);
             return 1;
     }
 
     return 0;
 }
 
-static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
+static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
@@ -538,7 +563,7 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case CONTINUE_STATEMENT:
             // 只能出现在循环语句中
-            if (jmp_add(node)) {
+            if (jmp_add(bc, node)) {
                 // error
                 break;
             }
@@ -547,7 +572,7 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         case BREAK_STATEMENT:
             // 只能出现在循环语句和 switch 语句中
-            if (jmp_add(node)) {
+            if (jmp_add(bc, node)) {
                 // error
                 break;
             }
@@ -605,8 +630,11 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         default:
-            printf("%s %d\n", "ERROR!", node->type);
+            bc_error(bc, "[Error] [Line:%d] unknown ast-node type\n", node->line);
+            return 1;
     }
+
+    return 0;
 }
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
@@ -618,9 +646,14 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->bc_size = 1024;
     bc->bc_top = 0;
     bc->bc = malloc(bc->bc_size);
-    
-    bc_stat(bc, ast->root);
-    bc_hlt();
-    
+
+    bc->err_info = malloc(256);
+    bc->err_len = 0;
+
+    if (bc_stat(bc, ast->root)) {
+        return 1;
+    }
+
+    bc_hlt();    
     return 0;
 }
