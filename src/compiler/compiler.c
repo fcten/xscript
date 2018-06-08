@@ -267,6 +267,77 @@ static int bc_expr_binary(lgx_bc_t *bc, int op, lgx_val_t *e, lgx_val_t *e1, lgx
     }
 }
 
+static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
+    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_WHILE_STATEMENT) {
+        node = node->parent;
+    }
+    return node;
+}
+
+static lgx_ast_node_t *jmp_find_loop_or_switch(lgx_ast_node_t *node) {
+    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_WHILE_STATEMENT && node->type != SWITCH_CASE_STATEMENT) {
+        node = node->parent;
+    }
+    return node;
+}
+
+static int jmp_add(lgx_ast_node_t *node) {
+    lgx_ast_node_t *loop = NULL;
+    if (node->type == CONTINUE_STATEMENT) {
+        loop = jmp_find_loop(node);
+    } else if (node->type == BREAK_STATEMENT) {
+        loop = jmp_find_loop_or_switch(node);
+    }
+    if (!loop) {
+        return 1;
+    }
+
+    // 初始化
+    if (!loop->u.jmps) {
+        loop->u.jmps = malloc(sizeof(lgx_ast_node_list_t));
+        if (loop->u.jmps) {
+            lgx_list_init(&loop->u.jmps->head);
+            loop->u.jmps->node = NULL;
+        } else {
+            return 1;
+        }
+    }
+
+    lgx_ast_node_list_t *n = malloc(sizeof(lgx_ast_node_list_t));
+    if (n) {
+        n->node = node;
+        lgx_list_init(&n->head);
+        lgx_list_add_tail(&n->head, &loop->u.jmps->head);
+
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned end) {
+    if (node->type != FOR_STATEMENT &&
+        node->type != WHILE_STATEMENT && 
+        node->type != DO_WHILE_STATEMENT &&
+        node->type != SWITCH_CASE_STATEMENT) {
+        return 1;
+    }
+
+    lgx_ast_node_list_t *n;
+    lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
+        if (n->node->type == BREAK_STATEMENT) {
+            bc_set(bc, n->node->u.pos, I1(OP_JMPI, end));
+        } else if (n->node->type == CONTINUE_STATEMENT) {
+            bc_set(bc, n->node->u.pos, I1(OP_JMPI, start));
+        } else {
+            // error
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -407,7 +478,7 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             break;
         case WHILE_STATEMENT:{
-            unsigned pos1 = bc->bc_top; // 循环起始位置
+            unsigned start = bc->bc_top; // 循环起始位置
             lgx_val_t e;
             bc_expr(bc, node->child[0], &e);
 
@@ -417,25 +488,27 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 } else {
                     bc_stat(bc, node->child[1]);
                     // 写入无条件跳转
-                    bc_jmpi(pos1);
+                    bc_jmpi(start);
                 }
             } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
-                unsigned pos2 = bc->bc_top; // 循环跳出指令位置
+                unsigned pos = bc->bc_top; // 循环跳出指令位置
                 bc_test(e.v.l, 0);
                 reg_free(bc, &e);
 
                 bc_stat(bc, node->child[1]);
                 // 写入无条件跳转
-                bc_jmpi(pos1);
+                bc_jmpi(start);
                 // 更新条件跳转
-                bc_set(bc, pos2, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
             } else {
                 // error
             }
+
+            jmp_fix(bc, node, start, bc->bc_top);
             break;
         }
         case DO_WHILE_STATEMENT:{
-            unsigned pos1 = bc->bc_top; // 循环起始位置
+            unsigned start = bc->bc_top; // 循环起始位置
 
             bc_stat(bc, node->child[0]);
 
@@ -447,28 +520,39 @@ static void bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     break;
                 } else {
                     // 写入无条件跳转
-                    bc_jmpi(pos1);
+                    bc_jmpi(start);
                 }
             } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
-                unsigned pos2 = bc->bc_top;
+                unsigned pos = bc->bc_top;
                 bc_test(e.v.l, 0);
-                bc_jmpi(pos1);
+                bc_jmpi(start);
                 reg_free(bc, &e);
 
-                bc_set(bc, pos2, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
             } else {
                 // error
             }
+
+            jmp_fix(bc, node, start, bc->bc_top);
             break;
         }
         case CONTINUE_STATEMENT:
-
+            // 只能出现在循环语句中
+            if (jmp_add(node)) {
+                // error
+                break;
+            }
+            node->u.pos = bc->bc_top;
+            bc_jmpi(0);
             break;
-        case BREAK_STATEMENT: // break 只应该出现在块级作用域中
-            //bc_scope_delete(bc);
-
-            // 写入跳转指令
-            // 保存指令位置以便未来更新跳转地址
+        case BREAK_STATEMENT:
+            // 只能出现在循环语句和 switch 语句中
+            if (jmp_add(node)) {
+                // error
+                break;
+            }
+            node->u.pos = bc->bc_top;
+            bc_jmpi(0);
             break;
         case SWITCH_CASE_STATEMENT:
 

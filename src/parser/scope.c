@@ -3,7 +3,7 @@
 #include "scope.h"
 
 static lgx_ast_node_t* find_scope(lgx_ast_node_t *node) {
-    while (node->type != BLOCK_STATEMENT) {
+    while (node && node->type != BLOCK_STATEMENT) {
         node = node->parent;
     }
     return node;

@@ -38,6 +38,11 @@ enum {
     FALSE_TOKEN
 };
 
+typedef struct lgx_ast_node_list_s {
+    lgx_list_t head;
+    struct lgx_ast_node_s *node;
+} lgx_ast_node_list_t;
+
 typedef struct lgx_ast_node_s {
     unsigned short type;
     struct lgx_ast_node_s* parent;
@@ -48,6 +53,14 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 EXPRESSION 时，用于保存 EXPRESSION 的类型
         unsigned short op;
+
+        // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
+        // 当节点类型为 SWITCH_CASE_STATEMENT 时，保存 break 语句出现的位置
+        // 当节点类型为 FUNCTION_DECLARATION 时，保存 return 语句出现的位置
+        lgx_ast_node_list_t *jmps;
+
+        // 当节点类型为 BREAK_STATEMENT、CONTINUE_STATEMENT、RETURN_STATEMENT 时，用于保存语句在字节码中对于的位置
+        unsigned pos;
     } u;
 
     int children;          // 子节点数量
