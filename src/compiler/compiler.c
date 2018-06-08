@@ -351,6 +351,10 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
         return 1;
     }
 
+    if (!node->u.jmps) {
+        return 0;
+    }
+
     lgx_ast_node_list_t *n;
     lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
         if (n->node->type == BREAK_STATEMENT) {
