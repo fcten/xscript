@@ -349,7 +349,6 @@ int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
         case '|': return lgx_op_or(ret, left, right);
         case TK_AND: return lgx_op_land(ret, left, right);
         case TK_OR: return lgx_op_lor(ret, left, right);
-        case TK_CALL:
         case TK_INDEX:
         case TK_ATTR:
         default:

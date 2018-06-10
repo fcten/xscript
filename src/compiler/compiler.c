@@ -278,7 +278,6 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '|': return 1;
         case TK_AND: return 1;
         case TK_OR: return 1;
-        case TK_CALL:
         case TK_INDEX:
         case TK_ATTR:
         default:
@@ -425,6 +424,9 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             }
+            break;
+        }
+        case CALL_EXPRESSION:{
             break;
         }
         default:

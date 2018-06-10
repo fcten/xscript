@@ -18,11 +18,14 @@ void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
 void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 
-lgx_ast_node_t* ast_node_new(int n) {
+lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, int n) {
     lgx_ast_node_t* node = calloc(1, sizeof(lgx_ast_node_t) + n * sizeof(lgx_ast_node_t*));
     // TODO ERROR CHECK
     node->children = 0;
     node->size = n;
+
+    node->line = ast->cur_line;
+
     return node;
 }
 
@@ -31,6 +34,8 @@ lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast) {
 
     node->tk_start = ast->cur_start;
     node->tk_length = ast->cur_length;
+
+    node->line = ast->cur_line;
     
     return node;
 }
@@ -104,12 +109,12 @@ void ast_parse_id_token(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* param_list = ast_node_new(128);
+    lgx_ast_node_t* param_list = ast_node_new(ast, 128);
     param_list->type = FUNCTION_DECL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
     while (1) {
-        lgx_ast_node_t* variable_declaration = ast_node_new(2);
+        lgx_ast_node_t* variable_declaration = ast_node_new(ast, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
         ast_node_append_child(param_list, variable_declaration);
 
@@ -140,7 +145,7 @@ void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* param_list = ast_node_new(128);
+    lgx_ast_node_t* param_list = ast_node_new(ast, 128);
     param_list->type = FUNCTION_CALL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
@@ -150,7 +155,7 @@ void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         if (ast->cur_token == '=') {
             ast_step(ast);
 
-            lgx_ast_node_t* assign_statement = ast_node_new(2);
+            lgx_ast_node_t* assign_statement = ast_node_new(ast, 2);
             assign_statement->type = ASSIGNMENT_STATEMENT;
             assign_statement->parent = parent;
             ast_node_append_child(assign_statement, parent->child[parent->children-1]);
@@ -199,7 +204,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return;
         }
 
-        binary_expression = ast_node_new(2);
+        binary_expression = ast_node_new(ast, 2);
         binary_expression->type = BINARY_EXPRESSION;
         binary_expression->parent = parent;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
@@ -231,7 +236,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case '(':
                 // 函数调用操作符
-                binary_expression->u.op = TK_CALL;
+                binary_expression->type = CALL_EXPRESSION;
                 ast_step(ast);
 
                 ast_parse_call_parameter(ast, binary_expression);
@@ -330,7 +335,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         case '~': // 按位取反运算符
         case '-': // 负号运算符
             // 单目运算符
-            unary_expression = ast_node_new(1);
+            unary_expression = ast_node_new(ast, 1);
             unary_expression->type = UNARY_EXPRESSION;
             unary_expression->u.op = ast->cur_token;
             ast_node_append_child(parent, unary_expression);
@@ -346,7 +351,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
     int p = ast_operator_precedence(ast->cur_token);
     lgx_ast_node_t* binary_expression;
     while (p >= 0 && p < precedence) {
-        binary_expression = ast_node_new(2);
+        binary_expression = ast_node_new(ast, 2);
         binary_expression->type = BINARY_EXPRESSION;
         binary_expression->parent = parent;
         binary_expression->u.op = ast->cur_token;
@@ -371,7 +376,7 @@ void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* block_statement = ast_node_new(128);
+    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
     block_statement->type = BLOCK_STATEMENT;
     // 创建新的作用域
     block_statement->u.symbols = malloc(sizeof(lgx_hash_t));
@@ -395,7 +400,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* if_statement = ast_node_new(3);
+    lgx_ast_node_t* if_statement = ast_node_new(ast, 3);
     if_statement->type = IF_STATEMENT;
     ast_node_append_child(parent, if_statement);
 
@@ -432,7 +437,7 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* while_statement = ast_node_new(2);
+    lgx_ast_node_t* while_statement = ast_node_new(ast, 2);
     while_statement->type = WHILE_STATEMENT;
     ast_node_append_child(parent, while_statement);
 
@@ -457,7 +462,7 @@ void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* do_statement = ast_node_new(2);
+    lgx_ast_node_t* do_statement = ast_node_new(ast, 2);
     do_statement->type = DO_WHILE_STATEMENT;
     ast_node_append_child(parent, do_statement);
 
@@ -488,7 +493,7 @@ void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_break_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* break_statement = ast_node_new(0);
+    lgx_ast_node_t* break_statement = ast_node_new(ast, 0);
     break_statement->type = BREAK_STATEMENT;
     ast_node_append_child(parent, break_statement);
 
@@ -497,7 +502,7 @@ void ast_parse_break_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_continue_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* continue_statement = ast_node_new(0);
+    lgx_ast_node_t* continue_statement = ast_node_new(ast, 0);
     continue_statement->type = CONTINUE_STATEMENT;
     ast_node_append_child(parent, continue_statement);
 
@@ -510,7 +515,7 @@ void ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* return_statement = ast_node_new(1);
+    lgx_ast_node_t* return_statement = ast_node_new(ast, 1);
     return_statement->type = RETURN_STATEMENT;;
     ast_node_append_child(parent, return_statement);
 
@@ -527,7 +532,7 @@ void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* echo_statement = ast_node_new(1);
+    lgx_ast_node_t* echo_statement = ast_node_new(ast, 1);
     echo_statement->type = ECHO_STATEMENT;;
     ast_node_append_child(parent, echo_statement);
 
@@ -538,7 +543,7 @@ void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* assign_statement = ast_node_new(2);
+    lgx_ast_node_t* assign_statement = ast_node_new(ast, 2);
     assign_statement->type = ASSIGNMENT_STATEMENT;
     ast_node_append_child(parent, assign_statement);
     
@@ -602,6 +607,10 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_parse_variable_declaration(ast, parent);
                 break;
             case TK_FUNCTION:
+                if (parent->parent) {
+                    ast_error(ast, "[Error] [Line:%d] functions can only be defined in top-level scope\n", ast->cur_line);
+                    return;
+                }
                 ast_parse_function_declaration(ast, parent);
                 break;
             default:
@@ -617,7 +626,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     while (1) {
-        variable_declaration = ast_node_new(2);
+        variable_declaration = ast_node_new(ast, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
         ast_node_append_child(parent, variable_declaration);
 
@@ -664,7 +673,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* function_declaration = ast_node_new(3);
+    lgx_ast_node_t* function_declaration = ast_node_new(ast, 3);
     function_declaration->type = FUNCTION_DECLARATION;
     ast_node_append_child(parent, function_declaration);
 
@@ -723,7 +732,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 int lgx_ast_parser(lgx_ast_t* ast) {
-    ast->root = ast_node_new(128);
+    ast->root = ast_node_new(ast, 128);
     ast->root->type = BLOCK_STATEMENT;
 
     // 全局作用域
@@ -821,6 +830,7 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "CONDITIONAL_EXPRESSION");
             break;
         case BINARY_EXPRESSION:
+        case CALL_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
             lgx_ast_print(node->child[0], indent+2);
             printf("%*s%d\n", indent, "", node->u.op);
