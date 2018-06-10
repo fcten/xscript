@@ -22,43 +22,6 @@ int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
     return 0;
 }
 
-void lgx_vardump(lgx_val_t* v) {
-    switch (v->type) {
-        case T_UNDEFINED:
-            printf("undefined\n");
-            break;
-        case T_UNINITIALIZED:
-            printf("uninitialized\n");
-            break;
-        case T_LONG:
-            printf("%lld\n", v->v.l);
-            break;
-        case T_DOUBLE:
-            printf("%f\n", v->v.d);
-            break;
-        case T_STRING:
-            printf("\"string\"\n");
-            break;
-        case T_ARRAY:
-            printf("[array]\n");
-            break;
-        case T_OBJECT:
-            printf("{object}\n");
-            break;
-        case T_RESOURCE:
-            printf("<resource>\n");
-            break;
-        case T_REDERENCE:
-            lgx_vardump(v->v.ref);
-            break;
-        case T_FUNCTION:
-            printf("function\n");
-            break;
-        default:
-            printf("error\n");
-    }
-}
-
 #define R(r)  (vm->stack[vm->stack_top + r])
 #define C(r)  (vm->constant[r])
 
@@ -420,14 +383,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_NOP: break;
             case OP_HLT: return 0;
             case OP_ECHO:{
-                switch (R(PA(i)).type) {
-                    case T_LONG:
-                        printf("[R:%d] [INT] %lld\n", PA(i), R(PA(i)).v.l);
-                        break;
-                    case T_DOUBLE:
-                        printf("[R:%d] [FLOAT] %f\n", PA(i), R(PA(i)).v.d);
-                        break;
-                }
+                lgx_val_print(&R(PA(i)));
                 break;
             }
             default:

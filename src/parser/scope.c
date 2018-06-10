@@ -16,6 +16,7 @@ void lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_ref_t *s) {
     lgx_hash_node_t n;
     n.k.type = T_STRING;
     n.k.v.str = lgx_str_new(s->buffer,s->length);
+    n.v.type = T_UNINITIALIZED;
 
     lgx_hash_set(cur->u.symbols, &n);
 }

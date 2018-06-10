@@ -50,4 +50,6 @@ typedef struct {
     lgx_val_t *v;
 } lgx_val_list_t;
 
+void lgx_val_print(lgx_val_t *v);
+
 #endif // LGX_VAR_H

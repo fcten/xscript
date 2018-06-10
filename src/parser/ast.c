@@ -113,6 +113,11 @@ void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     param_list->type = FUNCTION_DECL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
+    if (ast->cur_token == ')') {
+        // 参数为空
+        return;
+    }
+
     while (1) {
         lgx_ast_node_t* variable_declaration = ast_node_new(ast, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
@@ -128,7 +133,7 @@ void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
             return;
         } else {
-            ast_parse_expression(ast, variable_declaration);
+            ast_parse_id_token(ast, variable_declaration);
         }
         
         if (ast->cur_token == '=') {

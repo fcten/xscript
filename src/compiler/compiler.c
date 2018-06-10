@@ -669,8 +669,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         // Declaration
         case FUNCTION_DECLARATION:{
+            unsigned start = bc->bc_top; // 函数起始位置
+            bc_jmpi(0);
+
+
+            bc_set(bc, start, I1(OP_JMPI, bc->bc_top));
+            
             // 执行一次赋值操作
-               
+            
             break;
         }
         default:
