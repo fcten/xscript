@@ -29,6 +29,7 @@ static void reg_push(lgx_bc_t *bc, unsigned char i) {
 }
 
 static unsigned char reg_pop(lgx_bc_t *bc) {
+    // TODO 限制变量数量
     bc->reg_top --;
     return bc->regs[bc->reg_top];
 }
@@ -661,9 +662,13 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 } else {
                     // todo 常量表读取
                 }
-            } else {
+            } else if (e1.type == T_IDENTIFIER) {
+                bc_mov(e0.v.l, e1.v.l);
+            } else if (e1.type == T_REGISTER) {
                 reg_free(bc, &e1);
                 bc_set_pa(bc, bc->bc_top-1, e0.v.l);
+            } else {
+                return 1;
             }
             break;
         }
@@ -674,7 +679,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
 
             bc_set(bc, start, I1(OP_JMPI, bc->bc_top));
-            
+
             // 执行一次赋值操作
             
             break;
