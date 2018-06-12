@@ -21,34 +21,36 @@ void lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_ref_t *s) {
     lgx_hash_set(cur->u.symbols, &n);
 }
 
-// 查找作用域链上的所有变量
-lgx_val_t* lgx_scope_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
-    lgx_val_t v;
-    v.type = T_STRING;
-    v.v.str = lgx_str_new(s->buffer,s->length);
-
-    lgx_ast_node_t *cur = find_scope(node);
-    while (1) {
-        int i = lgx_hash_get(cur->u.symbols, &v);
-        if (i >= 0) {
-            return &cur->u.symbols->table[i].v;
-        } else {
-            if (cur->parent) {
-                cur = find_scope(cur->parent);
-            } else {
-                return NULL;
-            }
-        }
-    }
-}
-
-// 查找当前作用域上的变量
+// 查找局部变量
 lgx_val_t* lgx_scope_local_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
     lgx_val_t v;
     v.type = T_STRING;
     v.v.str = lgx_str_new(s->buffer,s->length);
 
     lgx_ast_node_t *cur = find_scope(node);
+    while (cur->parent) {
+        int i = lgx_hash_get(cur->u.symbols, &v);
+        if (i >= 0) {
+            return &cur->u.symbols->table[i].v;
+        } else {
+            cur = find_scope(cur->parent);
+        }
+    }
+
+    return NULL;
+}
+
+// 查找全局变量
+lgx_val_t* lgx_scope_global_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
+    lgx_val_t v;
+    v.type = T_STRING;
+    v.v.str = lgx_str_new(s->buffer,s->length);
+
+    lgx_ast_node_t *cur = find_scope(node);
+    while (cur->parent) {
+        cur = find_scope(cur->parent);
+    }
+
     int i = lgx_hash_get(cur->u.symbols, &v);
     if (i >= 0) {
         return &cur->u.symbols->table[i].v;

@@ -103,8 +103,9 @@ static void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa) {
 #define bc_echo(a)       bc_append(bc, I1(OP_ECHO, a))
 #define bc_hlt(a)        bc_append(bc, I0(OP_HLT))
 
-#define is_instant8(e) ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 255)
+#define is_instant8(e)  ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 255)
 #define is_instant16(e) ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 65535)
+#define is_register(e)  ((e)->type == T_REGISTER || (e)->type == T_LOCAL || (e)->type == T_GLOBAL)
 
 static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
@@ -112,17 +113,25 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node)->tk_start;
     s.length = ((lgx_ast_node_token_t *)node)->tk_length;
-    // todo 非局部变量需要特殊处理
-    v = lgx_scope_val_get(node, &s);
+
+    v = lgx_scope_local_val_get(node, &s);
     if (v) {
-        expr->type = T_IDENTIFIER;
+        expr->type = T_LOCAL;
         expr->v.l = v->u.reg;
 
         return 0;
-    } else {
-        bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
-        return 1;
     }
+
+    v = lgx_scope_global_val_get(node, &s);
+    if (v) {
+        expr->type = T_GLOBAL;
+        expr->v.l = v->u.reg;
+
+        return 0;
+    }
+
+    bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
+    return 1;
 }
 
 static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
@@ -172,7 +181,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_addi(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_add(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -183,7 +192,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_subi(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_sub(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -194,7 +203,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_muli(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_mul(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -205,7 +214,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_divi(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_div(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -222,7 +231,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_gti(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_lt(e->v.l, e2->v.l, e1->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -233,7 +242,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_lti(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_lt(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -244,7 +253,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_gei(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_le(e->v.l, e2->v.l, e1->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -255,7 +264,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_lei(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_le(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -266,7 +275,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             if (is_instant8(e2)) {
                 return bc_eqi(e->v.l, e1->v.l, e2->v.l);
             } else {
-                if (e2->type == T_REGISTER || e2->type == T_IDENTIFIER) {
+                if (is_register(e2)) {
                     return bc_eq(e->v.l, e1->v.l, e2->v.l);
                 } else {
                     // todo 从常量表中读取
@@ -399,7 +408,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                 if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
                     return 1;
                 }
-            } else if (e1.type == T_REGISTER || e1.type == T_IDENTIFIER) {
+            } else if (is_register(&e1)) {
                 if (bc_expr_binary(bc, node, e, &e1, &e2)) {
                     return 1;
                 }
@@ -474,7 +483,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                 }
-            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+            } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top; // 跳出指令位置
                 bc_test(e.v.l, 0);
                 reg_free(bc, &e);
@@ -505,7 +514,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                 }
-            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+            } else if (is_register(&e)) {
                 unsigned pos1 = bc->bc_top; // 跳转指令位置
                 bc_test(e.v.l, 0);
                 reg_free(bc, &e);
@@ -548,7 +557,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     // 写入无条件跳转
                     bc_jmpi(start);
                 }
-            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+            } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top; // 循环跳出指令位置
                 bc_test(e.v.l, 0);
                 reg_free(bc, &e);
@@ -586,7 +595,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     // 写入无条件跳转
                     bc_jmpi(start);
                 }
-            } else if (e.type == T_IDENTIFIER || e.type == T_REGISTER) {
+            } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top;
                 bc_test(e.v.l, 0);
                 bc_jmpi(start);
@@ -662,7 +671,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 } else {
                     // todo 常量表读取
                 }
-            } else if (e1.type == T_IDENTIFIER) {
+            } else if (e1.type == T_LOCAL || e1.type == T_GLOBAL) {
                 bc_mov(e0.v.l, e1.v.l);
             } else if (e1.type == T_REGISTER) {
                 reg_free(bc, &e1);

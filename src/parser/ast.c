@@ -655,7 +655,9 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
 
-        if (lgx_scope_local_val_get(variable_declaration, &s) == NULL) {
+        if (parent->parent && lgx_scope_local_val_get(variable_declaration, &s) == NULL) {
+            lgx_scope_val_add(variable_declaration, &s);
+        } else if (parent->parent == NULL && lgx_scope_global_val_get(variable_declaration, &s) == NULL) {
             lgx_scope_val_add(variable_declaration, &s);
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
@@ -728,7 +730,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     s.buffer = (unsigned char *)n->tk_start;
     s.length = n->tk_length;
 
-    if (lgx_scope_local_val_get(function_declaration, &s) == NULL) {
+    if (parent->parent == NULL && lgx_scope_global_val_get(function_declaration, &s) == NULL) {
         lgx_scope_val_add(function_declaration, &s);
     } else {
         ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
