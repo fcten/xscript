@@ -76,13 +76,13 @@ static void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa) {
 #define bc_divi(a, b, c) bc_append(bc, I3(OP_DIVI, a, b, c))
 #define bc_neg(a, b)     bc_append(bc, I2(OP_NEG, a, b))
 
-#define bc_shl(a, b)     bc_append(bc, I2(OP_SHL, a, b))
-#define bc_shli(a, b)    bc_append(bc, I2(OP_SHLI, a, b))
-#define bc_shr(a, b)     bc_append(bc, I2(OP_SHR, a, b))
-#define bc_shri(a, b)    bc_append(bc, I2(OP_SHRI, a, b))
-#define bc_and(a, b)     bc_append(bc, I2(OP_AND, a, b))
-#define bc_or(a, b)      bc_append(bc, I2(OP_OR, a, b))
-#define bc_xor(a, b)     bc_append(bc, I2(OP_XOR, a, b))
+#define bc_shl(a, b, c)  bc_append(bc, I3(OP_SHL, a, b, c))
+#define bc_shli(a, b, c) bc_append(bc, I3(OP_SHLI, a, b, c))
+#define bc_shr(a, b, c)  bc_append(bc, I3(OP_SHR, a, b, c))
+#define bc_shri(a, b, c) bc_append(bc, I3(OP_SHRI, a, b, c))
+#define bc_and(a, b, c)  bc_append(bc, I3(OP_AND, a, b, c))
+#define bc_or(a, b, c)   bc_append(bc, I3(OP_OR, a, b, c))
+#define bc_xor(a, b, c)  bc_append(bc, I3(OP_XOR, a, b, c))
 #define bc_not(a, b)     bc_append(bc, I2(OP_NOT, a, b))
 
 #define bc_eq(a, b, c)   bc_append(bc, I3(OP_EQ, a, b, c))
@@ -224,9 +224,27 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '%':
             return 1;
         case TK_SHL:
-            return 1;
+            if (is_instant8(e2)) {
+                return bc_shli(e->v.l, e1->v.l, e2->v.l);
+            } else {
+                if (is_register(e2)) {
+                    return bc_shl(e->v.l, e1->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
         case TK_SHR:
-            return 1;
+            if (is_instant8(e2)) {
+                return bc_shri(e->v.l, e1->v.l, e2->v.l);
+            } else {
+                if (is_register(e2)) {
+                    return bc_shr(e->v.l, e1->v.l, e2->v.l);
+                } else {
+                    // todo 从常量表中读取
+                    return 1;
+                }
+            }
         case '>':
             if (is_instant8(e2)) {
                 return bc_gti(e->v.l, e1->v.l, e2->v.l);
