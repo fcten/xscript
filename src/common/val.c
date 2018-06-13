@@ -7,9 +7,6 @@ void lgx_val_print(lgx_val_t *v) {
         case T_UNDEFINED:
             printf("<UNDEFINED>\n");
             break;
-        case T_UNINITIALIZED:
-            printf("<UNINITIALIZED>\n");
-            break;
         case T_LONG:
             printf("<INT> %lld\n", v->v.l);
             break;

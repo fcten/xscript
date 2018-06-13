@@ -12,16 +12,15 @@ typedef void lgx_ref_t;
 
 enum {
     T_UNDEFINED = 0,// 变量尚未定义
-    T_UNINITIALIZED,// 变量尚未初始化
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数
     T_BOOL,
+    T_REDERENCE,
     T_STRING,
     T_ARRAY,
     T_OBJECT,
-    T_RESOURCE,
-    T_REDERENCE,
     T_FUNCTION,
+    T_RESOURCE,
     // 寄存器类型，仅在编译时使用
     T_REGISTER,     // 临时寄存器
     T_LOCAL,        // 局部变量
