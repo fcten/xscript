@@ -20,11 +20,15 @@ enum {
     T_ARRAY,
     T_OBJECT,
     T_FUNCTION,
-    T_RESOURCE,
-    // 寄存器类型，仅在编译时使用
-    T_REGISTER,     // 临时寄存器
-    T_LOCAL,        // 局部变量
-    T_GLOBAL        // 全局变量
+    T_RESOURCE
+};
+
+// 寄存器类型
+enum {
+    R_NOT = 0,  // 不是寄存器
+    R_TEMP,     // 临时寄存器
+    R_LOCAL,    // 局部变量
+    R_GLOBAL    // 全局变量
 };
 
 typedef struct {
@@ -40,8 +44,10 @@ typedef struct {
     } v;
     unsigned type:4;
     union {
-        lgx_str_ref_t name; // 变量名称
-        unsigned char reg;  // 分配的寄存器
+        struct { // 变量所使用的寄存器类型，仅在编译时使用
+            unsigned type:4;
+            unsigned char reg;
+        } reg;
     } u;
 } lgx_val_t;
 
@@ -49,6 +55,8 @@ typedef struct {
     lgx_list_t head;
     lgx_val_t *v;
 } lgx_val_list_t;
+
+const char *lgx_val_typeof(lgx_val_t *v);
 
 void lgx_val_print(lgx_val_t *v);
 

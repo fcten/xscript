@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../parser/scope.h"
-#include "../common/bytecode.h"
 #include "../common/val.h"
 #include "../common/operator.h"
 #include "compiler.h"
@@ -35,77 +35,14 @@ static unsigned char reg_pop(lgx_bc_t *bc) {
 }
 
 static void reg_free(lgx_bc_t *bc, lgx_val_t *e) {
-    if (e->type == T_REGISTER) {
-        reg_push(bc, e->v.l);
+    if (e->u.reg.type == R_TEMP) {
+        reg_push(bc, e->u.reg.reg);
+        e->type = 0;
+        e->v.l = 0;
+        e->u.reg.type = 0;
+        e->u.reg.reg = 0;
     }
 }
-
-static int bc_append(lgx_bc_t *bc, unsigned i) {
-    if (bc->bc_top >= bc->bc_size) {
-        bc->bc_size *= 2;
-        bc->bc = realloc(bc->bc, bc->bc_size);
-    }
-
-    bc->bc[bc->bc_top] = i;
-    bc->bc_top ++;
-
-    return 0;
-}
-
-static void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i) {
-    bc->bc[pos] = i;
-}
-
-static void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa) {
-    bc->bc[pos] &= 0xFFFF00FF;
-    bc->bc[pos] |= pa << 8;
-}
-
-#define bc_nop()         bc_append(bc, I0(OP_NOP))
-
-#define bc_mov(a, b)     bc_append(bc, I2(OP_MOV, a, b))
-#define bc_movi(a, b)    bc_append(bc, I2(OP_MOVI, a, b))
-
-#define bc_add(a, b, c)  bc_append(bc, I3(OP_ADD, a, b, c))
-#define bc_sub(a, b, c)  bc_append(bc, I3(OP_SUB, a, b, c))
-#define bc_mul(a, b, c)  bc_append(bc, I3(OP_MUL, a, b, c))
-#define bc_div(a, b, c)  bc_append(bc, I3(OP_DIV, a, b, c))
-#define bc_addi(a, b, c) bc_append(bc, I3(OP_ADDI, a, b, c))
-#define bc_subi(a, b, c) bc_append(bc, I3(OP_SUBI, a, b, c))
-#define bc_muli(a, b, c) bc_append(bc, I3(OP_MULI, a, b, c))
-#define bc_divi(a, b, c) bc_append(bc, I3(OP_DIVI, a, b, c))
-#define bc_neg(a, b)     bc_append(bc, I2(OP_NEG, a, b))
-
-#define bc_shl(a, b, c)  bc_append(bc, I3(OP_SHL, a, b, c))
-#define bc_shli(a, b, c) bc_append(bc, I3(OP_SHLI, a, b, c))
-#define bc_shr(a, b, c)  bc_append(bc, I3(OP_SHR, a, b, c))
-#define bc_shri(a, b, c) bc_append(bc, I3(OP_SHRI, a, b, c))
-#define bc_and(a, b, c)  bc_append(bc, I3(OP_AND, a, b, c))
-#define bc_or(a, b, c)   bc_append(bc, I3(OP_OR, a, b, c))
-#define bc_xor(a, b, c)  bc_append(bc, I3(OP_XOR, a, b, c))
-#define bc_not(a, b)     bc_append(bc, I2(OP_NOT, a, b))
-
-#define bc_eq(a, b, c)   bc_append(bc, I3(OP_EQ, a, b, c))
-#define bc_le(a, b, c)   bc_append(bc, I3(OP_LE, a, b, c))
-#define bc_lt(a, b, c)   bc_append(bc, I3(OP_LT, a, b, c))
-#define bc_eqi(a, b, c)  bc_append(bc, I3(OP_EQI, a, b, c))
-#define bc_gti(a, b, c)  bc_append(bc, I3(OP_GTI, a, b, c))
-#define bc_gei(a, b, c)  bc_append(bc, I3(OP_GEI, a, b, c))
-#define bc_lti(a, b, c)  bc_append(bc, I3(OP_LTI, a, b, c))
-#define bc_lei(a, b, c)  bc_append(bc, I3(OP_LEI, a, b, c))
-#define bc_land(a, b, c) bc_append(bc, I3(OP_LAND, a, b, c))
-#define bc_lor(a, b, c)  bc_append(bc, I3(OP_LOR, a, b, c))
-#define bc_lnot(a, b)    bc_append(bc, I2(OP_LNOT, a, b))
-
-#define bc_test(a, b)    bc_append(bc, I2(OP_TEST, a, b))
-#define bc_jmpi(a)       bc_append(bc, I1(OP_JMPI, a))
-
-#define bc_echo(a)       bc_append(bc, I1(OP_ECHO, a))
-#define bc_hlt(a)        bc_append(bc, I0(OP_HLT))
-
-#define is_instant8(e)  ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 255)
-#define is_instant16(e) ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 65535)
-#define is_register(e)  ((e)->type == T_REGISTER || (e)->type == T_LOCAL || (e)->type == T_GLOBAL)
 
 static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
@@ -116,16 +53,14 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     v = lgx_scope_local_val_get(node, &s);
     if (v) {
-        expr->type = T_LOCAL;
-        expr->v.l = v->u.reg;
+        *expr = *v;
 
         return 0;
     }
 
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
-        expr->type = T_GLOBAL;
-        expr->v.l = v->u.reg;
+        *expr = *v;
 
         return 0;
     }
@@ -139,6 +74,9 @@ static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_LONG;
     expr->v.l = atol(((lgx_ast_node_token_t *)node)->tk_start);
 
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
+
     return 0;
 }
 
@@ -146,6 +84,9 @@ static int bc_true(lgx_ast_node_t *node, lgx_val_t *expr) {
     // TODO 处理浮点数
     expr->type = T_BOOL;
     expr->v.l = 1;
+
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
 
     return 0;
 }
@@ -155,151 +96,45 @@ static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_BOOL;
     expr->v.l = 0;
 
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
+
     return 0;
 }
 
 static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1) {
-    e->type = T_REGISTER;
-    e->v.l = reg_pop(bc);
+    e->u.reg.type = R_TEMP;
+    e->u.reg.reg = reg_pop(bc);
 
     switch (node->u.op) {
-        case '!': return bc_lnot(e->v.l, e1->v.l);
-        case '~': return bc_not(e->v.l, e1->v.l);
-        case '-': return bc_neg(e->v.l, e1->v.l);
+        case '!': bc_lnot(bc, e, e1); break;
+        case '~': bc_not(bc, e, e1); break;
+        case '-': bc_neg(bc, e, e1); break;
         default:
             bc_error(bc, "[Error] [Line:%d] unknown unary operation\n", node->line);
             return 1;
     }
+
+    return 0;
 }
 
 static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1, lgx_val_t *e2) {
-    e->type = T_REGISTER;
-    e->v.l = reg_pop(bc);
+    e->u.reg.type = R_TEMP;
+    e->u.reg.reg = reg_pop(bc);
 
     switch (node->u.op) {
-        case '+':
-            if (is_instant8(e2)) {
-                return bc_addi(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_add(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '-':
-            if (is_instant8(e2)) {
-                return bc_subi(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_sub(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '*':
-            if (is_instant8(e2)) {
-                return bc_muli(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_mul(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '/':
-            if (is_instant8(e2)) {
-                return bc_divi(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_div(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '%':
-            return 1;
-        case TK_SHL:
-            if (is_instant8(e2)) {
-                return bc_shli(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_shl(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case TK_SHR:
-            if (is_instant8(e2)) {
-                return bc_shri(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_shr(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '>':
-            if (is_instant8(e2)) {
-                return bc_gti(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_lt(e->v.l, e2->v.l, e1->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case '<':
-            if (is_instant8(e2)) {
-                return bc_lti(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_lt(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case TK_GE:
-            if (is_instant8(e2)) {
-                return bc_gei(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_le(e->v.l, e2->v.l, e1->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case TK_LE:
-            if (is_instant8(e2)) {
-                return bc_lei(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_le(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
-        case TK_EQ:
-            if (is_instant8(e2)) {
-                return bc_eqi(e->v.l, e1->v.l, e2->v.l);
-            } else {
-                if (is_register(e2)) {
-                    return bc_eq(e->v.l, e1->v.l, e2->v.l);
-                } else {
-                    // todo 从常量表中读取
-                    return 1;
-                }
-            }
+        case '+': bc_add(bc, e, e1, e2); break;
+        case '-': bc_sub(bc, e, e1, e2); break;
+        case '*': bc_mul(bc, e, e1, e2); break;
+        case '/': bc_div(bc, e, e1, e2); break;
+        case '%': return 1;
+        case TK_SHL: bc_shl(bc, e, e1, e2); break;
+        case TK_SHR: bc_shr(bc, e, e1, e2); break;
+        case '>': return 1;
+        case '<': return 1;
+        case TK_GE: return 1;
+        case TK_LE: return 1;
+        case TK_EQ: return 1;
         case TK_NE: return 1;
         case '&': return 1;
         case '^': return 1;
@@ -313,6 +148,8 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             bc_error(bc, "[Error] [Line:%d] unknown binary operation\n", node->line);
             return 1;
     }
+
+    return 0;
 }
 
 static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
@@ -385,12 +222,91 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
     lgx_ast_node_list_t *n;
     lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
         if (n->node->type == BREAK_STATEMENT) {
-            bc_set(bc, n->node->u.pos, I1(OP_JMPI, end));
+            bc_set_pe(bc, n->node->u.pos, end);
         } else if (n->node->type == CONTINUE_STATEMENT) {
-            bc_set(bc, n->node->u.pos, I1(OP_JMPI, start));
+            bc_set_pe(bc, n->node->u.pos, start);
         } else {
             // error
             bc_error(bc, "[Error] [Line:%d] break or continue statement expected\n", n->node->line);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e);
+
+static int bc_expr_binary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    bc_error(bc, "[Error] [Line:%d] undo features\n", node->line);
+    return 1;
+}
+
+static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1, e2;
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if ( !is_register(&e1) && !is_number(&e1) ) {
+        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (bc_expr(bc, node->child[1], &e2)) {
+        return 1;
+    }
+
+    if ( !is_register(&e2) && !is_number(&e2) ) {
+        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+        return 1;
+    }
+
+    if ( !is_register(&e1) && !is_register(&e2) ) {
+        if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_binary(bc, node, e, &e1, &e2)) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static int bc_expr_binary_relation(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    return bc_expr_binary_math(bc, node, e);
+}
+
+static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1, e2;
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if ( !is_register(&e1) && e1.type != T_LONG ) {
+        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (bc_expr(bc, node->child[1], &e2)) {
+        return 1;
+    }
+
+    if ( !is_register(&e2) && e2.type != T_LONG ) {
+        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+        return 1;
+    }
+
+    if ( e1.type == T_LONG && e2.type == T_LONG ) {
+        if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_binary(bc, node, e, &e1, &e2)) {
             return 1;
         }
     }
@@ -413,27 +329,42 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         case CONDITIONAL_EXPRESSION:
             break;
         case BINARY_EXPRESSION:{
-            lgx_val_t e1, e2;
-            if (bc_expr(bc, node->child[0], &e1)) {
-                return 1;
-            }
-            if (bc_expr(bc, node->child[1], &e2)) {
-                return 1;
-            }
-
-            if ( (e1.type == T_LONG || e1.type == T_DOUBLE || e1.type == T_BOOL) &&
-                (e2.type == T_LONG || e2.type == T_DOUBLE || e2.type == T_BOOL) ) {
-                if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
+            switch (node->u.op) {
+                case TK_AND:
+                case TK_OR:
+                    // 逻辑运算符 && 和 || 存在熔断特性
+                    if (bc_expr_binary_logic(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case '+':
+                case '-':
+                case '*':
+                case '/':
+                case '%':
+                    if (bc_expr_binary_math(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case TK_EQ:
+                case TK_NE:
+                case '>':
+                case '<':
+                case TK_GE:
+                case TK_LE:
+                    if (bc_expr_binary_relation(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case TK_SHL:
+                case TK_SHR:
+                    if (bc_expr_binary_bitwise(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                default:
+                    bc_error(bc, "[Error] [Line:%d] unknown operator `%c`\n", node->line, node->u.op);
                     return 1;
-                }
-            } else if (is_register(&e1)) {
-                if (bc_expr_binary(bc, node, e, &e1, &e2)) {
-                    return 1;
-                }
-            } else {
-                if (bc_expr_binary(bc, node, e, &e2, &e1)) {
-                    return 1;
-                }
             }
             break;
         }
@@ -472,7 +403,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             int i;
             // 为当前作用域的变量分配寄存器
             for(i = 0; i < node->u.symbols->table_offset; i++) {
-                node->u.symbols->table[i].v.u.reg = reg_pop(bc);
+                node->u.symbols->table[i].v.u.reg.type = R_LOCAL;
+                node->u.symbols->table[i].v.u.reg.reg = reg_pop(bc);
             }
 
             for(i = 0; i < node->children; i++) {
@@ -483,12 +415,13 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             // 释放局部变量的寄存器
             for(i = node->u.symbols->table_offset - 1; i >= 0; i--) {
-                reg_push(bc, node->u.symbols->table[i].v.u.reg);
+                reg_push(bc, node->u.symbols->table[i].v.u.reg.reg);
             }
             break;
         }
         case IF_STATEMENT:{
             lgx_val_t e;
+            memset(&e, 0, sizeof(e));
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -503,14 +436,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
             } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top; // 跳出指令位置
-                bc_test(e.v.l, 0);
+                bc_test(bc, &e, 0);
                 reg_free(bc, &e);
 
                 if (bc_stat(bc, node->child[1])) {
                     return 1;
                 }
 
-                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_set_pd(bc, pos, bc->bc_top);
             } else {
                 // error
             }
@@ -518,6 +451,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case IF_ELSE_STATEMENT:{
             lgx_val_t e;
+            memset(&e, 0, sizeof(e));
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -534,7 +468,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
             } else if (is_register(&e)) {
                 unsigned pos1 = bc->bc_top; // 跳转指令位置
-                bc_test(e.v.l, 0);
+                bc_test(bc, &e, 0);
                 reg_free(bc, &e);
 
                 if (bc_stat(bc, node->child[1])) {
@@ -542,14 +476,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
 
                 unsigned pos2 = bc->bc_top; // 跳转指令位置
-                bc_jmpi(0);
-                bc_set(bc, pos1, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_jmp(bc, 0);
+                bc_set_pe(bc, pos1, bc->bc_top);
 
                 if (bc_stat(bc, node->child[2])) {
                     return 1;
                 }
 
-                bc_set(bc, pos2, I1(OP_JMPI, bc->bc_top));
+                bc_set_pe(bc, pos2, bc->bc_top);
             } else {
                 // error
             }
@@ -561,6 +495,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case WHILE_STATEMENT:{
             unsigned start = bc->bc_top; // 循环起始位置
             lgx_val_t e;
+            memset(&e, 0, sizeof(e));
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -573,20 +508,20 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                     // 写入无条件跳转
-                    bc_jmpi(start);
+                    bc_jmp(bc, start);
                 }
             } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top; // 循环跳出指令位置
-                bc_test(e.v.l, 0);
+                bc_test(bc, &e, 0);
                 reg_free(bc, &e);
 
                 if (bc_stat(bc, node->child[1])) {
                     return 1;
                 }
                 // 写入无条件跳转
-                bc_jmpi(start);
+                bc_jmp(bc, start);
                 // 更新条件跳转
-                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_set_pd(bc, pos, bc->bc_top);
             } else {
                 // error
             }
@@ -602,6 +537,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             lgx_val_t e;
+            memset(&e, 0, sizeof(e));
             if (bc_expr(bc, node->child[1], &e)) {
                 return 1;
             }
@@ -611,15 +547,15 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     break;
                 } else {
                     // 写入无条件跳转
-                    bc_jmpi(start);
+                    bc_jmp(bc, start);
                 }
             } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top;
-                bc_test(e.v.l, 0);
-                bc_jmpi(start);
+                bc_test(bc, &e, 0);
+                bc_jmp(bc, start);
                 reg_free(bc, &e);
 
-                bc_set(bc, pos, I2(OP_TEST, e.v.l, bc->bc_top));
+                bc_set_pe(bc, pos, bc->bc_top);
             } else {
                 // error
             }
@@ -634,7 +570,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 break;
             }
             node->u.pos = bc->bc_top;
-            bc_jmpi(0);
+            bc_jmp(bc, 0);
             break;
         case BREAK_STATEMENT:
             // 只能出现在循环语句和 switch 语句中
@@ -643,7 +579,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 break;
             }
             node->u.pos = bc->bc_top;
-            bc_jmpi(0);
+            bc_jmp(bc, 0);
             break;
         case SWITCH_CASE_STATEMENT:
 
@@ -659,11 +595,12 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         case ECHO_STATEMENT:{
             lgx_val_t e;
+            memset(&e, 0, sizeof(e));
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
 
-            bc_echo(e.v.l);
+            bc_echo(bc, &e);
             reg_free(bc, &e);
             break;
         }
@@ -679,33 +616,26 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             if (bc_identifier(bc, node->child[0], &e0)) {
                 return 1;
             }
+
+            memset(&e1, 0, sizeof(e1));
             if (bc_expr(bc, node->child[1], &e1)) {
                 return 1;
             }
             
-            if (e1.type == T_LONG || e1.type == T_DOUBLE) {
-                if (is_instant16(&e1)){
-                    bc_movi(e0.v.l, e1.v.l);
-                } else {
-                    // todo 常量表读取
-                }
-            } else if (e1.type == T_LOCAL || e1.type == T_GLOBAL) {
-                bc_mov(e0.v.l, e1.v.l);
-            } else if (e1.type == T_REGISTER) {
+            if (e1.u.reg.type == R_TEMP) {
                 reg_free(bc, &e1);
-                bc_set_pa(bc, bc->bc_top-1, e0.v.l);
+                bc_set_pa(bc, bc->bc_top-1, e0.u.reg.reg);
             } else {
-                return 1;
+                bc_mov(bc, &e0, &e1);
             }
             break;
         }
         // Declaration
         case FUNCTION_DECLARATION:{
             unsigned start = bc->bc_top; // 函数起始位置
-            bc_jmpi(0);
+            bc_jmp(bc, 0);
 
-
-            bc_set(bc, start, I1(OP_JMPI, bc->bc_top));
+            bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
             
@@ -731,11 +661,12 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
 
     bc->err_info = malloc(256);
     bc->err_len = 0;
+    bc->errno = 0;
 
     if (bc_stat(bc, ast->root)) {
         return 1;
     }
 
-    bc_hlt();    
+    bc_hlt(bc);    
     return 0;
 }

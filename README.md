@@ -1,5 +1,7 @@
 # Hello World
 
+c-like programing language.
+
 ```
 echo "Hello World"
 ```

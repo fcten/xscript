@@ -7,3 +7,5 @@ echo a << b // 2048
 echo a >> b // 0
 
 echo 1-b
+
+echo 1+1
