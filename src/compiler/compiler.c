@@ -309,34 +309,23 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             break;
         case BINARY_EXPRESSION:{
             switch (node->u.op) {
-                case TK_AND:
-                case TK_OR:
+                case TK_AND: case TK_OR:
                     // 逻辑运算符 && 和 || 存在熔断特性
                     if (bc_expr_binary_logic(bc, node, e)) {
                         return 1;
                     }
                     break;
-                case '+':
-                case '-':
-                case '*':
-                case '/':
-                case '%':
+                case '+': case '-': case '*': case '/': case '%':
                     if (bc_expr_binary_math(bc, node, e)) {
                         return 1;
                     }
                     break;
-                case TK_EQ:
-                case TK_NE:
-                case '>':
-                case '<':
-                case TK_GE:
-                case TK_LE:
+                case TK_EQ: case TK_NE: case '>': case '<': case TK_GE: case TK_LE:
                     if (bc_expr_binary_relation(bc, node, e)) {
                         return 1;
                     }
                     break;
-                case TK_SHL:
-                case TK_SHR:
+                case TK_SHL: case TK_SHR: case '&': case '|': case '^':
                     if (bc_expr_binary_bitwise(bc, node, e)) {
                         return 1;
                     }
