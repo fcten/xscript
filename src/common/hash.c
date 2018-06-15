@@ -68,14 +68,14 @@ static int hash_resize(lgx_hash_t *hash) {
     return 0;
 }
 
-static int hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
-    register int ret = 0;
+static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
+    unsigned ret = 0;
     int i, length;
     
     switch (k->type) {
         case T_LONG:
         case T_DOUBLE:
-            ret = k->v.l % hash->size;
+            ret = (unsigned long long)k->v.l % hash->size;
             break;
         case T_BOOL:
             if (k->v.l) {
@@ -100,7 +100,7 @@ static int hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
 }
 
 int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
-    int k = hash_bkdr(hash, &node->k);
+    unsigned k = hash_bkdr(hash, &node->k);
     lgx_val_list_t *p;
     lgx_hash_node_t *n;
     lgx_list_for_each_entry(p, lgx_val_list_t, &hash->key[k].vl.head, head) {
@@ -122,6 +122,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
                         n->v = node->v;
                         return 0;
                     }
+                    break;
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, node->k.v.str) == 0) {
                         // key 已存在
@@ -159,7 +160,7 @@ int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
 }
 
 int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
-    int k = hash_bkdr(hash, key);
+    unsigned k = hash_bkdr(hash, key);
     lgx_val_list_t *p;
     lgx_list_for_each_entry(p, lgx_val_list_t, &hash->key[k].vl.head, head) {
         if (p->v->type == key->type) {
@@ -176,6 +177,7 @@ int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
                         // key 已存在
                         return (lgx_hash_node_t *)p->v - hash->table;
                     }
+                    break;
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, key->v.str) == 0) {
                         // key 存在

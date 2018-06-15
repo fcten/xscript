@@ -70,7 +70,10 @@ void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_ADDI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
-            // TODO 常量表
+            lgx_val_t r;
+            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_append(bc, I3(OP_ADD, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
+            reg_free(bc, &r);
         }
         return;
     }
@@ -79,7 +82,10 @@ void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
         if (is_instant8(b)) {
             bc_append(bc, I3(OP_ADDI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
-            // TODO 常量表
+            lgx_val_t r;
+            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_append(bc, I3(OP_ADD, a->u.reg.reg, c->u.reg.reg, r.u.reg.reg));
+            reg_free(bc, &r);
         }
         return;
     }
