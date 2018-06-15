@@ -1,3 +1,7 @@
+/* EXPECT
+2
+*/
+
 auto i = 0
 
 do {

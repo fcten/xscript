@@ -109,12 +109,12 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '%': return 1;
         case TK_SHL: bc_shl(bc, e, e1, e2); break;
         case TK_SHR: bc_shr(bc, e, e1, e2); break;
-        case '>': return 1;
-        case '<': return 1;
-        case TK_GE: return 1;
-        case TK_LE: return 1;
-        case TK_EQ: return 1;
-        case TK_NE: return 1;
+        case '>': bc_gt(bc, e, e1, e2); break;
+        case '<': bc_lt(bc, e, e1, e2); break;
+        case TK_GE: bc_ge(bc, e, e1, e2); break;
+        case TK_LE: bc_le(bc, e, e1, e2); break;
+        case TK_EQ: bc_eq(bc, e, e1, e2); break;
+        case TK_NE: bc_ne(bc, e, e1, e2); break;
         case '&': return 1;
         case '^': return 1;
         case '|': return 1;
@@ -445,7 +445,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 unsigned pos2 = bc->bc_top; // 跳转指令位置
                 bc_jmp(bc, 0);
-                bc_set_pe(bc, pos1, bc->bc_top);
+                bc_set_pd(bc, pos1, bc->bc_top);
 
                 if (bc_stat(bc, node->child[2])) {
                     return 1;
@@ -523,7 +523,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_jmp(bc, start);
                 reg_free(bc, &e);
 
-                bc_set_pe(bc, pos, bc->bc_top);
+                bc_set_pd(bc, pos, bc->bc_top);
             } else {
                 // error
             }
@@ -632,6 +632,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->errno = 0;
 
     if (bc_stat(bc, ast->root)) {
+        bc_error(bc, "[Error] unknown error\n");
         return 1;
     }
 

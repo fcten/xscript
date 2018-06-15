@@ -1,3 +1,7 @@
+/* EXPECT
+111
+*/
+
 auto a = 100, b = 10
 if (a > 0) {
     a = a - 1
@@ -9,4 +13,4 @@ if (b < 0) {
 } else {
     b = b + 2
 }
-echo c
+echo a + b

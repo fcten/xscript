@@ -194,6 +194,121 @@ void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos) {
     bc_append(bc, I2(OP_TEST, a->u.reg.reg, pos));
 }
 
+void bc_eq(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        if (is_instant8(c)) {
+            bc_append(bc, I3(OP_EQI, a->u.reg.reg, b->u.reg.reg, c->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    if (!is_register(b)) {
+        if (is_instant8(b)) {
+            bc_append(bc, I3(OP_EQI, a->u.reg.reg, c->u.reg.reg, b->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    bc_append(bc, I3(OP_EQ, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
+}
+
+void bc_ne(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    bc_eq(bc, a, b, c);
+    bc_lnot(bc, a, a);
+}
+
+void bc_lt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        if (is_instant8(c)) {
+            bc_append(bc, I3(OP_LTI, a->u.reg.reg, b->u.reg.reg, c->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    if (!is_register(b)) {
+        if (is_instant8(b)) {
+            bc_append(bc, I3(OP_GTI, a->u.reg.reg, c->u.reg.reg, b->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    bc_append(bc, I3(OP_LT, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
+}
+
+void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        if (is_instant8(c)) {
+            bc_append(bc, I3(OP_LEI, a->u.reg.reg, b->u.reg.reg, c->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    if (!is_register(b)) {
+        if (is_instant8(b)) {
+            bc_append(bc, I3(OP_GEI, a->u.reg.reg, c->u.reg.reg, b->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    bc_append(bc, I3(OP_LE, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
+}
+
+void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        if (is_instant8(c)) {
+            bc_append(bc, I3(OP_GTI, a->u.reg.reg, b->u.reg.reg, c->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    if (!is_register(b)) {
+        if (is_instant8(b)) {
+            bc_append(bc, I3(OP_LTI, a->u.reg.reg, c->u.reg.reg, b->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    bc_append(bc, I3(OP_LT, a->u.reg.reg, c->u.reg.reg, b->u.reg.reg));
+}
+
+void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        if (is_instant8(c)) {
+            bc_append(bc, I3(OP_GEI, a->u.reg.reg, b->u.reg.reg, c->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    if (!is_register(b)) {
+        if (is_instant8(b)) {
+            bc_append(bc, I3(OP_LEI, a->u.reg.reg, c->u.reg.reg, b->v.l));
+        } else {
+            // TODO 常量表
+        }
+        return;
+    }
+
+    bc_append(bc, I3(OP_LE, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
+}
+
 void bc_jmp(lgx_bc_t *bc, unsigned pos) {
     bc_append(bc, I1(OP_JMPI, pos));
 }

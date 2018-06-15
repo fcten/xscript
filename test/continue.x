@@ -1,3 +1,7 @@
+/* EXPECT
+18
+*/
+
 auto a = 0, b = 0
 while (a < 10) {
     a = a + 1

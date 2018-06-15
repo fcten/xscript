@@ -1,3 +1,7 @@
+/* EXPECT
+109
+*/
+
 auto a = 100
 auto b = 10
 if (a > 0) {

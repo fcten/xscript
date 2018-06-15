@@ -1,3 +1,7 @@
+/* EXPECT
+3
+*/
+
 auto a = 1
 auto b, c
 

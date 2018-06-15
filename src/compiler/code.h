@@ -43,20 +43,18 @@ void bc_xor(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 void bc_not(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 void bc_lnot(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 
+void bc_eq(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_ne(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_lt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+
 void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos);
 void bc_jmp(lgx_bc_t *bc, unsigned pos);
 
 void bc_echo(lgx_bc_t *bc, lgx_val_t *a);
 void bc_hlt(lgx_bc_t *bc);
-
-#define bc_eq(a, b, c)   bc_append(bc, I3(OP_EQ, a, b, c))
-#define bc_le(a, b, c)   bc_append(bc, I3(OP_LE, a, b, c))
-#define bc_lt(a, b, c)   bc_append(bc, I3(OP_LT, a, b, c))
-#define bc_eqi(a, b, c)  bc_append(bc, I3(OP_EQI, a, b, c))
-#define bc_gti(a, b, c)  bc_append(bc, I3(OP_GTI, a, b, c))
-#define bc_gei(a, b, c)  bc_append(bc, I3(OP_GEI, a, b, c))
-#define bc_lti(a, b, c)  bc_append(bc, I3(OP_LTI, a, b, c))
-#define bc_lei(a, b, c)  bc_append(bc, I3(OP_LEI, a, b, c))
 
 void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i);
 void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa);

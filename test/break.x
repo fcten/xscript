@@ -1,3 +1,7 @@
+/* EXPECT
+101
+*/
+
 auto a = 0
 while (true) {
     a = a + 1
