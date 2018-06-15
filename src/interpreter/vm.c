@@ -4,7 +4,7 @@
 #include "../common/bytecode.h"
 #include "vm.h"
 
-int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
+int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->stack_size = 1024;
     vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t*));
     if (!vm->stack) {
@@ -13,16 +13,18 @@ int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
 
     vm->regs = vm->stack;
 
-    vm->bc = bc;
-    vm->bc_size = bc_size;
+    vm->bc = bc->bc;
+    vm->bc_size = bc->bc_size;
     
+    vm->constant = &bc->constant;
+
     vm->pc = 0;
 
     return 0;
 }
 
 #define R(r)  (vm->regs[r])
-#define C(r)  (vm->constant[r])
+#define C(r)  (vm->constant->table[r].k)
 
 int lgx_vm_start(lgx_vm_t *vm) {
     unsigned i;

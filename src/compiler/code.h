@@ -2,31 +2,19 @@
 #define LGX_CODE_H
 
 #include "../parser/ast.h"
-
-typedef struct {
-    unsigned char regs[256];
-    unsigned char reg_top;
-    
-    // 字节码
-    unsigned *bc;
-    unsigned bc_size;
-    unsigned bc_top;
-
-    // 常量表
-    lgx_hash_t constant;
-
-    int errno;
-    char *err_info;
-    int err_len;
-} lgx_bc_t;
+#include "compiler.h"
 
 #define is_instant8(e)  ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 255)
 #define is_instant16(e) ((e)->type == T_LONG && (e)->v.l >= 0 && (e)->v.l <= 65535)
 
 #define is_number(e)    ((e)->type == T_LONG || (e)->type == T_DOUBLE)
+#define is_bool(e)    ((e)->type == T_BOOL)
 
 #define is_register(e)  ((e)->u.reg.type)
 
+void bc_nop(lgx_bc_t *bc);
+
+void bc_load(lgx_bc_t *bc, lgx_val_t *a, unsigned char c);
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 
 void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);

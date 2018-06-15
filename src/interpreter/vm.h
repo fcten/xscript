@@ -2,6 +2,7 @@
 #define LGX_VM_H
 
 #include "../common/val.h"
+#include "../compiler/compiler.h"
 
 typedef struct {
     // 字节码
@@ -16,14 +17,13 @@ typedef struct {
     lgx_val_t *regs;
 
     // 常量表
-    lgx_val_t *constant;
-    unsigned short constant_size;
+    lgx_hash_t *constant;
 
     // 程序计数
     unsigned pc;
 } lgx_vm_t;
 
-int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size);
+int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);
 int lgx_vm_start(lgx_vm_t *vm);
 
 #endif // LGX_VM_H

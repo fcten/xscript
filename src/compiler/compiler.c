@@ -8,6 +8,7 @@
 #include "../common/operator.h"
 #include "register.h"
 #include "compiler.h"
+#include "code.h"
 
 void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     va_list   args;
@@ -630,6 +631,8 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->err_info = malloc(256);
     bc->err_len = 0;
     bc->errno = 0;
+
+    lgx_hash_init(&bc->constant, 32);
 
     if (bc_stat(bc, ast->root)) {
         bc_error(bc, "[Error] unknown error\n");

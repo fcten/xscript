@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "../common/bytecode.h"
+#include "constant.h"
 #include "code.h"
 
 static int bc_append(lgx_bc_t *bc, unsigned i) {
@@ -35,14 +36,21 @@ void bc_set_pe(lgx_bc_t *bc, unsigned pos, unsigned pe) {
     bc->bc[pos] |= pe << 8;
 }
 
-#define bc_nop()         bc_append(bc, I0(OP_NOP))
+
+void bc_nop(lgx_bc_t *bc) {
+    bc_append(bc, I0(OP_NOP));
+}
+
+void bc_load(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
+    bc_append(bc, I2(OP_LOAD, a->u.reg.reg, c));
+}
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     if (!is_register(b)) {
         if (is_instant16(b)) {
             bc_append(bc, I2(OP_MOVI, a->u.reg.reg, b->v.l));
         } else {
-            // TODO 常量表
+            bc_load(bc, a, const_get(bc, b));
         }
         return;
     }

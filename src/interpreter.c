@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     lgx_bc_print(bc.bc, bc.bc_top);
 
     lgx_vm_t vm;
-    lgx_vm_init(&vm, bc.bc, bc.bc_top);
+    lgx_vm_init(&vm, &bc);
 //    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
     lgx_vm_start(&vm);
 
