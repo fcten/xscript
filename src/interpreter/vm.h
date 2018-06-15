@@ -8,10 +8,8 @@ typedef struct {
     unsigned *bc;
     unsigned bc_size;
 
-    // 运行时堆栈
-    lgx_val_t *stack;
-    unsigned short stack_size;
-    unsigned short stack_top;
+    // 寄存器组
+    lgx_val_t *regs;
 
     // 常量表
     lgx_val_t *constant;
