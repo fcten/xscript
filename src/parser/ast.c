@@ -652,7 +652,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         // 创建变量加入作用域
         lgx_str_ref_t s;
-        s.buffer = (unsigned char *)((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
+        s.buffer = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
 
         if (parent->parent && lgx_scope_local_val_get(variable_declaration, &s) == NULL) {
@@ -709,7 +709,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_token_t *n;
     for (int i = 0; i < function_declaration->child[1]->children; i++) {
         n = (lgx_ast_node_token_t *)function_declaration->child[1]->child[i]->child[0];
-        s.buffer = (unsigned char *)n->tk_start;
+        s.buffer = n->tk_start;
         s.length = n->tk_length;
 
         if (lgx_scope_local_val_get(function_declaration->child[2], &s) == NULL) {
@@ -722,7 +722,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     // 创建函数加入作用域
     n = (lgx_ast_node_token_t *)function_declaration->child[0];
-    s.buffer = (unsigned char *)n->tk_start;
+    s.buffer = n->tk_start;
     s.length = n->tk_length;
 
     if (parent->parent == NULL && lgx_scope_global_val_get(function_declaration, &s) == NULL) {

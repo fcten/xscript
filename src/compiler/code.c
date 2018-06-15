@@ -3,6 +3,7 @@
 
 #include "../common/bytecode.h"
 #include "constant.h"
+#include "register.h"
 #include "code.h"
 
 static int bc_append(lgx_bc_t *bc, unsigned i) {
@@ -36,13 +37,19 @@ void bc_set_pe(lgx_bc_t *bc, unsigned pos, unsigned pe) {
     bc->bc[pos] |= pe << 8;
 }
 
-
 void bc_nop(lgx_bc_t *bc) {
     bc_append(bc, I0(OP_NOP));
 }
 
 void bc_load(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
     bc_append(bc, I2(OP_LOAD, a->u.reg.reg, c));
+}
+
+static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
+    a->u.reg.type = R_TEMP;
+    a->u.reg.reg = reg_pop(bc);
+    
+    bc_load(bc, a, c);
 }
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
@@ -323,7 +330,10 @@ void bc_jmp(lgx_bc_t *bc, unsigned pos) {
 
 void bc_echo(lgx_bc_t *bc, lgx_val_t *a) {
     if (!is_register(a)) {
-        // TODO 常量表
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, const_get(bc, a));
+        bc_append(bc, I1(OP_ECHO, r.u.reg.reg));
+        reg_free(bc, &r);
     } else {
         bc_append(bc, I1(OP_ECHO, a->u.reg.reg));
     }

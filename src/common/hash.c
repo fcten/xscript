@@ -75,8 +75,14 @@ static int hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     switch (k->type) {
         case T_LONG:
         case T_DOUBLE:
-        case T_BOOL:
             ret = k->v.l % hash->size;
+            break;
+        case T_BOOL:
+            if (k->v.l) {
+                return 1;
+            } else {
+                return 0;
+            }
             break;
         case T_STRING:
             length = k->v.str->length;
@@ -102,7 +108,6 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
             switch (p->v->type) {
                 case T_LONG:
                 case T_DOUBLE:
-                case T_BOOL:
                     if (p->v->v.l == node->k.v.l) {
                         // key 已存在
                         n = (lgx_hash_node_t *)p->v;
@@ -110,6 +115,13 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
                         return 0;
                     }
                     break;
+                case T_BOOL:
+                    if ( (p->v->v.l && node->k.v.l) || (!p->v->v.l && !node->k.v.l) ) {
+                        // key 已存在
+                        n = (lgx_hash_node_t *)p->v;
+                        n->v = node->v;
+                        return 0;
+                    }
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, node->k.v.str) == 0) {
                         // key 已存在
@@ -154,12 +166,16 @@ int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
             switch (p->v->type) {
                 case T_LONG:
                 case T_DOUBLE:
-                case T_BOOL:
                     if (p->v->v.l == key->v.l) {
                         // key 存在
                         return (lgx_hash_node_t *)p->v - hash->table;
                     }
                     break;
+                case T_BOOL:
+                    if ( (p->v->v.l && key->v.l) || (!p->v->v.l && !key->v.l) ) {
+                        // key 已存在
+                        return (lgx_hash_node_t *)p->v - hash->table;
+                    }
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, key->v.str) == 0) {
                         // key 存在

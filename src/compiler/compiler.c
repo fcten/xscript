@@ -28,7 +28,7 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
     lgx_str_ref_t s;
 
-    s.buffer = (unsigned char *)((lgx_ast_node_token_t *)node)->tk_start;
+    s.buffer = ((lgx_ast_node_token_t *)node)->tk_start;
     s.length = ((lgx_ast_node_token_t *)node)->tk_length;
 
     v = lgx_scope_local_val_get(node, &s);
@@ -75,6 +75,16 @@ static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
     // TODO 处理浮点数
     expr->type = T_BOOL;
     expr->v.l = 0;
+
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
+
+    return 0;
+}
+
+static int bc_string(lgx_ast_node_t *node, lgx_val_t *expr) {
+    expr->type = T_STRING;
+    expr->v.str = lgx_str_new(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
@@ -297,6 +307,7 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
+            return bc_string(node, e);
             break;
         case NUMBER_TOKEN:
             return bc_number(node, e);

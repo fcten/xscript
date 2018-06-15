@@ -4,15 +4,15 @@
 typedef struct {
     unsigned size;
     unsigned length;
-    unsigned char buffer[];
+    char buffer[];
 } lgx_str_t;
 
 typedef struct {
     unsigned length;
-    unsigned char *buffer;
+char *buffer;
 } lgx_str_ref_t;
 
-lgx_str_t* lgx_str_new(unsigned char *str, unsigned len);
+lgx_str_t* lgx_str_new(char *str, unsigned len);
 
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
 
