@@ -86,6 +86,7 @@ int ast_next(lgx_ast_t* ast) {
         switch (token) {
             case TK_SPACE:
             case TK_COMMENT:
+            case TK_EOL:
                 break;
             default:
                 return token;
@@ -529,7 +530,6 @@ void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     
     switch (ast->cur_token) {
         case ';':
-        case TK_EOL:
             ast_step(ast);
         default:
             ast_parse_expression(ast, return_statement);
@@ -562,31 +562,24 @@ void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     ast_parse_expression(ast, assign_statement);
-
-    if (ast->cur_token != ';' && ast->cur_token != TK_EOL) {
-        ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
-        return;
-    }
-    ast_step(ast);
 }
 
 void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while(1) {
         switch (ast->cur_token) {
             case ';':
-            case TK_EOL:
                 // null statement
                 ast_step(ast);
                 break;
             case TK_IF:
                 ast_parse_if_statement(ast, parent);
-                break;
+                continue;
             case TK_FOR:
                 ast_parse_for_statement(ast, parent);
-                break;
+                continue;
             case TK_WHILE:
                 ast_parse_while_statement(ast, parent);
-                break;
+                continue;
             case TK_DO:
                 ast_parse_do_statement(ast, parent);
                 break;
@@ -598,7 +591,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case TK_SWITCH:
                 ast_parse_switch_statement(ast, parent);
-                break;
+                continue;
             case TK_RETURN:
                 ast_parse_return_statement(ast, parent);
                 break;
@@ -617,10 +610,17 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     return;
                 }
                 ast_parse_function_declaration(ast, parent);
-                break;
+                continue;
             default:
                 return;
         }
+
+        if (ast->cur_token != ';') {
+            // 语句应当以分号结尾。以花括号结尾的语句可以省略分号。
+            ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
+            return;
+        }
+        ast_step(ast);
     }
 }
 
@@ -668,12 +668,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case ',':
                 ast_step(ast);
                 break;
-            case ';':
-            case TK_EOL:
-                ast_step(ast);
-                return;
             default:
-                ast_error(ast, "[Error] [Line:%d] ,' or ';' expected\n", ast->cur_line);
                 return;
         }
     }

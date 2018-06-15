@@ -5,11 +5,14 @@
 #include "vm.h"
 
 int lgx_vm_init(lgx_vm_t *vm, unsigned *bc, unsigned bc_size) {
-    vm->regs = calloc(256, sizeof(lgx_val_t*));
-    if (!vm->regs) {
+    vm->stack_size = 1024;
+    vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t*));
+    if (!vm->stack) {
         return 1;
     }
-    
+
+    vm->regs = vm->stack;
+
     vm->bc = bc;
     vm->bc_size = bc_size;
     
