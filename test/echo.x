@@ -12,5 +12,13 @@ auto a = 33, b = true;
 echo a > 1;
 echo !b;
 
-echo 1 - 3000;
 echo -23;
+
+echo 1 + a; // 34
+echo a + 1; // 34
+echo 1 - a; // -32
+echo a - 1; // 32
+echo 3 * a; // 99
+echo a * 3; // 99
+echo 3 / a; // 0
+echo a / 3; // 11
