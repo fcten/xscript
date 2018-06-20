@@ -53,6 +53,12 @@ static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
 }
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    if (b->u.reg.type == R_TEMP) {
+        reg_free(bc, b);
+        bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
+        return;
+    }
+
     if (!is_register(b)) {
         if (is_instant16(b)) {
             bc_append(bc, I2(OP_MOVI, a->u.reg.reg, b->v.l));

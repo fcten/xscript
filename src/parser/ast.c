@@ -158,18 +158,6 @@ void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while (1) {
         ast_parse_expression(ast, param_list);
 
-        if (ast->cur_token == '=') {
-            ast_step(ast);
-
-            lgx_ast_node_t* assign_statement = ast_node_new(ast, 2);
-            assign_statement->type = ASSIGNMENT_STATEMENT;
-            assign_statement->parent = parent;
-            ast_node_append_child(assign_statement, parent->child[parent->children-1]);
-            parent->child[parent->children-1] = assign_statement;
-
-            ast_parse_expression(ast, assign_statement);
-        }
-
         if (ast->cur_token != ',') {
             return;
         }
@@ -328,6 +316,8 @@ int ast_operator_precedence(int token) {
             return 12;
         case '?':
             return 13;
+        case '=':
+            return 14;
         default:
             return -1;
     }
@@ -547,19 +537,10 @@ void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, echo_statement);
 }
 
-void ast_parse_assign_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* assign_statement = ast_node_new(ast, 2);
-    assign_statement->type = ASSIGNMENT_STATEMENT;
+void ast_parse_expression_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* assign_statement = ast_node_new(ast, 1);
+    assign_statement->type = EXPRESSION_STATEMENT;
     ast_node_append_child(parent, assign_statement);
-    
-    // ast->cur_token == TK_ID
-    ast_parse_id_token(ast, assign_statement);
-    
-    if (ast->cur_token != '=') {
-        ast_error(ast, "[Error] [Line:%d] '=' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        return;
-    }
-    ast_step(ast);
     
     ast_parse_expression(ast, assign_statement);
 }
@@ -599,7 +580,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_parse_echo_statement(ast, parent);
                 break;
             case TK_ID:
-                ast_parse_assign_statement(ast, parent);
+                ast_parse_expression_statement(ast, parent);
                 break;
             case TK_AUTO:
                 ast_parse_variable_declaration(ast, parent);
@@ -644,6 +625,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
         
         if (ast->cur_token == '=') {
+            variable_declaration->u.op = ast->cur_token;
             ast_step(ast);
             
             //printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
@@ -809,8 +791,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             if (node->child[0])
                 lgx_ast_print(node->child[0], indent+2);
             break;
-        case ASSIGNMENT_STATEMENT:
-            printf("%*s%s\n", indent, "", "ASSIGNMENT_STATEMENT");
+        case EXPRESSION_STATEMENT:
+            printf("%*s%s\n", indent, "", "EXPRESSION_STATEMENT");
+            lgx_ast_print(node->child[0], indent+2);
             break;
         // Declaration
         case FUNCTION_DECLARATION:

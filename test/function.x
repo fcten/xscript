@@ -1,4 +1,8 @@
 
+function print() {
+    echo "hello world";
+}
+print();
 
 auto a = 1, b = 2;
 
@@ -8,3 +12,12 @@ function add (auto c, auto d) {
 }
 
 echo add(a, b + 1);
+
+function fib(auto n) {
+    if (n < 2) {
+        return n;
+    }
+    return fib(n-1) + fib(n-2);
+}
+
+echo fib(50);

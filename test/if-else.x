@@ -2,7 +2,7 @@
 111
 */
 
-auto a = 100, b = 10
+auto a = 100, b = 10;
 if (a > 0) {
     a = a - 1;
 } else {

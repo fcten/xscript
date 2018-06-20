@@ -131,6 +131,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '|': return 1;
         case TK_AND: return 1;
         case TK_OR: return 1;
+        case '=': bc_mov(bc, e1, e2); break;
         case TK_INDEX:
         case TK_ATTR:
         default:
@@ -304,6 +305,31 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
     return 0;
 }
 
+static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1, e2;
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if ( e1.u.reg.type == R_LOCAL ) {
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
+
+        if (bc_expr_binary(bc, node, e, &e1, &e2)) {
+            return 1;
+        }
+    } else if (e1.u.reg.type == R_GLOBAL) {
+        // TODO 全局变量赋值
+    } else {
+        bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
+        return 1;
+    }
+
+    return 0;
+}
+
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -339,6 +365,11 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     break;
                 case TK_SHL: case TK_SHR: case '&': case '|': case '^':
                     if (bc_expr_binary_bitwise(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case '=':
+                    if (bc_expr_binary_assignment(bc, node, e)) {
                         return 1;
                     }
                     break;
@@ -585,28 +616,21 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case VARIABLE_DECLARATION:{
-            if (!node->child[1]) {
-                break;
+            if (node->child[1]) {
+                // 如果声明中附带初始化，则执行一次赋值操作
+                lgx_val_t e;
+                memset(&e, 0, sizeof(e));
+                if (bc_expr_binary_assignment(bc, node, &e)) {
+                    return 1;
+                }
             }
-            // 如果声明中附带初始化，则执行一次赋值操作
+            break;
         }
-        case ASSIGNMENT_STATEMENT: {
-            lgx_val_t e0, e1;
-
-            if (bc_identifier(bc, node->child[0], &e0)) {
+        case EXPRESSION_STATEMENT: {
+            lgx_val_t e;
+            memset(&e, 0, sizeof(e));
+            if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
-            }
-
-            memset(&e1, 0, sizeof(e1));
-            if (bc_expr(bc, node->child[1], &e1)) {
-                return 1;
-            }
-            
-            if (e1.u.reg.type == R_TEMP) {
-                reg_free(bc, &e1);
-                bc_set_pa(bc, bc->bc_top-1, e0.u.reg.reg);
-            } else {
-                bc_mov(bc, &e0, &e1);
             }
             break;
         }

@@ -16,8 +16,8 @@ enum {
     BREAK_STATEMENT,
     SWITCH_CASE_STATEMENT,
     RETURN_STATEMENT,
-    ASSIGNMENT_STATEMENT,
     ECHO_STATEMENT,
+    EXPRESSION_STATEMENT,
     // Declaration
     FUNCTION_DECLARATION,
     VARIABLE_DECLARATION,
@@ -56,6 +56,7 @@ typedef struct lgx_ast_node_s {
         lgx_hash_t *symbols;
 
         // 当节点类型为 EXPRESSION 时，用于保存 EXPRESSION 的类型
+        // 当节点类型为 DECLARATION 时，值为 '='
         unsigned short op;
 
         // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
