@@ -230,7 +230,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case '(':
                 // 函数调用操作符
-                binary_expression->type = CALL_EXPRESSION;
+                binary_expression->u.op = TK_CALL;
                 ast_step(ast);
 
                 ast_parse_call_parameter(ast, binary_expression);
@@ -805,7 +805,6 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "CONDITIONAL_EXPRESSION");
             break;
         case BINARY_EXPRESSION:
-        case CALL_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
             lgx_ast_print(node->child[0], indent+2);
             printf("%*s%d\n", indent, "", node->u.op);

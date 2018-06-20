@@ -373,6 +373,15 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                         return 1;
                     }
                     break;
+                case TK_CALL:
+                    // TODO
+                    break;
+                case TK_INDEX:
+                    // TODO
+                    break;
+                case TK_ATTR:
+                    // TODO
+                    break;
                 default:
                     bc_error(bc, "[Error] [Line:%d] unknown operator `%c`\n", node->line, node->u.op);
                     return 1;
@@ -394,9 +403,6 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             }
-            break;
-        }
-        case CALL_EXPRESSION:{
             break;
         }
         default:

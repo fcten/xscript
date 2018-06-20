@@ -17,11 +17,12 @@ enum {
     TK_SHL,     // 268 <<
     TK_SHR,     // 269 >>
     TK_COMMENT, // 270 代码注释
-    TK_ATTR,    // 271 对象属性访问
-    TK_INDEX,   // 272 数组下标访问
-    TK_ARRAY,   // 273 数组常量
-    TK_OBJECT,  // 274 对象常量
-    TK_PTR,     // 275 -> 指针运算符
+    TK_ATTR,    // 271 对象属性访问运算符
+    TK_INDEX,   // 272 数组下标访问运算符
+    TK_CALL,    // 273 函数调用运算符
+    TK_ARRAY,   // 274 数组常量
+    TK_OBJECT,  // 275 对象常量
+    TK_PTR,     // 276 -> 指针运算符
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,
