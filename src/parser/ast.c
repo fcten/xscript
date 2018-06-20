@@ -363,12 +363,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
 }
 
 void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    int c = parent->children;
     ast_parse_sub_expression(ast, parent, 15);
-
-    if (c == parent->children) {
-        ast_error(ast, "[Error] [Line:%d] expression expected\n", ast->cur_line);
-    }
 }
 
 void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -517,13 +512,8 @@ void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     // ast->cur_token == TK_RETURN
     ast_step(ast);
-    
-    switch (ast->cur_token) {
-        case ';':
-            ast_step(ast);
-        default:
-            ast_parse_expression(ast, return_statement);
-    }
+
+    ast_parse_expression(ast, return_statement);
 }
 
 void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -598,7 +588,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         if (ast->cur_token != ';') {
             // 语句应当以分号结尾。以花括号结尾的语句可以省略分号。
-            ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
+            ast_error(ast, "[Error] [Line:%d] ';' expected near '%.*s'\n", ast->cur_line, ast->cur_length, ast->cur_start);
             return;
         }
         ast_step(ast);

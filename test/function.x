@@ -1,4 +1,3 @@
-
 function print() {
     echo "hello world";
 }
