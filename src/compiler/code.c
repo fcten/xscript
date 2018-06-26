@@ -235,10 +235,6 @@ void bc_lnot(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     bc_append(bc, I2(OP_LNOT, a->u.reg.reg, b->u.reg.reg));
 }
 
-void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos) {
-    bc_append(bc, I2(OP_TEST, a->u.reg.reg, pos));
-}
-
 void bc_eq(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     if (!is_register(c)) {
         if (is_instant8(c)) {
@@ -382,6 +378,18 @@ void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     }
 
     bc_append(bc, I3(OP_LE, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
+}
+
+void bc_call(lgx_bc_t *bc, lgx_val_t *a) {
+    bc_append(bc, I1(OP_CALL, a->u.reg.reg));
+}
+
+void bc_ret(lgx_bc_t *bc) {
+    bc_append(bc, I0(OP_RET));
+}
+
+void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos) {
+    bc_append(bc, I2(OP_TEST, a->u.reg.reg, pos));
 }
 
 void bc_jmp(lgx_bc_t *bc, unsigned pos) {

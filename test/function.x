@@ -1,6 +1,7 @@
 function print() {
     echo "hello world";
 }
+echo print;
 print();
 
 auto a = 1, b = 2;

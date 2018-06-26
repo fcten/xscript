@@ -6,10 +6,10 @@ typedef struct {
 } lgx_fun_args_t;
 
 typedef struct {
+    // 参数列表
     lgx_fun_args_t args;
-    union {
-        struct lgx_ast_node_s* ast;
-    } u;
+    // 入口地址
+    unsigned addr;
 } lgx_fun_t;
 
 // [0] 返回值   <--- top

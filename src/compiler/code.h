@@ -38,6 +38,9 @@ void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 
+void bc_call(lgx_bc_t *bc, lgx_val_t *a);
+void bc_ret(lgx_bc_t *bc);
+
 void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos);
 void bc_jmp(lgx_bc_t *bc, unsigned pos);
 

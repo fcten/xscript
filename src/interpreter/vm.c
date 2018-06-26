@@ -366,7 +366,19 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL:{
+                if (R(PA(i)).type == T_FUNCTION) {
+                    unsigned addr = R(PA(i)).v.fun->addr;
 
+                    //
+                    vm->regs = vm->regs + 256;
+                    // 写入返回地址
+                    vm->regs[-1].v.l = vm->pc;
+
+                    // 跳转到函数入口
+                    vm->pc = addr;
+                } else {
+                    // 类型转换
+                }
                 break;
             }
             case OP_CALI:{
@@ -374,7 +386,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_RET:{
-
+                // 跳转到调用点
+                vm->pc = vm->regs[-1].v.l;
+                // 释放栈
+                vm->regs = vm->regs - 256;
                 break;
             }
             case OP_LOAD:{

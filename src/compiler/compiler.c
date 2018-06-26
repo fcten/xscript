@@ -9,6 +9,7 @@
 #include "register.h"
 #include "compiler.h"
 #include "code.h"
+#include "constant.h"
 
 void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     va_list   args;
@@ -330,6 +331,21 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
     return 0;
 }
 
+static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    // TODO 传入参数
+    lgx_val_t e1;
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    bc_call(bc, &e1);
+
+    // TODO 返回值
+
+    return 0;
+}
+
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -374,7 +390,9 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 case TK_CALL:
-                    // TODO
+                    if (bc_expr_binary_call(bc, node, e)) {
+                        return 1;
+                    }
                     break;
                 case TK_INDEX:
                     // TODO
@@ -642,12 +660,29 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         // Declaration
         case FUNCTION_DECLARATION:{
-            unsigned start = bc->bc_top; // 函数起始位置
+            unsigned start = bc->bc_top;
             bc_jmp(bc, 0);
+
+            lgx_val_t *e;
+            lgx_str_ref_t s;
+            s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
+            s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
+            e = lgx_scope_global_val_get(node, &s);
+
+            e->type = T_FUNCTION;
+            e->v.fun = lgx_fun_new();
+            e->v.fun->addr = bc->bc_top;
+
+            // TODO 重置寄存器分配
+            bc_stat(bc, node->child[2]);
+            // TODO 恢复寄存器分配
+
+            bc_ret(bc);
 
             bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
+            bc_load(bc, e, const_get(bc, e));
             
             break;
         }

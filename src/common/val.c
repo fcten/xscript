@@ -62,7 +62,7 @@ void lgx_val_print(lgx_val_t *v) {
             printf("<%s>\n", lgx_val_typeof(v));
             break;
         case T_FUNCTION:
-            printf("<%s>\n", lgx_val_typeof(v));
+            printf("<%s> addr:%u\n", lgx_val_typeof(v), v->v.fun->addr);
             break;
         default:
             printf("<error-type>\n");

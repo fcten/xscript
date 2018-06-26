@@ -91,6 +91,9 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
             }
             ret %= hash->size;
             break;
+        case T_FUNCTION:
+            ret = k->v.fun->addr % hash->size;
+            break;
         default:
             // error
             ret = 0;
@@ -131,6 +134,13 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
                         return 0;
                     }
                     break;
+                case T_FUNCTION:
+                    if (p->v->v.fun == node->k.v.fun) {
+                        // key 已存在
+                        n = (lgx_hash_node_t *)p->v;
+                        n->v = node->v;
+                        return 0;
+                    }
                 default:
                     // key 类型不合法
                     return 1;
@@ -180,6 +190,12 @@ int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
                     break;
                 case T_STRING:
                     if (lgx_str_cmp(p->v->v.str, key->v.str) == 0) {
+                        // key 存在
+                        return (lgx_hash_node_t *)p->v - hash->table;
+                    }
+                    break;
+                case T_FUNCTION:
+                    if (p->v->v.fun == key->v.fun) {
                         // key 存在
                         return (lgx_hash_node_t *)p->v - hash->table;
                     }
