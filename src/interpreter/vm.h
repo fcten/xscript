@@ -6,10 +6,12 @@
 
 typedef struct {
     lgx_list_t head;
+    // 当前执行的函数
+    lgx_fun_t *fun;
     // 返回地址
     unsigned ret;
     // 返回值
-    lgx_val_t ret_val;
+    unsigned char ret_idx;
     // 参数与局部变量
     unsigned short size;
     lgx_val_t stack[];

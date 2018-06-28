@@ -104,7 +104,6 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
                 printf("%4d %4s R[%d]\n", n, op_name[OP(i)], PA(i));
                 break;
             case OP_JMPI:
-            case OP_CALI:
                 printf("%4d %4s %d\n", n, op_name[OP(i)], PE(i));
                 break;
             case OP_RET:

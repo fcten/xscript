@@ -389,28 +389,24 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_CALL:{
                 if (R(PA(i)).type == T_FUNCTION) {
-                    unsigned addr = R(PA(i)).v.fun->addr;
+                    lgx_fun_t *fun = R(PA(i)).v.fun;
 
                     // TODO 根据需要决定栈大小
                     lgx_stack_t *s = stack_new(vm, 256);
                     if (!s) {
                         return 1;
                     }
-
+                    s->fun = fun;
                     // 写入返回地址
                     s->ret = vm->pc;
 
                     // TODO 写入参数
 
                     // 跳转到函数入口
-                    vm->pc = addr;
+                    vm->pc = s->fun->addr;
                 } else {
                     // 类型转换
                 }
-                break;
-            }
-            case OP_CALI:{
-
                 break;
             }
             case OP_RET:{
@@ -418,7 +414,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 // 跳转到调用点
                 vm->pc = s->ret;
                 // TODO 写入返回值
-                
+
                 // 释放栈
                 stack_delete(vm);
                 break;

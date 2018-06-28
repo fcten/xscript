@@ -56,9 +56,8 @@ enum {
     OP_JMPI,  // JMPI L
 
     // 函数调用
-    OP_CALL,  // CALL R
-    OP_CALI,  // CALI L
-    OP_RET,   // RET
+    OP_CALL,  // CALL R R R
+    OP_RET,   // RET  R
 
     // 终止执行
     OP_HLT,
