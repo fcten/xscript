@@ -1,8 +1,10 @@
 function print() {
     echo "hello world";
 }
-echo print;
+
+echo "call print";
 print();
+echo "call end";
 
 auto a = 1, b = 2;
 

@@ -4,14 +4,36 @@
 #include "../common/bytecode.h"
 #include "vm.h"
 
+lgx_stack_t *stack_new(lgx_vm_t *vm, unsigned size) {
+    lgx_stack_t *s = calloc(1, sizeof(lgx_stack_t) + size * sizeof(lgx_val_t*));
+    if (!s) {
+        return NULL;
+    }
+    s->size = size;
+    lgx_list_init(&s->head);
+
+    lgx_list_add_tail(&s->head, &vm->stack.head);
+    vm->regs = s->stack;
+
+    return s;
+}
+
+lgx_stack_t *stack_get(lgx_vm_t *vm) {
+    return lgx_list_last_entry(&vm->stack.head, lgx_stack_t, head);
+}
+
+void stack_delete(lgx_vm_t *vm) {
+    lgx_stack_t *s = stack_get(vm);
+    lgx_list_del(&s->head);
+}
+
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    vm->stack_size = 1024;
-    vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t*));
-    if (!vm->stack) {
+    lgx_list_init(&vm->stack.head);
+
+    lgx_stack_t *s = stack_new(vm, 256);
+    if (!s) {
         return 1;
     }
-
-    vm->regs = vm->stack;
 
     vm->bc = bc->bc;
     vm->bc_size = bc->bc_size;
@@ -369,10 +391,16 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 if (R(PA(i)).type == T_FUNCTION) {
                     unsigned addr = R(PA(i)).v.fun->addr;
 
-                    //
-                    vm->regs = vm->regs + 256;
+                    // TODO 根据需要决定栈大小
+                    lgx_stack_t *s = stack_new(vm, 256);
+                    if (!s) {
+                        return 1;
+                    }
+
                     // 写入返回地址
-                    vm->regs[-1].v.l = vm->pc;
+                    s->ret = vm->pc;
+
+                    // TODO 写入参数
 
                     // 跳转到函数入口
                     vm->pc = addr;
@@ -386,10 +414,13 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_RET:{
+                lgx_stack_t *s = stack_get(vm);
                 // 跳转到调用点
-                vm->pc = vm->regs[-1].v.l;
+                vm->pc = s->ret;
+                // TODO 写入返回值
+                
                 // 释放栈
-                vm->regs = vm->regs - 256;
+                stack_delete(vm);
                 break;
             }
             case OP_LOAD:{

@@ -5,13 +5,23 @@
 #include "../compiler/compiler.h"
 
 typedef struct {
+    lgx_list_t head;
+    // 返回地址
+    unsigned ret;
+    // 返回值
+    lgx_val_t ret_val;
+    // 参数与局部变量
+    unsigned short size;
+    lgx_val_t stack[];
+} lgx_stack_t;
+
+typedef struct {
     // 字节码
     unsigned *bc;
     unsigned bc_size;
 
     // 运行时堆栈
-    lgx_val_t *stack;
-    unsigned short stack_size;
+    lgx_stack_t stack;
 
     // 寄存器组 (指向堆栈)
     lgx_val_t *regs;
