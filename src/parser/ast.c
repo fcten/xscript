@@ -165,6 +165,30 @@ void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+void ast_parse_array_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* array = ast_node_new(ast, 128);
+    array->type = ARRAY_TOKEN;
+    ast_node_append_child(parent, array);
+
+    // ast->cur_token == '['
+    ast_step(ast);
+
+    while (1) {
+        ast_parse_expression(ast, array);
+
+        if (ast->cur_token != ',') {
+            break;
+        }
+        ast_step(ast);
+    }
+
+    if (ast->cur_token != ']') {
+        ast_error(ast, "[Error] [Line:%d] ']' expected\n", ast->cur_line);
+        return;
+    }
+    ast_step(ast);
+}
+
 // pri_expr -> ID | '(' sub_expr ')'
 void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     switch (ast->cur_token) {
@@ -245,7 +269,7 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-// bsc_expr -> NUMBER | STRING | true | false | suf_expr
+// bsc_expr -> NUMBER | STRING | ARRAY | OBJECT | true | false | suf_expr
 void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_token_t* id;
     switch (ast->cur_token) {
@@ -276,6 +300,10 @@ void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
             ast_step(ast);
+            break;
+        case '[':
+            // 数组字面量
+            ast_parse_array_expression(ast, parent);
             break;
         default:
             ast_parse_suf_expression(ast, parent);
@@ -832,6 +860,13 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case FALSE_TOKEN:
             printf("%*s%s\n", indent, "", "FALSE_TOKEN");
+            break;
+        case ARRAY_TOKEN:
+            printf("%*s%s\n", indent, "", "[");
+            for(i = 0; i < node->children; i++) {
+                lgx_ast_print(node->child[i], indent+2);
+            }
+            printf("%*s%s\n", indent, "", "]");
             break;
         case FUNCTION_CALL_PARAMETER:
         case FUNCTION_DECL_PARAMETER:

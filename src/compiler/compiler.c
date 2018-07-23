@@ -359,6 +359,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             return bc_true(node, e);
         case FALSE_TOKEN:
             return bc_false(node, e);
+        case ARRAY_TOKEN:
+            break;
         case CONDITIONAL_EXPRESSION:
             break;
         case BINARY_EXPRESSION:{
