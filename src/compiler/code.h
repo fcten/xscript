@@ -47,6 +47,9 @@ void bc_jmp(lgx_bc_t *bc, unsigned pos);
 void bc_echo(lgx_bc_t *bc, lgx_val_t *a);
 void bc_hlt(lgx_bc_t *bc);
 
+void bc_array_new(lgx_bc_t *bc, lgx_val_t *a);
+void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
+
 void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i);
 void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa);
 void bc_set_pd(lgx_bc_t *bc, unsigned pos, unsigned pd);

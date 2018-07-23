@@ -19,7 +19,7 @@ typedef struct {
     lgx_val_t v;
 } lgx_hash_node_t;
 
-typedef struct {
+typedef struct lgx_hash_s {
     unsigned size;
 
     // 按 hash 结果存储 key
@@ -37,5 +37,7 @@ int lgx_hash_cleanup(lgx_hash_t *hash);
 int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node);
 int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v);
 int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *k);
+
+int lgx_hash_print(lgx_hash_t *hash);
 
 #endif	/* LGX_HASH_H */

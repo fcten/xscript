@@ -410,3 +410,18 @@ void bc_echo(lgx_bc_t *bc, lgx_val_t *a) {
 void bc_hlt(lgx_bc_t *bc) {
     bc_append(bc, I0(OP_HLT));
 }
+
+void bc_array_new(lgx_bc_t *bc, lgx_val_t *a) {
+    bc_append(bc, I1(OP_ARRAY_NEW, a->u.reg.reg));
+}
+
+void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    if (!is_register(b)) {
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, const_get(bc, b));
+        bc_append(bc, I2(OP_ARRAY_ADD, a->u.reg.reg, r.u.reg.reg));
+        reg_free(bc, &r);
+    } else {
+        bc_append(bc, I2(OP_ARRAY_ADD, a->u.reg.reg, b->u.reg.reg));
+    }
+}

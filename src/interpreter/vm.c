@@ -419,6 +419,22 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 stack_delete(vm);
                 break;
             }
+            case OP_ARRAY_ADD:{
+                if (R(PA(i)).type == T_ARRAY) {
+                    lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
+                } else {
+                    // runtime error
+                }
+                break;
+            }
+            case OP_ARRAY_NEW:{
+                R(PA(i)).type = T_ARRAY;
+                R(PA(i)).v.arr = malloc(sizeof(lgx_hash_t));
+
+                lgx_hash_init(R(PA(i)).v.arr, 32);
+
+                break;
+            }
             case OP_LOAD:{
                 R(PA(i)) = C(PD(i));
                 break;
@@ -427,6 +443,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_HLT: return 0;
             case OP_ECHO:{
                 lgx_val_print(&R(PA(i)));
+                printf("\n");
                 break;
             }
             default:

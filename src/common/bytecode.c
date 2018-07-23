@@ -43,8 +43,9 @@ const char* op_name[] = {
     "JMP",
     "JMPI",
     "CALL",
-    "CALI",
     "RET",
+    "ARRAY_NEW",
+    "ARRAY_ADD",
     "HLT",
     "ECHO"
 };
@@ -89,6 +90,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_NEG:
             case OP_NOT:
             case OP_LNOT:
+            case OP_ARRAY_ADD:
                 printf("%4d %4s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
@@ -101,6 +103,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_JMP:
             case OP_CALL:
             case OP_ECHO:
+            case OP_ARRAY_NEW:
                 printf("%4d %4s R[%d]\n", n, op_name[OP(i)], PA(i));
                 break;
             case OP_JMPI:

@@ -229,6 +229,28 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
 
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e);
 
+static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    e->u.reg.type = R_TEMP;
+    e->u.reg.reg = reg_pop(bc);
+
+    bc_array_new(bc, e);
+
+    int i;
+    for(i = 0; i < node->children; i++) {
+        lgx_val_t expr;
+        bc_expr(bc, node->child[i], &expr);
+        bc_array_add(bc, e, &expr);
+        reg_free(bc, &expr);
+    }
+
+    // 由于 mov 遇到 R_TEMP 寄存器时会尝试复用前一条指令，所以提前写入一条 mov 指令占位
+    e->u.reg.type = R_LOCAL;
+    bc_mov(bc, e, e);
+    e->u.reg.type = R_TEMP;
+
+    return 0;
+}
+
 static int bc_expr_binary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     bc_error(bc, "[Error] [Line:%d] undo features\n", node->line);
     return 1;
@@ -264,6 +286,9 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
             return 1;
         }
     }
+
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
 
     return 0;
 }
@@ -303,6 +328,9 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
         }
     }
 
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+
     return 0;
 }
 
@@ -328,6 +356,9 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         return 1;
     }
 
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+
     return 0;
 }
 
@@ -343,6 +374,8 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     // TODO 返回值
 
+    reg_free(bc, &e1);
+
     return 0;
 }
 
@@ -350,7 +383,6 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
             return bc_string(node, e);
-            break;
         case NUMBER_TOKEN:
             return bc_number(node, e);
         case IDENTIFIER_TOKEN:
@@ -360,7 +392,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         case FALSE_TOKEN:
             return bc_false(node, e);
         case ARRAY_TOKEN:
-            break;
+            return bc_expr_array(bc, node, e);
         case CONDITIONAL_EXPRESSION:
             break;
         case BINARY_EXPRESSION:{
@@ -423,6 +455,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     return 1;
                 }
             }
+
+            reg_free(bc, &e1);
             break;
         }
         default:

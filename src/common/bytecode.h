@@ -59,6 +59,10 @@ enum {
     OP_CALL,  // CALL R R R
     OP_RET,   // RET  R
 
+    // 数组操作
+    OP_ARRAY_NEW, // ARRAY_NEW R
+    OP_ARRAY_ADD, // ARRAY_ADD R R
+
     // 终止执行
     OP_HLT,
 

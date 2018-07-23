@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "val.h"
+#include "hash.h"
 
 struct type {
     int type;
@@ -31,38 +32,44 @@ const char *lgx_val_typeof(lgx_val_t *v) {
 void lgx_val_print(lgx_val_t *v) {
     switch (v->type) {
         case T_UNDEFINED:
-            printf("<%s>\n", lgx_val_typeof(v));
+            printf("<%s>", lgx_val_typeof(v));
             break;
         case T_LONG:
-            printf("<%s> %lld\n", lgx_val_typeof(v), v->v.l);
+            //printf("<%s> %lld\n", lgx_val_typeof(v), v->v.l);
+            printf("%lld", v->v.l);
             break;
         case T_DOUBLE:
-            printf("<%s> %f\n", lgx_val_typeof(v), v->v.d);
+            //printf("<%s> %f\n", lgx_val_typeof(v), v->v.d);
+            printf("%f\n", v->v.d);
             break;
         case T_BOOL:
             if (v->v.l) {
-                printf("<%s> true\n", lgx_val_typeof(v));
+                //printf("<%s> true\n", lgx_val_typeof(v));
+                printf("true");
             } else {
-                printf("<%s> false\n", lgx_val_typeof(v));
+                //printf("<%s> false\n", lgx_val_typeof(v));
+                printf("false");
             }
             break;
         case T_STRING:
-            printf("<%s(%u)> \"%.*s\"\n", lgx_val_typeof(v), v->v.str->length, v->v.str->length, v->v.str->buffer);
+            //printf("<%s(%u)> \"%.*s\"\n", lgx_val_typeof(v), v->v.str->length, v->v.str->length, v->v.str->buffer);
+            printf("\"%.*s\"", v->v.str->length, v->v.str->buffer);
             break;
         case T_ARRAY:
-            printf("<%s>\n", lgx_val_typeof(v));
+            //printf("<%s>\n", lgx_val_typeof(v));
+            lgx_hash_print(v->v.arr);
             break;
         case T_OBJECT:
-            printf("<%s>\n", lgx_val_typeof(v));
+            printf("<%s>", lgx_val_typeof(v));
             break;
         case T_RESOURCE:
-            printf("<%s>\n", lgx_val_typeof(v));
+            printf("<%s>", lgx_val_typeof(v));
             break;
         case T_REDERENCE:
-            printf("<%s>\n", lgx_val_typeof(v));
+            printf("<%s>", lgx_val_typeof(v));
             break;
         case T_FUNCTION:
-            printf("<%s> addr:%u\n", lgx_val_typeof(v), v->v.fun->addr);
+            printf("<%s addr:%u>", lgx_val_typeof(v), v->v.fun->addr);
             break;
         default:
             printf("<error-type>\n");

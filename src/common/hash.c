@@ -166,7 +166,14 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
 }
 
 int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
-    return 0;
+    lgx_hash_node_t node;
+
+    node.v = *v;
+
+    node.k.type = T_DOUBLE;
+    node.k.v.l = hash->table_offset;
+
+    return lgx_hash_set(hash, &node);
 }
 
 int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
@@ -208,4 +215,21 @@ int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
     }
 
     return -1;
+}
+
+int lgx_hash_print(lgx_hash_t *hash) {
+    printf("[");
+    int i;
+    for (i = 0 ; i < hash->table_offset ; i ++) {
+        //lgx_val_print(&hash->table[i].k);
+        //printf("=");
+        lgx_val_print(&hash->table[i].v);
+        if (i < hash->table_offset - 1) {
+            printf(",");
+        }
+        //printf("\n");
+    }
+    printf("]");
+
+    return 0;
 }

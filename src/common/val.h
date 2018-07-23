@@ -5,7 +5,6 @@
 #include "str.h"
 #include "fun.h"
 
-typedef void lgx_arr_t;
 typedef void lgx_obj_t;
 typedef void lgx_res_t;
 typedef void lgx_ref_t;
@@ -35,12 +34,12 @@ typedef struct {
     union {
         long long         l; // 64 位有符号整数
         double            d; // 64 位有符号浮点数
-        lgx_str_t        *str;
-        lgx_arr_t        *arr;
-        lgx_obj_t        *obj;
-        lgx_res_t        *res;
-        lgx_ref_t        *ref;
-        lgx_fun_t        *fun;
+        lgx_str_t         *str;
+        struct lgx_hash_s *arr;
+        lgx_obj_t         *obj;
+        lgx_res_t         *res;
+        lgx_ref_t         *ref;
+        lgx_fun_t         *fun;
     } v;
     unsigned type:4;
     union {
