@@ -28,4 +28,6 @@ arr6[4] = arr4;
 
 arr6[3] = arr2;
 
+arr6[1][] = 7;
+
 echo arr6;
