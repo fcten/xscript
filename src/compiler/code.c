@@ -437,3 +437,31 @@ void bc_array_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
         bc_append(bc, I3(OP_ARRAY_GET, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
     }
 }
+
+void bc_array_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    lgx_val_t rb, rc;
+    int fb = 0, fc = 0;
+
+    rb = *b;
+    rc = *c;
+
+    if (!is_register(b)) {
+        bc_load_to_reg(bc, &rb, const_get(bc, b));
+        fb = 1;
+    }
+
+    if (!is_register(c)) {
+        bc_load_to_reg(bc, &rc, const_get(bc, c));
+        fc = 1;
+    }
+
+    bc_append(bc, I3(OP_ARRAY_SET, a->u.reg.reg, rb.u.reg.reg, rc.u.reg.reg));
+
+    if (fb) {
+        reg_free(bc, &rb);
+    }
+
+    if (fc) {
+        reg_free(bc, &rc);
+    }
+}

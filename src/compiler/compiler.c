@@ -330,29 +330,74 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
 }
 
 static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1, e2;
+    if (node->child[0]->type == IDENTIFIER_TOKEN) {
+        lgx_val_t e1, e2;
 
-    if (bc_expr(bc, node->child[0], &e1)) {
-        return 1;
-    }
-
-    if ( e1.u.reg.type == R_LOCAL ) {
-        if (bc_expr(bc, node->child[1], &e2)) {
+        if (bc_expr(bc, node->child[0], &e1)) {
             return 1;
         }
 
-        if (bc_expr_binary(bc, node, e, &e1, &e2)) {
+        if (e1.u.reg.type == R_LOCAL) {
+            if (bc_expr(bc, node->child[1], &e2)) {
+                return 1;
+            }
+
+            if (bc_expr_binary(bc, node, e, &e1, &e2)) {
+                return 1;
+            }
+        } else if (e1.u.reg.type == R_GLOBAL) {
+            // TODO 全局变量赋值
+        } else {
+            bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
             return 1;
         }
-    } else if (e1.u.reg.type == R_GLOBAL) {
-        // TODO 全局变量赋值
+
+        reg_free(bc, &e1);
+        reg_free(bc, &e2);
+    } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_INDEX) {
+        lgx_val_t e1, e2, e3;
+
+        if (bc_expr(bc, node->child[0]->child[0], &e1)) {
+            return 1;
+        }
+
+        if ( !is_register(&e1) ) {
+            bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
+            return 1;
+        }
+
+        if (node->child[0]->child[1]) {
+            if (bc_expr(bc, node->child[0]->child[1], &e2)) {
+                return 1;
+            }
+
+            if ( !is_register(&e2) && e2.type != T_LONG ) {
+                bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+                return 1;
+            }
+
+            if (bc_expr(bc, node->child[1], &e3)) {
+                return 1;
+            }
+
+            bc_array_set(bc, &e1, &e2, &e3);
+        } else {
+            if (bc_expr(bc, node->child[1], &e3)) {
+                return 1;
+            }
+
+            bc_array_add(bc, &e1, &e3);
+        }
+
+        reg_free(bc, &e1);
+        reg_free(bc, &e2);
+        reg_free(bc, &e3);
+    } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_ATTR) {
+        // TODO 对象属性赋值
     } else {
-        bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
+        bc_error(bc, "[Error] [Line:%d] invalid left variable for assignment\n", node->line);
         return 1;
     }
-
-    reg_free(bc, &e1);
-    reg_free(bc, &e2);
 
     return 0;
 }

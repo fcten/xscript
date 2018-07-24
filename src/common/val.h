@@ -59,4 +59,9 @@ const char *lgx_val_typeof(lgx_val_t *v);
 
 void lgx_val_print(lgx_val_t *v);
 
+void lgx_val_copy(lgx_val_t *src, lgx_val_t *dest);
+
+void lgx_val_init(lgx_val_t *src);
+void lgx_val_free(lgx_val_t *src);
+
 #endif // LGX_VAR_H

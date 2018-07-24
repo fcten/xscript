@@ -102,6 +102,7 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     return ret;
 }
 
+// TODO value 复制需要复制内部数据结构，否则会导致循环引用
 int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     unsigned k = hash_bkdr(hash, &node->k);
     lgx_val_list_t *p;
@@ -170,7 +171,7 @@ int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
 
     node.v = *v;
 
-    node.k.type = T_DOUBLE;
+    node.k.type = T_LONG;
     node.k.v.l = hash->table_offset;
 
     return lgx_hash_set(hash, &node);

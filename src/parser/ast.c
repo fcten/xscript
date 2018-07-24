@@ -836,7 +836,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "(");
             lgx_ast_print(node->child[0], indent+2);
             printf("%*s%d\n", indent, "", node->u.op);
-            lgx_ast_print(node->child[1], indent+2);
+            if (node->child[1]) {
+                lgx_ast_print(node->child[1], indent+2);
+            }
             printf("%*s%s\n", indent, "", ")");
             break;
         case UNARY_EXPRESSION:

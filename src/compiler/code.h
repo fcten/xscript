@@ -50,6 +50,7 @@ void bc_hlt(lgx_bc_t *bc);
 void bc_array_new(lgx_bc_t *bc, lgx_val_t *a);
 void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 void bc_array_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_array_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 
 void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i);
 void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa);

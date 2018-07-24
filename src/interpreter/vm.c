@@ -419,6 +419,21 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 stack_delete(vm);
                 break;
             }
+            case OP_ARRAY_SET:{
+                if (R(PA(i)).type == T_ARRAY) {
+                    if (R(PB(i)).type == T_LONG) {
+                        lgx_hash_node_t n;
+                        n.k = R(PB(i));
+                        n.v = R(PC(i));
+                        lgx_hash_set(R(PA(i)).v.arr, &n);
+                    } else {
+                        // runtime warning
+                    }
+                } else {
+                    // runtime error
+                }
+                break;
+            }
             case OP_ARRAY_ADD:{
                 if (R(PA(i)).type == T_ARRAY) {
                     lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));

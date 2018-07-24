@@ -1,3 +1,4 @@
+
 auto arr1 = [
     "test",
     123,
@@ -15,4 +16,16 @@ echo arr4;
 
 auto arr5 = ["test", 123, arr1, [], [1, 2, 3]];
 
-echo arr5;
+echo arr5[4][0];
+
+auto arr6 = [];
+
+arr6[] = 3;
+
+arr6[] = [4,5,6];
+
+arr6[4] = arr4;
+
+arr6[3] = arr2;
+
+echo arr6;
