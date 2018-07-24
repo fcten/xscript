@@ -46,6 +46,7 @@ const char* op_name[] = {
     "RET",
     "ARRAY_NEW",
     "ARRAY_ADD",
+    "ARRAY_GET",
     "HLT",
     "ECHO"
 };
@@ -71,6 +72,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_AND:
             case OP_OR:
             case OP_XOR:
+            case OP_ARRAY_GET:
                 printf("%4d %4s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_ADDI:

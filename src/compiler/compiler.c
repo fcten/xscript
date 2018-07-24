@@ -133,7 +133,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case TK_AND: return 1;
         case TK_OR: return 1;
         case '=': bc_mov(bc, e1, e2); break;
-        case TK_INDEX:
+        case TK_INDEX: bc_array_get(bc, e, e1, e2); break;
         case TK_ATTR:
         default:
             // error
@@ -242,11 +242,6 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         bc_array_add(bc, e, &expr);
         reg_free(bc, &expr);
     }
-
-    // 由于 mov 遇到 R_TEMP 寄存器时会尝试复用前一条指令，所以提前写入一条 mov 指令占位
-    e->u.reg.type = R_LOCAL;
-    bc_mov(bc, e, e);
-    e->u.reg.type = R_TEMP;
 
     return 0;
 }
@@ -379,6 +374,43 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     return 0;
 }
 
+static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1, e2;
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if ( !is_register(&e1) && e1.type != T_ARRAY ) {
+        bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (bc_expr(bc, node->child[1], &e2)) {
+        return 1;
+    }
+
+    if ( !is_register(&e2) && e2.type != T_LONG ) {
+        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+        return 1;
+    }
+
+    if ( e1.type == T_ARRAY && e2.type == T_LONG ) {
+        if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_binary(bc, node, e, &e1, &e2)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+
+    return 0;
+}
+
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -429,7 +461,9 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 case TK_INDEX:
-                    // TODO
+                    if (bc_expr_binary_index(bc, node, e)) {
+                        return 1;
+                    }
                     break;
                 case TK_ATTR:
                     // TODO

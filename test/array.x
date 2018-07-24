@@ -5,14 +5,9 @@ auto arr1 = [
 
 echo arr1;
 
-/*
-auto arr2 = (["test", 123, arr1])[1];
+auto arr2 = (["test", 123, arr1])[2][0];
 
-auto arr3 = [
-    "test" = arr2,
-    123 = 123,
-];
-*/
+echo arr2;
 
 auto arr4 = ["test", 123, arr1];
 

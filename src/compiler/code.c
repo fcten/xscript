@@ -53,11 +53,12 @@ static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
 }
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
-    if (b->u.reg.type == R_TEMP) {
-        reg_free(bc, b);
-        bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
-        return;
-    }
+    // TODO 只有在前一条指令为 mov、add 等指定指令时才可复用
+    //if (b->u.reg.type == R_TEMP) {
+    //    reg_free(bc, b);
+    //    bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
+    //    return;
+    //}
 
     if (!is_register(b)) {
         if (is_instant16(b)) {
@@ -423,5 +424,16 @@ void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
         reg_free(bc, &r);
     } else {
         bc_append(bc, I2(OP_ARRAY_ADD, a->u.reg.reg, b->u.reg.reg));
+    }
+}
+
+void bc_array_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, const_get(bc, c));
+        bc_append(bc, I3(OP_ARRAY_GET, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
+        reg_free(bc, &r);
+    } else {
+        bc_append(bc, I3(OP_ARRAY_GET, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
     }
 }

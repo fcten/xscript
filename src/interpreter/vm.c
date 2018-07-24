@@ -435,6 +435,23 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 break;
             }
+            case OP_ARRAY_GET:{
+                if (R(PB(i)).type == T_ARRAY) {
+                    if (R(PC(i)).type == T_LONG) {
+                        if (R(PC(i)).v.l >= 0 && R(PC(i)).v.l < R(PB(i)).v.arr->table_offset) {
+                            R(PA(i)) = R(PB(i)).v.arr->table[R(PC(i)).v.l].v;
+                        } else {
+                            // runtime warning
+                            R(PA(i)).type = T_UNDEFINED;
+                        }
+                    } else {
+                        // 类型转换
+                    }
+                } else {
+                    // runtime error
+                }
+                break;
+            }
             case OP_LOAD:{
                 R(PA(i)) = C(PD(i));
                 break;

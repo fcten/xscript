@@ -62,6 +62,7 @@ enum {
     // 数组操作
     OP_ARRAY_NEW, // ARRAY_NEW R
     OP_ARRAY_ADD, // ARRAY_ADD R R
+    OP_ARRAY_GET, // ARRAY_GET R R R
 
     // 终止执行
     OP_HLT,
