@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "../common/bytecode.h"
 #include "vm.h"
@@ -25,6 +26,23 @@ lgx_stack_t *stack_get(lgx_vm_t *vm) {
 void stack_delete(lgx_vm_t *vm) {
     lgx_stack_t *s = stack_get(vm);
     lgx_list_del(&s->head);
+}
+
+// TODO 使用真正的异常处理机制
+void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
+    printf("[runtime error] ");
+
+    static char buf[128];
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(buf, 128, fmt, args);
+    va_end(args);
+
+    printf("%.*s\n", len, buf);
+
+    //vm->pc = vm->bc_size - 1;
+    exit(1);
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
@@ -428,9 +446,11 @@ int lgx_vm_start(lgx_vm_t *vm) {
                         lgx_hash_set(R(PA(i)).v.arr, &n);
                     } else {
                         // runtime warning
+                        throw_exception(vm, "attempt to set a %s key, integer expected", lgx_val_typeof(&R(PA(i))));
                     }
                 } else {
                     // runtime error
+                    throw_exception(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -439,6 +459,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
                 } else {
                     // runtime error
+                    throw_exception(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -460,10 +481,11 @@ int lgx_vm_start(lgx_vm_t *vm) {
                             R(PA(i)).type = T_UNDEFINED;
                         }
                     } else {
-                        // 类型转换
+                        // runtime warning
+                        throw_exception(vm, "attempt to index a %s key, integer expected", lgx_val_typeof(&R(PC(i))));
                     }
                 } else {
-                    // runtime error
+                    throw_exception(vm, "attempt to index a %s value, array expected", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
