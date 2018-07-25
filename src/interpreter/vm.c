@@ -423,7 +423,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     // 跳转到函数入口
                     vm->pc = s->fun->addr;
                 } else {
-                    // 类型转换
+                    // runtime error
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }

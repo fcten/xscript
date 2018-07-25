@@ -397,11 +397,22 @@ void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
     block_statement->type = BLOCK_STATEMENT;
+    ast_node_append_child(parent, block_statement);
+
     // 创建新的作用域
     block_statement->u.symbols = malloc(sizeof(lgx_hash_t));
     lgx_hash_init(block_statement->u.symbols, 32);
 
-    ast_node_append_child(parent, block_statement);
+    // 优先把函数参数添加到符号表
+    if (parent->type == FUNCTION_DECLARATION) {
+        lgx_str_ref_t s;
+        for (int i = 0; i < parent->child[1]->children; i++) {
+            s.buffer = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_start;
+            s.length = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_length;
+
+            lgx_scope_val_add(parent->child[2], &s);
+        }
+    }
 
     if (ast->cur_token != '{') {
         ast_error(ast, "[Error] [Line:%d] '{' expected\n", ast->cur_line);
@@ -660,7 +671,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         } else if (parent->parent == NULL && lgx_scope_global_val_get(variable_declaration, &s) == NULL) {
             lgx_scope_val_add(variable_declaration, &s);
         } else {
-            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;
         }
 
@@ -704,24 +715,9 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     
     ast_parse_block_statement(ast, function_declaration);
 
-    // 把函数参数添加到函数体作用域中
-    lgx_str_ref_t s;
-    lgx_ast_node_token_t *n;
-    for (int i = 0; i < function_declaration->child[1]->children; i++) {
-        n = (lgx_ast_node_token_t *)function_declaration->child[1]->child[i]->child[0];
-        s.buffer = n->tk_start;
-        s.length = n->tk_length;
-
-        if (lgx_scope_local_val_get(function_declaration->child[2], &s) == NULL) {
-            lgx_scope_val_add(function_declaration->child[2], &s);
-        } else {
-            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
-            return;
-        }
-    }
-
     // 创建函数加入作用域
-    n = (lgx_ast_node_token_t *)function_declaration->child[0];
+    lgx_str_ref_t s;
+    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)function_declaration->child[0];
     s.buffer = n->tk_start;
     s.length = n->tk_length;
 
