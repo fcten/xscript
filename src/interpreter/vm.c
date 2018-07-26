@@ -29,7 +29,7 @@ void stack_delete(lgx_vm_t *vm) {
 
 // TODO 使用真正的异常处理机制
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
-    printf("[runtime error] ");
+    printf("[runtime error: %d] ", vm->pc);
 
     static char buf[128];
 
@@ -406,16 +406,19 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_NEW:{
-                if (R(PA(i)).type == T_FUNCTION) {
-                    lgx_fun_t *fun = R(PA(i)).v.fun;
+                if (R(PB(i)).type == T_FUNCTION) {
+                    R(PA(i)).type = T_FUNCTION;
+                    // TODO 每次函数调用都创建新的执行堆栈太慢了
+                    //R(PA(i)).v.fun = lgx_fun_copy(R(PB(i)).v.fun);
+                    R(PA(i)).v.fun = R(PB(i)).v.fun;
                     // 初始化执行堆栈
-                    if (lgx_fun_stack_init(fun) != 0) {
+                    if (lgx_fun_stack_init(R(PA(i)).v.fun) != 0) {
                         // runtime error
                         throw_exception(vm, "create new stack failed");
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call_new a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call_new a %s value, function expected", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -458,6 +461,17 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     } else {
                         R(PB(i)).type = T_UNDEFINED;
                     }
+
+                    // TODO 每次函数调用都创建新的执行堆栈太慢了
+
+                    // 释放执行堆栈
+                    //free(fun->stack);
+                    //fun->stack = NULL;
+
+                    // 释放变量
+                    //free(R(PA(i)).v.fun);
+                    //R(PA(i)).v.fun = NULL;
+                    //R(PA(i)).type = T_UNDEFINED;
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to call_end a %s value, function expected", lgx_val_typeof(&R(PA(i))));

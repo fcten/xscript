@@ -381,8 +381,8 @@ void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     bc_append(bc, I3(OP_LE, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
 }
 
-void bc_call_new(lgx_bc_t *bc, lgx_val_t *a) {
-    bc_append(bc, I1(OP_CALL_NEW, a->u.reg.reg));
+void bc_call_new(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    bc_append(bc, I2(OP_CALL_NEW, a->u.reg.reg, b->u.reg.reg));
 }
 
 void bc_call_set(lgx_bc_t *bc, lgx_val_t *a, unsigned char i, lgx_val_t *b) {

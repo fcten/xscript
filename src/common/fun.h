@@ -22,6 +22,7 @@ typedef struct {
 // throw 和 return 的处理流程类似，区别在于 throw 能够跳出多层函数调用，直到被 catch。
 
 lgx_fun_t* lgx_fun_new();
+lgx_fun_t* lgx_fun_copy(lgx_fun_t* fun);
 int lgx_fun_stack_init(lgx_fun_t* fun);
 int lgx_fun_call(lgx_fun_t* fun);
 

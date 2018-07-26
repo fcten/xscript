@@ -403,7 +403,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 }
 
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1;
+    lgx_val_t e1, e2;
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -414,24 +414,28 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    bc_call_new(bc, &e1);
+    e2.u.reg.type = R_TEMP;
+    e2.u.reg.reg = reg_pop(bc);
+    bc_call_new(bc, &e2, &e1);
 
     // 写入参数
+    // TODO 检查参数数量是否匹配
     int i;
     for(i = 0; i < node->child[1]->children; i++) {
         lgx_val_t expr;
         bc_expr(bc, node->child[1]->child[i], &expr);
-        bc_call_set(bc, &e1, i+1, &expr);
+        bc_call_set(bc, &e2, i+1, &expr);
         reg_free(bc, &expr);
     }
 
-    bc_call(bc, &e1);
+    bc_call(bc, &e2);
 
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
-    bc_call_end(bc, &e1, e);
+    bc_call_end(bc, &e2, e);
 
     reg_free(bc, &e1);
+    reg_free(bc, &e2);
 
     return 0;
 }
