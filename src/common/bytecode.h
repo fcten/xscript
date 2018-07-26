@@ -56,8 +56,11 @@ enum {
     OP_JMPI,  // JMPI L
 
     // 函数调用
-    OP_CALL,  // CALL R R R
-    OP_RET,   // RET  R
+    OP_CALL_NEW, // CALL_NEW R
+    OP_CALL_SET, // CALL_SET R R R
+    OP_CALL,     // CALL     R
+    OP_CALL_END, // CALL_END R R
+    OP_RET,      // RET      R
 
     // 数组操作
     OP_ARRAY_NEW, // ARRAY_NEW R

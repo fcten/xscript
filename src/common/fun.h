@@ -10,6 +10,8 @@ typedef struct {
     lgx_fun_args_t args;
     // 入口地址
     unsigned addr;
+    // 该函数的执行堆栈
+    struct lgx_stack_s *stack;
 } lgx_fun_t;
 
 // [0] 返回值   <--- top
@@ -20,6 +22,7 @@ typedef struct {
 // throw 和 return 的处理流程类似，区别在于 throw 能够跳出多层函数调用，直到被 catch。
 
 lgx_fun_t* lgx_fun_new();
+int lgx_fun_stack_init(lgx_fun_t* fun);
 int lgx_fun_call(lgx_fun_t* fun);
 
 #endif // LGX_FUN_H

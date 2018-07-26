@@ -4,7 +4,7 @@
 #include "../common/val.h"
 #include "../compiler/compiler.h"
 
-typedef struct {
+typedef struct lgx_stack_s {
     lgx_list_t head;
     // 当前执行的函数
     lgx_fun_t *fun;

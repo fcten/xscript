@@ -403,16 +403,33 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 }
 
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    // TODO 传入参数
     lgx_val_t e1;
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
     }
 
+    if ( !is_register(&e1) && e1.type != T_FUNCTION ) {
+        bc_error(bc, "[Error] [Line:%d] makes function from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    bc_call_new(bc, &e1);
+
+    // 写入参数
+    int i;
+    for(i = 0; i < node->child[1]->children; i++) {
+        lgx_val_t expr;
+        bc_expr(bc, node->child[1]->child[i], &expr);
+        bc_call_set(bc, &e1, i+1, &expr);
+        reg_free(bc, &expr);
+    }
+
     bc_call(bc, &e1);
 
-    // TODO 返回值
+    e->u.reg.type = R_TEMP;
+    e->u.reg.reg = reg_pop(bc);
+    bc_call_end(bc, &e1, e);
 
     reg_free(bc, &e1);
 
@@ -734,15 +751,23 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case SWITCH_CASE_STATEMENT:
 
             break;
-        case RETURN_STATEMENT:
-            // 计算返回值
-        
-            // 释放参数与局部变量
+        case RETURN_STATEMENT:{
+            lgx_val_t r;
+            r.u.reg.type = R_LOCAL;
+            r.u.reg.reg = 0;
 
-            // 更新返回值寄存器
+            // 计算返回值
+            if (node->child[0]) {
+                if (bc_expr(bc, node->child[0], &r)) {
+                    return 1;
+                }
+            }
 
             // 写入返回指令
+            bc_ret(bc, &r);
+            reg_free(bc, &r);
             break;
+        }
         case ECHO_STATEMENT:{
             lgx_val_t e;
             memset(&e, 0, sizeof(e));
@@ -788,11 +813,28 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             e->v.fun = lgx_fun_new();
             e->v.fun->addr = bc->bc_top;
 
-            // TODO 重置寄存器分配
-            bc_stat(bc, node->child[2]);
-            // TODO 恢复寄存器分配
+            // 重置寄存器分配
+            unsigned char *regs = bc->regs;
+            unsigned char reg_top = bc->reg_top;
 
-            bc_ret(bc);
+            bc->regs = calloc(256, sizeof(unsigned char));
+            bc->reg_top = 0;
+            for(int i = 255; i > 0; i--) {
+                reg_push(bc, i);
+            }
+
+            // 编译函数体
+            bc_stat(bc, node->child[2]);
+
+            // 恢复寄存器分配
+            bc->reg_top = reg_top;
+            bc->regs = regs;
+
+            // 始终写入一条返回语句，确保函数调用正常返回
+            lgx_val_t r;
+            r.u.reg.type = R_LOCAL;
+            r.u.reg.reg = 0;
+            bc_ret(bc, &r);
 
             bc_set_pe(bc, start, bc->bc_top);
 
@@ -810,8 +852,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 }
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
+    bc->regs = calloc(256, sizeof(unsigned char));
     bc->reg_top = 0;
-    for(int i = 255; i >= 0; i--) {
+    for(int i = 255; i > 0; i--) {
         reg_push(bc, i);
     }
     

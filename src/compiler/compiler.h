@@ -1,8 +1,11 @@
 #ifndef LGX_COMPILER_H
 #define LGX_COMPILER_H
 
+#include "../common/hash.h"
+#include "../common/bytecode.h"
+
 typedef struct {
-    unsigned char regs[256];
+    unsigned char *regs;
     unsigned char reg_top;
     
     // 字节码
