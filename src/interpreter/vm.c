@@ -5,6 +5,22 @@
 #include "../common/bytecode.h"
 #include "vm.h"
 
+// 输出当前的调用栈
+int lgx_vm_backtrace(lgx_vm_t *vm) {
+    unsigned int base = vm->stack_base;
+    while (1) {
+        printf("  <function:%d>\n", vm->stack[base].v.fun->addr);
+
+        if (vm->stack[base+3].type == T_LONG) {
+            base = vm->stack[base+3].v.l;
+        } else {
+            break;
+        }
+    }
+
+    return 0;
+}
+
 // TODO 使用真正的异常处理机制
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     printf("[runtime error: %d] ", vm->pc-1);
@@ -17,6 +33,8 @@ void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     va_end(args);
 
     printf("%.*s\n", len, buf);
+
+    lgx_vm_backtrace(vm);
 
     //vm->pc = vm->bc_size - 1;
     exit(1);
@@ -98,7 +116,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d + R(PC(i)).v.d;
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    if (R(PB(i)).type != T_LONG && R(PB(i)).type != T_DOUBLE) {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    } else {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PC(i))));
+                    }
                 }
                 break;
             }
@@ -110,7 +133,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d - R(PC(i)).v.d;
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    if (R(PB(i)).type != T_LONG && R(PB(i)).type != T_DOUBLE) {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    } else {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PC(i))));
+                    }
                 }
                 break;
             }
@@ -122,7 +150,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d * R(PC(i)).v.d;
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    if (R(PB(i)).type != T_LONG && R(PB(i)).type != T_DOUBLE) {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    } else {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PC(i))));
+                    }
                 }
                 break;
             }
@@ -134,7 +167,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d / R(PC(i)).v.d;
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    if (R(PB(i)).type != T_LONG && R(PB(i)).type != T_DOUBLE) {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    } else {
+                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PC(i))));
+                    }
                 }
                 break;
             }
@@ -146,7 +184,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d + PC(i);
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -158,7 +197,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d - PC(i);
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -170,7 +210,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d * PC(i);
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -182,7 +223,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_DOUBLE;
                     R(PA(i)).v.d = R(PB(i)).v.d / PC(i);
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -194,7 +236,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.d = -R(PB(i)).v.d;
                 } else {
-                    // 类型转换
+                    // runtime error TODO 类型转换?
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -421,7 +464,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call_new a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -430,7 +473,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(R(0).v.fun->stack_size + PB(i)) = R(PC(i));
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call_set a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -476,7 +519,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call_end a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
