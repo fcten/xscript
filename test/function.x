@@ -9,10 +9,10 @@ auto a = 1, b = 2;
 
 function add (auto c, auto d) {
     auto e = 3, f = 4;
-    return a + b + c + d + e + f;
+    return c+d;
 }
 
-echo add(a, b + 1);
+echo add(a, b + 1);*/
 
 function fib(auto n, auto fib) {
     if (n < 2) {
@@ -21,8 +21,8 @@ function fib(auto n, auto fib) {
     return fib(n-1, fib) + fib(n-2, fib);
 }
 
-echo fib(30, fib);*/
-
+echo fib(30, fib);
+/*
 function test(auto n) {
     return n;
 }
@@ -33,4 +33,4 @@ while (i <= 1000000) {
     count = count + test(i);
     i = i + 1;
 }
-echo count;
+echo count;*/

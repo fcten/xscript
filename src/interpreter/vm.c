@@ -5,31 +5,9 @@
 #include "../common/bytecode.h"
 #include "vm.h"
 
-lgx_stack_t *stack_new(lgx_vm_t *vm, unsigned size) {
-    lgx_stack_t *s = calloc(1, sizeof(lgx_stack_t) + size * sizeof(lgx_val_t*));
-    if (!s) {
-        return NULL;
-    }
-    s->size = size;
-    lgx_list_init(&s->head);
-
-    lgx_list_add_tail(&s->head, &vm->stack.head);
-
-    return s;
-}
-
-lgx_stack_t *stack_get(lgx_vm_t *vm) {
-    return lgx_list_last_entry(&vm->stack.head, lgx_stack_t, head);
-}
-
-void stack_delete(lgx_vm_t *vm) {
-    lgx_stack_t *s = stack_get(vm);
-    lgx_list_del(&s->head);
-}
-
 // TODO 使用真正的异常处理机制
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
-    printf("[runtime error: %d] ", vm->pc);
+    printf("[runtime error: %d] ", vm->pc-1);
 
     static char buf[128];
 
@@ -45,13 +23,13 @@ void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    lgx_list_init(&vm->stack.head);
-
-    lgx_stack_t *s = stack_new(vm, 256);
-    if (!s) {
+    vm->stack_size = 256;
+    vm->stack_base = 0;
+    vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t));
+    if (!vm->stack) {
         return 1;
     }
-    vm->regs = s->stack;
+    vm->regs = vm->stack + vm->stack_base;
 
     vm->bc = bc->bc;
     vm->bc_size = bc->bc_size;
@@ -60,11 +38,40 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 
     vm->pc = 0;
 
+    // 初始化 main 函数
+    vm->regs[0].type = T_FUNCTION;
+    vm->regs[0].v.fun = lgx_fun_new();
+    vm->regs[0].v.fun->addr = 0;
+    vm->regs[0].v.fun->stack_size = 256;
+
     return 0;
 }
 
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].k)
+
+// 确保堆栈上有足够的剩余空间
+int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
+    if (vm->stack_base + R(0).v.fun->stack_size + stack_size < vm->stack_size) {
+        return 0;
+    }
+
+    unsigned int size = vm->stack_size;
+    while (vm->stack_base + R(0).v.fun->stack_size + stack_size >= size) {
+        size *= 2;
+    }
+
+    lgx_val_t *s = realloc(vm->stack, size * sizeof(lgx_val_t));
+    if (!s) {
+        return 1;
+    }
+
+    vm->stack = s;
+    vm->stack_size = size;
+    vm->regs = vm->stack + vm->stack_base;
+
+    return 0;
+}
 
 int lgx_vm_start(lgx_vm_t *vm) {
     unsigned i;
@@ -406,27 +413,21 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_NEW:{
-                if (R(PB(i)).type == T_FUNCTION) {
-                    R(PA(i)).type = T_FUNCTION;
-                    // TODO 每次函数调用都创建新的执行堆栈太慢了
-                    //R(PA(i)).v.fun = lgx_fun_copy(R(PB(i)).v.fun);
-                    R(PA(i)).v.fun = R(PB(i)).v.fun;
-                    // 初始化执行堆栈
-                    if (lgx_fun_stack_init(R(PA(i)).v.fun) != 0) {
+                if (R(PA(i)).type == T_FUNCTION) {
+                    // 确保空余堆栈空间足够容纳本次函数调用
+                    if (lgx_vm_checkstack(vm, R(PA(i)).v.fun->stack_size) != 0) {
                         // runtime error
-                        throw_exception(vm, "create new stack failed");
+                        throw_exception(vm, "check stack failed");
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call_new a %s value, function expected", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "attempt to call_new a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
             case OP_CALL_SET:{
                 if (R(PA(i)).type == T_FUNCTION) {
-                    lgx_fun_t *fun = R(PA(i)).v.fun;
-                    
-                    fun->stack->stack[PB(i)] = R(PC(i));
+                    R(R(0).v.fun->stack_size + PB(i)) = R(PC(i));
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to call_set a %s value, function expected", lgx_val_typeof(&R(PA(i))));
@@ -436,13 +437,25 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_CALL:{
                 if (R(PA(i)).type == T_FUNCTION) {
                     lgx_fun_t *fun = R(PA(i)).v.fun;
+                    unsigned int base = R(0).v.fun->stack_size;
+
+                    // 写入函数信息
+                    R(base + 0) = R(PA(i));
+
+                    // 初始化返回值
+                    R(base + 1).type = T_UNDEFINED;
 
                     // 写入返回地址
-                    fun->stack->ret = vm->pc;
+                    R(base + 2).type = T_LONG;
+                    R(base + 2).v.l = vm->pc;
+
+                    // 写入堆栈地址
+                    R(base + 3).type = T_LONG;
+                    R(base + 3).v.l = vm->stack_base;
 
                     // 切换执行堆栈
-                    lgx_list_add_tail(&fun->stack->head, &vm->stack.head);
-                    vm->regs = fun->stack->stack;
+                    vm->stack_base += R(0).v.fun->stack_size;
+                    vm->regs = vm->stack + vm->stack_base;
 
                     // 跳转到函数入口
                     vm->pc = fun->addr;
@@ -454,24 +467,13 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_CALL_END:{
                 if (R(PA(i)).type == T_FUNCTION) {
-                    lgx_fun_t *fun = R(PA(i)).v.fun;
-
-                    if (fun->stack->ret_idx > 0) {
-                        R(PB(i)) = fun->stack->stack[fun->stack->ret_idx];
+                    // 读取返回值
+                    unsigned int base = R(0).v.fun->stack_size;
+                    if (R(base + 1).type == T_LONG) {
+                        R(PB(i)) = R(base + R(base + 1).v.l);
                     } else {
                         R(PB(i)).type = T_UNDEFINED;
                     }
-
-                    // TODO 每次函数调用都创建新的执行堆栈太慢了
-
-                    // 释放执行堆栈
-                    //free(fun->stack);
-                    //fun->stack = NULL;
-
-                    // 释放变量
-                    //free(R(PA(i)).v.fun);
-                    //R(PA(i)).v.fun = NULL;
-                    //R(PA(i)).type = T_UNDEFINED;
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to call_end a %s value, function expected", lgx_val_typeof(&R(PA(i))));
@@ -479,20 +481,18 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_RET:{
-                lgx_stack_t *s = stack_get(vm);
-
                 // 跳转到调用点
-                vm->pc = s->ret;
+                vm->pc = R(2).v.l;
 
                 // 写入返回值
-                s->ret_idx = PA(i);
-
-                // 释放栈
-                stack_delete(vm);
+                if (PA(i)) {
+                    R(1).type = T_LONG;
+                    R(1).v.l = PA(i);
+                }
 
                 // 切换执行堆栈
-                s = stack_get(vm);
-                vm->regs = s->stack;
+                vm->stack_base = R(3).v.l;
+                vm->regs = vm->stack + vm->stack_base;
                 break;
             }
             case OP_ARRAY_SET:{

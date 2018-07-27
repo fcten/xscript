@@ -403,7 +403,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 }
 
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1, e2;
+    lgx_val_t e1;
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -414,9 +414,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    e2.u.reg.type = R_TEMP;
-    e2.u.reg.reg = reg_pop(bc);
-    bc_call_new(bc, &e2, &e1);
+    bc_call_new(bc, &e1);
 
     // 写入参数
     // TODO 检查参数数量是否匹配
@@ -424,18 +422,17 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     for(i = 0; i < node->child[1]->children; i++) {
         lgx_val_t expr;
         bc_expr(bc, node->child[1]->child[i], &expr);
-        bc_call_set(bc, &e2, i+1, &expr);
+        bc_call_set(bc, &e1, i+4, &expr);
         reg_free(bc, &expr);
     }
 
-    bc_call(bc, &e2);
+    bc_call(bc, &e1);
 
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
-    bc_call_end(bc, &e2, e);
+    bc_call_end(bc, &e1, e);
 
     reg_free(bc, &e1);
-    reg_free(bc, &e2);
 
     return 0;
 }
@@ -816,6 +813,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             e->type = T_FUNCTION;
             e->v.fun = lgx_fun_new();
             e->v.fun->addr = bc->bc_top;
+            // TODO 计算该函数所需的堆栈空间
+            e->v.fun->stack_size = 256;
 
             // 重置寄存器分配
             unsigned char *regs = bc->regs;
@@ -823,7 +822,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             bc->regs = calloc(256, sizeof(unsigned char));
             bc->reg_top = 0;
-            for(int i = 255; i > 0; i--) {
+            for(int i = 255; i >= 4; i--) {
                 reg_push(bc, i);
             }
 
@@ -858,7 +857,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->regs = calloc(256, sizeof(unsigned char));
     bc->reg_top = 0;
-    for(int i = 255; i > 0; i--) {
+    for(int i = 255; i >= 4; i--) {
         reg_push(bc, i);
     }
     

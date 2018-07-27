@@ -4,26 +4,17 @@
 #include "../common/val.h"
 #include "../compiler/compiler.h"
 
-typedef struct lgx_stack_s {
-    lgx_list_t head;
-    // 当前执行的函数
-    lgx_fun_t *fun;
-    // 返回地址
-    unsigned ret;
-    // 返回值
-    unsigned char ret_idx;
-    // 参数与局部变量
-    unsigned short size;
-    lgx_val_t stack[];
-} lgx_stack_t;
-
 typedef struct {
     // 字节码
     unsigned *bc;
     unsigned bc_size;
 
     // 运行时堆栈
-    lgx_stack_t stack;
+    lgx_val_t *stack;
+    // 堆栈总长度
+    unsigned int stack_size;
+    // 当前函数正在使用的堆栈起始地址
+    unsigned int stack_base;
 
     // 寄存器组 (指向堆栈)
     lgx_val_t *regs;

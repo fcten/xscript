@@ -100,7 +100,6 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LNOT:
             case OP_ARRAY_ADD:
             case OP_CALL_END:
-            case OP_CALL_NEW:
                 printf("%4d %4s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
@@ -111,6 +110,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
                 printf("%4d %4s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_JMP:
+            case OP_CALL_NEW:
             case OP_CALL:
             case OP_ECHO:
             case OP_ARRAY_NEW:
