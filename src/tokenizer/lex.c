@@ -79,15 +79,77 @@ static void step_to_eot(lgx_lex_t* ctx) {
     }
 }
 
-static void step_to_eon(lgx_lex_t* ctx) {
+// 二进制
+static void step_to_eonb(lgx_lex_t* ctx) {
     char n;
     while (ctx->offset < ctx->length) {
         n = ctx->source[ctx->offset];
-        if (n > '9' || n < '0') {
-            break;
-        } else {
+        if ( n >= '0' && n <= '1' ) {
             ctx->offset++;
+        } else {
+            break;
         }
+    }
+}
+
+// 十六进制
+static void step_to_eonh(lgx_lex_t* ctx) {
+    char n;
+    while (ctx->offset < ctx->length) {
+        n = ctx->source[ctx->offset];
+        if ( (n >= '0' && n <= '9') ||
+             (n >= 'a' && n <= 'f') ||
+             (n >= 'A' && n <= 'F') ) {
+            ctx->offset++;
+        } else {
+            break;
+        }
+    }
+}
+
+// 十进制
+// TODO 科学计数法
+static int step_to_eond(lgx_lex_t* ctx) {
+    char n;
+    int f = 0;
+    while (ctx->offset < ctx->length) {
+        n = ctx->source[ctx->offset];
+        if ( n >= '0' && n <= '9' ) {
+            ctx->offset++;
+        } else if (n == '.') {
+            if (f) {
+                break;
+            } else {
+                ctx->offset++;
+                f = 1;
+            }
+        } else {
+            break;
+        }
+    }
+    if (f) {
+        return TK_DOUBLE;
+    } else {
+        return TK_LONG;
+    }
+}
+
+static int step_to_eon(lgx_lex_t* ctx) {
+    char n = ctx->source[ctx->offset++];
+    if (n == '0') {
+        n = ctx->source[ctx->offset++];
+        if (n == 'b' || n == 'B') {
+            step_to_eonb(ctx);
+            return TK_LONG;
+        } else if (n == 'x' || n == 'X') {
+            step_to_eonh(ctx);
+            return TK_LONG;
+        } else {
+            ctx->offset--;
+            return step_to_eond(ctx);
+        }
+    } else {
+        return step_to_eond(ctx);
     }
 }
 
@@ -263,8 +325,8 @@ int lgx_lex(lgx_lex_t* ctx) {
             return TK_STRING;
         default:
             if (n >= '0' && n <= '9') {
-                step_to_eon(ctx);
-                return TK_NUMBER;
+                ctx->offset--;
+                return step_to_eon(ctx);
             } else if (n == '_' || (n >= 'a' && n <= 'z') ||
                        (n >= 'A' && n <= 'Z')) {
                 step_to_eoi(ctx);

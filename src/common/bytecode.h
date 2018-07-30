@@ -62,11 +62,20 @@ enum {
     OP_CALL_END, // CALL_END R R
     OP_RET,      // RET      R
 
-    // 数组操作
+    // 数组
     OP_ARRAY_NEW, // ARRAY_NEW R
     OP_ARRAY_ADD, // ARRAY_ADD R R      R1[] = R2
     OP_ARRAY_GET, // ARRAY_GET R R R    R1 = R2[R3]
     OP_ARRAY_SET, // ARRAY_SET R R R    R1[R2] = R3
+
+    // 全局变量
+    OP_GLOBAL_GET,// GLOBAL_GET R R
+    OP_GLOBAL_SET,// GLOBAL_SET R R
+
+    // 类与对象
+    OP_OBJECT_NEW,
+    OP_OBJECT_GET,
+    OP_OBJECT_SET,
 
     // 终止执行
     OP_HLT,

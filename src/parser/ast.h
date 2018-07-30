@@ -30,7 +30,8 @@ enum {
     UNARY_EXPRESSION,
     // Other
     IDENTIFIER_TOKEN,
-    NUMBER_TOKEN,
+    LONG_TOKEN,
+    DOUBLE_TOKEN,
     STRING_TOKEN,
     FUNCTION_TOKEN, // 匿名函数
     ARRAY_TOKEN,

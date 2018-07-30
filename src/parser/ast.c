@@ -273,9 +273,16 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_token_t* id;
     switch (ast->cur_token) {
-        case TK_NUMBER:
+        case TK_LONG:
             id = ast_node_token_new(ast);
-            id->type = NUMBER_TOKEN;
+            id->type = LONG_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(ast);
+            break;
+        case TK_DOUBLE:
+            id = ast_node_token_new(ast);
+            id->type = DOUBLE_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
             ast_step(ast);
@@ -847,8 +854,11 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
         case IDENTIFIER_TOKEN:
             printf("%*s%s\n", indent, "", "IDENTIFIER_TOKEN");
             break;
-        case NUMBER_TOKEN:
-            printf("%*s%s\n", indent, "", "NUMBER_TOKEN");
+        case LONG_TOKEN:
+            printf("%*s%s\n", indent, "", "LONG_TOKEN");
+            break;
+        case DOUBLE_TOKEN:
+            printf("%*s%s\n", indent, "", "DOUBLE_TOKEN");
             break;
         case STRING_TOKEN:
             printf("%*s%s\n", indent, "", "STRING_TOKEN");

@@ -50,10 +50,33 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     return 1;
 }
 
-static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
-    // TODO 处理浮点数
+static int bc_long(lgx_ast_node_t *node, lgx_val_t *expr) {
+    char *s = ((lgx_ast_node_token_t *)node)->tk_start;
+
     expr->type = T_LONG;
-    expr->v.l = atol(((lgx_ast_node_token_t *)node)->tk_start);
+
+    // 这里不用担心 s[1] 越界，因为源文件不可能以数字结尾
+    if (s[0] == '0') {
+        if (s[1] == 'b' || s[1] == 'B') {
+            expr->v.l = strtoll(s+2, NULL, 2);
+        } else if (s[1] == 'x' || s[1] == 'X') {
+            expr->v.l = strtoll(s+2, NULL, 16);
+        } else {
+            expr->v.l = strtoll(s, NULL, 10);
+        }
+    } else {
+        expr->v.l = strtoll(s, NULL, 10);
+    }
+
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
+
+    return 0;
+}
+
+static int bc_double(lgx_ast_node_t *node, lgx_val_t *expr) {
+    expr->type = T_DOUBLE;
+    expr->v.d = strtod(((lgx_ast_node_token_t *)node)->tk_start, NULL);
 
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
@@ -62,7 +85,6 @@ static int bc_number(lgx_ast_node_t *node, lgx_val_t *expr) {
 }
 
 static int bc_true(lgx_ast_node_t *node, lgx_val_t *expr) {
-    // TODO 处理浮点数
     expr->type = T_BOOL;
     expr->v.l = 1;
 
@@ -73,7 +95,6 @@ static int bc_true(lgx_ast_node_t *node, lgx_val_t *expr) {
 }
 
 static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
-    // TODO 处理浮点数
     expr->type = T_BOOL;
     expr->v.l = 0;
 
@@ -478,8 +499,10 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
             return bc_string(node, e);
-        case NUMBER_TOKEN:
-            return bc_number(node, e);
+        case LONG_TOKEN:
+            return bc_long(node, e);
+        case DOUBLE_TOKEN:
+            return bc_double(node, e);
         case IDENTIFIER_TOKEN:
             return bc_identifier(bc, node, e);
         case TRUE_TOKEN:

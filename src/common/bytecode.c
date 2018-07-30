@@ -51,6 +51,11 @@ const char* op_name[] = {
     "ARRAY_ADD",
     "ARRAY_GET",
     "ARRAY_SET",
+    "GLOBAL_GET",
+    "GLOBAL_SET",
+    "OBJECT_NEW",
+    "OBJECT_GET",
+    "OBJECT_SET",
     "HLT",
     "ECHO"
 };

@@ -2,27 +2,28 @@
 #define LGX_TOKENS_H
 
 enum {
-    TK_ID = 256,// 256 标识符
-    TK_NUMBER,  // 257 立即数
-    TK_STRING,  // 258 字符串常量
-    TK_EOF,     // 259 文件结束标志
-    TK_EOL,     // 260 行末标志
-    TK_SPACE,   // 261 空格 & 制表符
-    TK_EQ,      // 262 ==
-    TK_NE,      // 263 !=
-    TK_GE,      // 264 >=
-    TK_LE,      // 265 <=
-    TK_AND,     // 266 &&
-    TK_OR,      // 267 ||
-    TK_SHL,     // 268 <<
-    TK_SHR,     // 269 >>
-    TK_COMMENT, // 270 代码注释
-    TK_ATTR,    // 271 对象属性访问运算符
-    TK_INDEX,   // 272 数组下标访问运算符
-    TK_CALL,    // 273 函数调用运算符
-    TK_ARRAY,   // 274 数组常量
-    TK_OBJECT,  // 275 对象常量
-    TK_PTR,     // 276 -> 指针运算符
+    TK_ID = 256,// 标识符
+    TK_LONG,    // 整数
+    TK_DOUBLE,  // 浮点数
+    TK_STRING,  // 字符串常量
+    TK_EOF,     // 文件结束标志
+    TK_EOL,     // 行末标志
+    TK_SPACE,   // 空格 & 制表符
+    TK_EQ,      // ==
+    TK_NE,      // !=
+    TK_GE,      // >=
+    TK_LE,      // <=
+    TK_AND,     // &&
+    TK_OR,      // ||
+    TK_SHL,     // <<
+    TK_SHR,     // >>
+    TK_COMMENT, // 注释
+    TK_ATTR,    // 对象属性访问运算符
+    TK_INDEX,   // 数组下标访问运算符
+    TK_CALL,    // 函数调用运算符
+    TK_ARRAY,   // 数组常量
+    TK_OBJECT,  // 对象常量
+    TK_PTR,     // -> 指针运算符
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,

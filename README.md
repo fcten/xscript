@@ -1,9 +1,11 @@
+# xscript
+
+Yet another scripting language.
+
 # Hello World
 
-c-like programing language.
-
 ```
-echo "Hello World"
+echo "Hello World";
 ```
 
 # 基本语法
@@ -20,39 +22,41 @@ echo "Hello World"
 
 ## 标识符
 
-标示符由字母 (A-Za-z)、数字 (0-9) 和下划线 (_) 所组成，并且不能以数字开头。
-
-标识符区分大小写，所以 A 与 a 是不同的标识符。
-
-以下均为合法的标识符：
-
-- mohd
-- Zara_
-- abc
-- move_name
-- a_123
-- myname50
-- _temp
-- j
-- a23b9
-- retVal
-
-以下均为不合法的标识符：
-
-- 0ab
-- white-space
-- $ab
-- paper@123
+标示符由字母 (A-Za-z)、数字 (0-9) 和下划线 (_) 所组成，并且不能以数字开头。标识符区分大小写。
 
 ## 保留字
 
+类型声明
 
+- auto
+- int
+- float
+- bool
+- string
+- array
+
+布尔值
+
+- true
+- false
+
+函数
+
+- function
+- return
+
+流程控制
+
+- if
+- else
+- do
+- while
+- break
+- continue
 
 # 基本数据类型
 
 ## undefined
-
-未声明的变量，或者声明但尚未初始化的 auto 类型变量，其值为 undefined。
 
 ## integer
 
@@ -80,34 +84,25 @@ echo "Hello World"
 
 ## reference
 
-### string
+## string
 
 
 
-#### 字符串字面量
+### 字符串字面量
 
 "this is a string"
 
-### object
-
-属性访问：obj.name
-方法调用：obj.say()
-
-#### 对象字面量
-
-{"name": "xscript", "status": 0, "is_ok": false}
-
-### array
+## array
 
 下标访问：arr[1]
 
-#### 数组字面量
+### 数组字面量
 
 [1, 2, 3]
 
-### function
+## function
 
-#### 函数字面量
+### 函数字面量
 
 # 运算符
 
