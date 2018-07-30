@@ -1,23 +1,18 @@
 #include "../tokenizer/tokens.h"
 #include "operator.h"
-
+#include "cast.h"
 
 int lgx_op_add(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_LONG && right->type == T_LONG) {
         ret->type = T_LONG;
         ret->v.l = left->v.l + right->v.l;
-    } else if (left->type == T_LONG && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.l + right->v.d;
-    } else if (left->type == T_DOUBLE && right->type == T_LONG) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d + right->v.l;
-    } else if (left->type == T_DOUBLE && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d + right->v.d;
     } else {
-        // error
-        return 1;
+        lgx_val_t l,r;
+        if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
+            return 1;
+        }
+        ret->type = T_DOUBLE;
+        ret->v.d = l.v.d + r.v.d;
     }
 
     return 0;
@@ -27,18 +22,13 @@ int lgx_op_sub(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_LONG && right->type == T_LONG) {
         ret->type = T_LONG;
         ret->v.l = left->v.l - right->v.l;
-    } else if (left->type == T_LONG && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.l - right->v.d;
-    } else if (left->type == T_DOUBLE && right->type == T_LONG) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d - right->v.l;
-    } else if (left->type == T_DOUBLE && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d - right->v.d;
     } else {
-        // error
-        return 1;
+        lgx_val_t l,r;
+        if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
+            return 1;
+        }
+        ret->type = T_DOUBLE;
+        ret->v.d = l.v.d - r.v.d;
     }
 
     return 0;
@@ -48,39 +38,30 @@ int lgx_op_mul(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_LONG && right->type == T_LONG) {
         ret->type = T_LONG;
         ret->v.l = left->v.l * right->v.l;
-    } else if (left->type == T_LONG && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.l * right->v.d;
-    } else if (left->type == T_DOUBLE && right->type == T_LONG) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d * right->v.l;
-    } else if (left->type == T_DOUBLE && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d * right->v.d;
     } else {
-        // error
-        return 1;
+        lgx_val_t l,r;
+        if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
+            return 1;
+        }
+        ret->type = T_DOUBLE;
+        ret->v.d = l.v.d * r.v.d;
     }
 
     return 0;
 }
 
 int lgx_op_div(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
+    // TODO 判断除数为 0 的情况
     if (left->type == T_LONG && right->type == T_LONG) {
         ret->type = T_LONG;
         ret->v.l = left->v.l / right->v.l;
-    } else if (left->type == T_LONG && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.l / right->v.d;
-    } else if (left->type == T_DOUBLE && right->type == T_LONG) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d / right->v.l;
-    } else if (left->type == T_DOUBLE && right->type == T_DOUBLE) {
-        ret->type = T_DOUBLE;
-        ret->v.d = left->v.d / right->v.d;
     } else {
-        // error
-        return 1;
+        lgx_val_t l,r;
+        if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
+            return 1;
+        }
+        ret->type = T_DOUBLE;
+        ret->v.d = l.v.d / r.v.d;
     }
 
     return 0;
