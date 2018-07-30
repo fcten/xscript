@@ -40,7 +40,7 @@ void lgx_val_print(lgx_val_t *v) {
             break;
         case T_DOUBLE:
             //printf("<%s> %f\n", lgx_val_typeof(v), v->v.d);
-            printf("%f", v->v.d);
+            printf("%lg", v->v.d);
             break;
         case T_BOOL:
             if (v->v.l) {
