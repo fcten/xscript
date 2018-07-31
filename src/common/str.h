@@ -2,14 +2,17 @@
 #define LGX_STR_H
 
 typedef struct {
+    // 缓冲区长度
     unsigned size;
+    // 已使用的缓冲区长度（字符串长度）
     unsigned length;
+    // 缓冲区
     char buffer[];
 } lgx_str_t;
 
 typedef struct {
     unsigned length;
-char *buffer;
+    char *buffer;
 } lgx_str_ref_t;
 
 lgx_str_t* lgx_str_new(char *str, unsigned len);

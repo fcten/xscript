@@ -43,7 +43,8 @@ typedef struct {
     } v;
     unsigned type:4;
     union {
-        struct { // 变量所使用的寄存器类型，仅在编译时使用
+        // 变量所使用的寄存器类型，仅在编译时使用
+        struct {
             unsigned type:4;
             unsigned char reg;
         } reg;
