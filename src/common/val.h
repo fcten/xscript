@@ -45,9 +45,18 @@ typedef struct {
     union {
         // 变量所使用的寄存器类型，仅在编译时使用
         struct {
+            // 寄存器类型
             unsigned type:4;
+            // 寄存器编号
             unsigned char reg;
         } reg;
+        // gc 信息
+        struct {
+            // 引用计数
+            unsigned ref_cnt;
+            // GC 标记
+            unsigned char color;
+        } gc;
     } u;
 } lgx_val_t;
 

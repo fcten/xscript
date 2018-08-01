@@ -4,11 +4,6 @@
 #include "../common/val.h"
 #include "vm.h"
 
-typedef struct {
-    // 引用计数
-    unsigned ref_cnt;
-} lgx_gc_t;
-
 // 启用垃圾回收
 void lgx_gc_enable(lgx_vm_t *vm);
 
@@ -18,16 +13,16 @@ void lgx_gc_enable(lgx_vm_t *vm);
 void lgx_gc_disable(lgx_vm_t *vm);
 
 // 分配一个变量
-lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm, unsigned val_type);
+lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm);
 
 // 释放一个变量
 void lgx_gc_free(lgx_vm_t *vm, lgx_val_t *val);
 
 // 引用计数加一
-// lgx_gc_refer()
+void lgx_gc_refer(lgx_val_t *val);
 
 // 引用计数减一
-// lgx_gc_release()
+void lgx_gc_release(lgx_val_t *val);
 
 // 执行一次垃圾回收
 // 所有的垃圾回收操作均由该方法触发

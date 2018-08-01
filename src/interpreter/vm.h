@@ -1,10 +1,12 @@
 #ifndef LGX_VM_H
 #define LGX_VM_H
 
+#include "../common/list.h"
 #include "../common/val.h"
 #include "../compiler/compiler.h"
 
 typedef struct {
+    lgx_list_t head;
     // 栈内存
     lgx_val_t *buf;
     // 栈总长度
@@ -32,7 +34,7 @@ typedef struct {
     // 如果 Full GC 触发过于频繁，将会抛出 OutOfMemory 异常。
     struct {
         // 新生代
-        lgx_vm_stack_t young[16];
+        lgx_vm_stack_t young;
         // 老年代
         lgx_vm_stack_t old;
     } heap;

@@ -41,14 +41,42 @@ void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     exit(1);
 }
 
+int lgx_vm_stack_init(lgx_vm_stack_t *stack, unsigned size) {
+    lgx_list_init(&stack->head);
+    stack->size = size;
+    stack->base = 0;
+    stack->buf = malloc(stack->size * sizeof(lgx_val_t));
+    if (!stack->buf) {
+        return 1;
+    }
+    return 0;
+}
+
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    vm->stack.size = 256;
-    vm->stack.base = 0;
-    vm->stack.buf = malloc(vm->stack.size * sizeof(lgx_val_t));
-    if (!vm->stack.buf) {
+    // 初始化栈内存
+    if (lgx_vm_stack_init(&vm->stack, 256)) {
         return 1;
     }
     vm->regs = vm->stack.buf + vm->stack.base;
+
+    // 初始化老年代堆内存
+    if (lgx_vm_stack_init(&vm->heap.old, 4096)) {
+        return 1;
+    }
+
+    // 初始化新生代堆内存
+    int i;
+    lgx_list_init(&vm->heap.young.head);
+    for (i = 0; i < 16; i++) {
+        lgx_vm_stack_t *stack = malloc(sizeof(lgx_vm_stack_t));
+        if (!stack) {
+            return 1;
+        }
+        if (lgx_vm_stack_init(stack, 512)) {
+            return 1;
+        }
+        lgx_list_add_tail(&stack->head, &vm->heap.young.head);
+    }
 
     vm->bc = bc->bc;
     vm->bc_size = bc->bc_size;
@@ -571,6 +599,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_NEW:{
+                // TODO GC
                 R(PA(i)).type = T_ARRAY;
                 R(PA(i)).v.arr = malloc(sizeof(lgx_hash_t));
 
