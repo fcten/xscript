@@ -1,24 +1,27 @@
 #ifndef LGX_GC_H
 #define LGX_GC_H
 
+#include "../common/val.h"
+#include "vm.h"
+
 typedef struct {
     // 引用计数
     unsigned ref_cnt;
 } lgx_gc_t;
 
 // 启用垃圾回收
-// lgx_gc_enable();
+void lgx_gc_enable(lgx_vm_t *vm);
 
 // 禁用垃圾回收
 // 对于一些非长期执行的脚本可以选择禁用垃圾回收，因为
 // 执行任何脚本所使用的内存会在脚本执行完毕时彻底释放
-// lgx_gc_disable();
+void lgx_gc_disable(lgx_vm_t *vm);
 
 // 分配一个变量
-// lgx_gc_alloc()
+lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm, unsigned val_type);
 
 // 释放一个变量
-// lgx_gc_free()
+void lgx_gc_free(lgx_vm_t *vm, lgx_val_t *val);
 
 // 引用计数加一
 // lgx_gc_refer()

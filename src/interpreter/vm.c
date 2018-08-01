@@ -8,12 +8,12 @@
 
 // 输出当前的调用栈
 int lgx_vm_backtrace(lgx_vm_t *vm) {
-    unsigned int base = vm->stack_base;
+    unsigned int base = vm->stack.base;
     while (1) {
-        printf("  <function:%d>\n", vm->stack[base].v.fun->addr);
+        printf("  <function:%d>\n", vm->stack.buf[base].v.fun->addr);
 
-        if (vm->stack[base+3].type == T_LONG) {
-            base = vm->stack[base+3].v.l;
+        if (vm->stack.buf[base+3].type == T_LONG) {
+            base = vm->stack.buf[base+3].v.l;
         } else {
             break;
         }
@@ -42,13 +42,13 @@ void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    vm->stack_size = 256;
-    vm->stack_base = 0;
-    vm->stack = malloc(vm->stack_size * sizeof(lgx_val_t));
-    if (!vm->stack) {
+    vm->stack.size = 256;
+    vm->stack.base = 0;
+    vm->stack.buf = malloc(vm->stack.size * sizeof(lgx_val_t));
+    if (!vm->stack.buf) {
         return 1;
     }
-    vm->regs = vm->stack + vm->stack_base;
+    vm->regs = vm->stack.buf + vm->stack.base;
 
     vm->bc = bc->bc;
     vm->bc_size = bc->bc_size;
@@ -71,23 +71,23 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
-    if (vm->stack_base + R(0).v.fun->stack_size + stack_size < vm->stack_size) {
+    if (vm->stack.base + R(0).v.fun->stack_size + stack_size < vm->stack.size) {
         return 0;
     }
 
-    unsigned int size = vm->stack_size;
-    while (vm->stack_base + R(0).v.fun->stack_size + stack_size >= size) {
+    unsigned int size = vm->stack.size;
+    while (vm->stack.base + R(0).v.fun->stack_size + stack_size >= size) {
         size *= 2;
     }
 
-    lgx_val_t *s = realloc(vm->stack, size * sizeof(lgx_val_t));
+    lgx_val_t *s = realloc(vm->stack.buf, size * sizeof(lgx_val_t));
     if (!s) {
         return 1;
     }
 
-    vm->stack = s;
-    vm->stack_size = size;
-    vm->regs = vm->stack + vm->stack_base;
+    vm->stack.buf = s;
+    vm->stack.size = size;
+    vm->regs = vm->stack.buf + vm->stack.base;
 
     return 0;
 }
@@ -500,11 +500,11 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                     // 写入堆栈地址
                     R(base + 3).type = T_LONG;
-                    R(base + 3).v.l = vm->stack_base;
+                    R(base + 3).v.l = vm->stack.base;
 
                     // 切换执行堆栈
-                    vm->stack_base += R(0).v.fun->stack_size;
-                    vm->regs = vm->stack + vm->stack_base;
+                    vm->stack.base += R(0).v.fun->stack_size;
+                    vm->regs = vm->stack.buf + vm->stack.base;
 
                     // 跳转到函数入口
                     vm->pc = fun->addr;
@@ -540,8 +540,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 }
 
                 // 切换执行堆栈
-                vm->stack_base = R(3).v.l;
-                vm->regs = vm->stack + vm->stack_base;
+                vm->stack.base = R(3).v.l;
+                vm->regs = vm->stack.buf + vm->stack.base;
                 break;
             }
             case OP_ARRAY_SET:{
