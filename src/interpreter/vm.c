@@ -708,6 +708,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 if (!v) {
                     throw_exception(vm, "out of memory");
                 }
+                // todo malloc 太慢了
                 v->type = T_ARRAY;
                 v->v.arr = malloc(sizeof(lgx_hash_t));
                 lgx_hash_init(v->v.arr, 32);
