@@ -20,14 +20,25 @@ typedef struct {
 } lgx_hash_node_t;
 
 typedef struct lgx_hash_s {
+    // GC 信息
+    struct {
+        // 引用计数
+        unsigned ref_cnt;
+        // GC 标记
+        unsigned char color;
+    } gc;
+
+    // 总容量
     unsigned size;
 
     // 按 hash 结果存储 key
     lgx_hash_key_t *key;
+    // TODO 暂时无用
     unsigned key_offset;
 
     // 按插入顺序存储
     lgx_hash_node_t *table;
+    // table 的当前可用位置
     unsigned table_offset;
 } lgx_hash_t;
 

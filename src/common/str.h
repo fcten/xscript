@@ -2,6 +2,14 @@
 #define LGX_STR_H
 
 typedef struct {
+    // GC 信息
+    struct {
+        // 引用计数
+        unsigned ref_cnt;
+        // GC 标记
+        unsigned char color;
+    } gc;
+
     // 缓冲区长度
     unsigned size;
     // 已使用的缓冲区长度（字符串长度）

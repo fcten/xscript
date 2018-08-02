@@ -16,17 +16,30 @@ void lgx_gc_disable(lgx_vm_t *vm);
 lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm);
 
 // 释放一个变量
-void lgx_gc_free(lgx_vm_t *vm, lgx_val_t *val);
+void lgx_gc_free(lgx_val_t *val);
+
+// 引用计数设置为指定值
+#define lgx_gc_ref_set(p, cnt) do {\
+    switch ((p)->type) {\
+        case T_STRING: (p)->v.str->gc.ref_cnt = cnt; break;\
+        case T_ARRAY: (p)->v.arr->gc.ref_cnt = cnt; break;\
+    }\
+} while(0);
 
 // 引用计数加一
-void lgx_gc_refer(lgx_val_t *val);
+#define lgx_gc_ref_add(p) do {\
+    switch ((p)->type) {\
+        case T_STRING: (p)->v.str->gc.ref_cnt ++; break;\
+        case T_ARRAY: (p)->v.arr->gc.ref_cnt ++; break;\
+    }\
+} while(0);
 
 // 引用计数减一
-void lgx_gc_release(lgx_val_t *val);
-
-// 执行一次垃圾回收
-// 所有的垃圾回收操作均由该方法触发
-// 该方法会自行判断是否执行垃圾回收，以及执行何种程度的垃圾回收
-// lgx_gc_trigger()
+#define lgx_gc_ref_del(p) do {\
+    switch ((p)->type) {\
+        case T_STRING: (p)->v.str->gc.ref_cnt --; break;\
+        case T_ARRAY: (p)->v.arr->gc.ref_cnt --; break;\
+    }\
+} while(0);
 
 #endif // LGX_GC_H

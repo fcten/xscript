@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <memory.h>
 
 #include "../common/bytecode.h"
 #include "../common/operator.h"
 #include "vm.h"
+#include "gc.h"
 
 // 输出当前的调用栈
 int lgx_vm_backtrace(lgx_vm_t *vm) {
@@ -45,11 +47,15 @@ int lgx_vm_stack_init(lgx_vm_stack_t *stack, unsigned size) {
     lgx_list_init(&stack->head);
     stack->size = size;
     stack->base = 0;
-    stack->buf = malloc(stack->size * sizeof(lgx_val_t));
+    stack->buf = calloc(stack->size, sizeof(lgx_val_t));
     if (!stack->buf) {
         return 1;
     }
     return 0;
+}
+
+void lgx_vm_stack_cleanup(lgx_vm_stack_t *stack) {
+    free(stack->buf);
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
@@ -94,6 +100,35 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     return 0;
 }
 
+int lgx_vm_cleanup(lgx_vm_t *vm) {
+    int i;
+    // 释放栈
+    // TODO 解除所有引用
+    lgx_vm_stack_cleanup(&vm->stack);
+
+    // 遍历堆，清理所有变量
+    lgx_vm_stack_t *stack;
+    lgx_list_for_each_entry(stack, lgx_vm_stack_t, &vm->heap.young.head, head) {
+        for (i = 0; i < stack->base; i++) {
+            lgx_gc_free(&stack->buf[i]);
+        }
+    }
+    for (i = 0; i < vm->heap.old.base; i++) {
+        lgx_gc_free(&vm->heap.old.buf[i]);
+    }
+
+    // 释放堆
+    lgx_vm_stack_cleanup(&vm->heap.old);
+    while (!lgx_list_empty(&vm->heap.young.head)) {
+        lgx_vm_stack_t *stack = lgx_list_first_entry(&vm->heap.young.head, lgx_vm_stack_t, head);
+        lgx_vm_stack_cleanup(stack);
+        lgx_list_del(&stack->head);
+        free(stack);
+    }
+
+    return 0;
+}
+
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].k)
 
@@ -112,6 +147,8 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
     if (!s) {
         return 1;
     }
+    // 初始化新空间
+    memset(s + vm->stack.size, 0, size - vm->stack.size);
 
     vm->stack.buf = s;
     vm->stack.size = size;
@@ -128,16 +165,24 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
         switch(OP(i)) {
             case OP_MOV:{
+                lgx_gc_ref_del(&R(PA(i)));
+                lgx_gc_ref_add(&R(PB(i)));
+
                 R(PA(i)).type = R(PB(i)).type;
                 R(PA(i)).v.l = R(PB(i)).v.l;
+
                 break;
             }
             case OP_MOVI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_LONG;
                 R(PA(i)).v.l = PD(i);
                 break;
             }
             case OP_ADD:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l + R(PC(i)).v.l;
@@ -152,6 +197,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SUB:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l - R(PC(i)).v.l;
@@ -166,6 +213,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_MUL:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l * R(PC(i)).v.l;
@@ -180,6 +229,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_DIV:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 // TODO 判断除数是否为 0
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
@@ -195,6 +246,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_ADDI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l + PC(i);
@@ -212,6 +265,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SUBI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l - PC(i);
@@ -229,6 +284,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_MULI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l * PC(i);
@@ -246,6 +303,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_DIVI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 // TODO 判断除数是否为 0
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
@@ -276,6 +335,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHL:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << R(PC(i)).v.l;
@@ -285,6 +346,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHR:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> R(PC(i)).v.l;
@@ -294,6 +357,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHLI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << PC(i);
@@ -303,6 +368,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHRI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> PC(i);
@@ -312,6 +379,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_AND:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l & R(PC(i)).v.l;
@@ -321,6 +390,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_OR:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l | R(PC(i)).v.l;
@@ -330,6 +401,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_XOR:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l ^ R(PC(i)).v.l;
@@ -339,6 +412,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_NOT:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = ~R(PB(i)).v.l;
@@ -348,6 +423,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_EQ:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
 
                 if (R(PB(i)).type == R(PC(i)).type && R(PB(i)).v.l == R(PC(i)).v.l) {
@@ -358,6 +435,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LE:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
 
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
@@ -370,6 +449,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LT:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
 
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
@@ -382,6 +463,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_EQI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
 
                 if (R(PB(i)).type == T_LONG) {
@@ -394,6 +477,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_GEI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_LONG) {
@@ -406,6 +491,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LEI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_LONG) {
@@ -418,6 +505,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_GTI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_LONG) {
@@ -430,6 +519,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LTI:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_LONG) {
@@ -442,6 +533,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LAND:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL) {
@@ -452,6 +545,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LOR:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
                 
                 if (R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL) {
@@ -462,6 +557,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LNOT:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)).type = T_BOOL;
 
                 if (R(PB(i)).type == T_BOOL) {
@@ -544,6 +641,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_CALL_END:{
                 if (R(PA(i)).type == T_FUNCTION) {
+                    lgx_gc_ref_del(&R(PB(i)));
+
                     // 读取返回值
                     unsigned int base = R(0).v.fun->stack_size;
                     if (R(base + 1).type == T_LONG) {
@@ -551,6 +650,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     } else {
                         R(PB(i)).type = T_UNDEFINED;
                     }
+
+                    // TODO 释放所有局部变量和临时变量？
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
@@ -566,6 +667,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(1).type = T_LONG;
                     R(1).v.l = PA(i);
                 }
+
+                // TODO 释放所有局部变量和临时变量？
 
                 // 切换执行堆栈
                 vm->stack.base = R(3).v.l;
@@ -599,15 +702,23 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_NEW:{
-                // TODO GC
-                R(PA(i)).type = T_ARRAY;
-                R(PA(i)).v.arr = malloc(sizeof(lgx_hash_t));
+                lgx_gc_ref_del(&R(PA(i)));
 
-                lgx_hash_init(R(PA(i)).v.arr, 32);
+                lgx_val_t *v = lgx_gc_alloc(vm);
+                if (!v) {
+                    throw_exception(vm, "out of memory");
+                }
+                v->type = T_ARRAY;
+                v->v.arr = malloc(sizeof(lgx_hash_t));
+                lgx_hash_init(v->v.arr, 32);
+                lgx_gc_ref_set(v, 1);
 
+                R(PA(i)) = *v;
                 break;
             }
             case OP_ARRAY_GET:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 if (R(PB(i)).type == T_ARRAY) {
                     if (R(PC(i)).type == T_LONG) {
                         if (R(PC(i)).v.l >= 0 && R(PC(i)).v.l < R(PB(i)).v.arr->table_offset) {
@@ -626,6 +737,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_LOAD:{
+                lgx_gc_ref_del(&R(PA(i)));
+
                 R(PA(i)) = C(PD(i));
                 break;
             }

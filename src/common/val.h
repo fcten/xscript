@@ -50,13 +50,6 @@ typedef struct {
             // 寄存器编号
             unsigned char reg;
         } reg;
-        // gc 信息
-        struct {
-            // 引用计数
-            unsigned ref_cnt;
-            // GC 标记
-            unsigned char color;
-        } gc;
     } u;
 } lgx_val_t;
 

@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
     lgx_vm_init(&vm, &bc);
 //    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
     lgx_vm_start(&vm);
+    lgx_vm_cleanup(&vm);
 
     return 0;
 }

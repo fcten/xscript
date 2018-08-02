@@ -30,6 +30,15 @@ int lgx_hash_init(lgx_hash_t *hash, unsigned size) {
 }
 
 int lgx_hash_cleanup(lgx_hash_t *hash) {
+    int i;
+    for (i = 0; i < hash->size; i ++) {
+        while (!lgx_list_empty(&hash->key[i].vl.head)) {
+            lgx_val_list_t *list = lgx_list_first_entry(&hash->key[i].vl.head, lgx_val_list_t, head);
+            lgx_list_del(&list->head);
+            free(list);
+        }
+    }
+
     hash->size = 0;
 
     free(hash->key);
