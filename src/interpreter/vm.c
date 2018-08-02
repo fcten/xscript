@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <memory.h>
 
+#include "../common/common.h"
 #include "../common/bytecode.h"
 #include "../common/operator.h"
 #include "vm.h"
@@ -337,7 +338,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_SHL:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << R(PC(i)).v.l;
                 } else {
@@ -348,7 +349,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_SHR:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> R(PC(i)).v.l;
                 } else {
@@ -359,7 +360,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_SHLI:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << PC(i);
                 } else {
@@ -370,7 +371,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_SHRI:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> PC(i);
                 } else {
@@ -381,7 +382,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_AND:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l & R(PC(i)).v.l;
                 } else {
@@ -392,7 +393,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_OR:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l | R(PC(i)).v.l;
                 } else {
@@ -403,7 +404,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_XOR:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l ^ R(PC(i)).v.l;
                 } else {
@@ -414,7 +415,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_NOT:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_LONG)) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = ~R(PB(i)).v.l;
                 } else {
@@ -587,9 +588,9 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_NEW:{
-                if (R(PA(i)).type == T_FUNCTION) {
+                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
                     // 确保空余堆栈空间足够容纳本次函数调用
-                    if (lgx_vm_checkstack(vm, R(PA(i)).v.fun->stack_size) != 0) {
+                    if (UNEXPECTED(lgx_vm_checkstack(vm, R(PA(i)).v.fun->stack_size) != 0)) {
                         // runtime error
                         throw_exception(vm, "check stack failed");
                     }
@@ -600,7 +601,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_SET:{
-                if (R(PA(i)).type == T_FUNCTION) {
+                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
                     R(R(0).v.fun->stack_size + PB(i)) = R(PC(i));
                 } else {
                     // runtime error
@@ -609,7 +610,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL:{
-                if (R(PA(i)).type == T_FUNCTION) {
+                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
                     lgx_fun_t *fun = R(PA(i)).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
@@ -640,7 +641,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_END:{
-                if (R(PA(i)).type == T_FUNCTION) {
+                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
                     lgx_gc_ref_del(&R(PB(i)));
 
                     // 读取返回值
@@ -676,8 +677,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_SET:{
-                if (R(PA(i)).type == T_ARRAY) {
-                    if (R(PB(i)).type == T_LONG) {
+                if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
+                    if (EXPECTED(R(PB(i)).type == T_LONG)) {
                         lgx_hash_node_t n;
                         n.k = R(PB(i));
                         n.v = R(PC(i));
@@ -693,7 +694,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_ADD:{
-                if (R(PA(i)).type == T_ARRAY) {
+                if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
                     lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
                 } else {
                     // runtime error
@@ -705,7 +706,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 lgx_gc_ref_del(&R(PA(i)));
 
                 lgx_val_t *v = lgx_gc_alloc(vm);
-                if (!v) {
+                if (UNEXPECTED(!v)) {
                     throw_exception(vm, "out of memory");
                 }
                 // todo malloc 太慢了
@@ -720,8 +721,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_ARRAY_GET:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                if (R(PB(i)).type == T_ARRAY) {
-                    if (R(PC(i)).type == T_LONG) {
+                if (EXPECTED(R(PB(i)).type == T_ARRAY)) {
+                    if (EXPECTED(R(PC(i)).type == T_LONG)) {
                         if (R(PC(i)).v.l >= 0 && R(PC(i)).v.l < R(PB(i)).v.arr->table_offset) {
                             R(PA(i)) = R(PB(i)).v.arr->table[R(PC(i)).v.l].v;
                         } else {
