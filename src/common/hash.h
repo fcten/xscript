@@ -10,6 +10,9 @@ typedef struct {
     lgx_val_t v;
 } lgx_hash_node_t;
 
+// TODO lgx_hash_t 太大了 size=8 时需要多达 416 字节。
+// lgx_hash_t 32 字节
+// lgx_hash_node_t 48 字节
 typedef struct lgx_hash_s {
     // GC 信息
     struct {
