@@ -1,6 +1,7 @@
 #include "../tokenizer/tokens.h"
 #include "operator.h"
 #include "cast.h"
+#include "hash.h"
 
 int lgx_op_add(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_LONG && right->type == T_LONG) {
@@ -310,6 +311,22 @@ int lgx_op_neg(lgx_val_t *ret, lgx_val_t *right) {
     return 0;
 }
 
+int lgx_op_index(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
+    if (left->type == T_ARRAY && right->type == T_LONG) {
+        lgx_hash_node_t *n = lgx_hash_get(left->v.arr, right);
+        if (n) {
+            *ret = n->v;
+        } else {
+            ret->type = T_UNDEFINED;
+        }
+    } else {
+        // error
+        return 1;
+    }
+
+    return 0;
+}
+
 int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     switch (op) {
         case '+': return lgx_op_add(ret, left, right);
@@ -330,7 +347,7 @@ int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
         case '|': return lgx_op_or(ret, left, right);
         case TK_AND: return lgx_op_land(ret, left, right);
         case TK_OR: return lgx_op_lor(ret, left, right);
-        case TK_INDEX:
+        case TK_INDEX: return lgx_op_index(ret, left, right);
         case TK_ATTR:
         default:
             // error

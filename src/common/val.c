@@ -76,3 +76,26 @@ void lgx_val_print(lgx_val_t *v) {
             break;
     }
 }
+
+int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
+    if (src->type == dst->type) {
+        switch (src->type) {
+            case T_LONG:
+                return src->v.l == dst->v.l;
+            case T_DOUBLE:
+                return src->v.d == dst->v.d;
+            case T_BOOL:
+                if ( (src->v.l && dst->v.l) || (!src->v.l && !dst->v.l) ) {
+                    return 1;
+                }
+                break;
+            case T_STRING:
+                if (lgx_str_cmp(src->v.str, dst->v.str) == 0) {
+                    return 1;
+                }
+                break;
+        }
+    }
+
+    return 0;
+}

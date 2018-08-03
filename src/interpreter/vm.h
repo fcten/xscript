@@ -26,17 +26,19 @@ typedef struct {
     lgx_val_t *regs;
 
     // 堆内存
-    // 新的 value 会在新生代内存区中创建。新生代内存区分为 16 段，每当一段内存用完，
-    // 会触发一次 Minor GC，清理该内存区，把其中依然存活的 value 移入老年代。
+    // 新的 value 会加入新生代链表。每当 young_size 超过阈值，会触发一次 Minor GC，
+    // 清理该内存区，把其中依然存活的 value 移入老年代。
     // Minor GC 使用 引用计数 算法。
-    // 每当老年代内存用完时，会触发一次 Full GC。
+    // 每当 old_size 超过阈值，会触发一次 Full GC。
     // Full GC 使用 标记/清除/压缩 算法
     // 如果 Full GC 触发过于频繁，将会抛出 OutOfMemory 异常。
     struct {
         // 新生代
-        lgx_vm_stack_t young;
+        lgx_list_t young;
+        unsigned young_size;
         // 老年代
-        lgx_vm_stack_t old;
+        lgx_list_t old;
+        unsigned old_size;
     } heap;
 
     // 常量表

@@ -259,6 +259,7 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     int i;
     for(i = 0; i < node->children; i++) {
         lgx_val_t expr;
+        lgx_val_init(&expr);
         bc_expr(bc, node->child[i], &expr);
         bc_array_add(bc, e, &expr);
         reg_free(bc, &expr);
@@ -274,6 +275,8 @@ static int bc_expr_binary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
 
 static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1, e2;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -315,6 +318,8 @@ static int bc_expr_binary_relation(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
 
 static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1, e2;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -353,6 +358,8 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
 static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     if (node->child[0]->type == IDENTIFIER_TOKEN) {
         lgx_val_t e1, e2;
+        lgx_val_init(&e1);
+        lgx_val_init(&e2);
 
         if (bc_expr(bc, node->child[0], &e1)) {
             return 1;
@@ -377,6 +384,9 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         reg_free(bc, &e2);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_INDEX) {
         lgx_val_t e1, e2, e3;
+        lgx_val_init(&e1);
+        lgx_val_init(&e2);
+        lgx_val_init(&e3);
 
         if (bc_expr(bc, node->child[0]->child[0], &e1)) {
             return 1;
@@ -425,6 +435,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1;
+    lgx_val_init(&e1);
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -442,6 +453,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     int i;
     for(i = 0; i < node->child[1]->children; i++) {
         lgx_val_t expr;
+        lgx_val_init(&expr);
         bc_expr(bc, node->child[1]->child[i], &expr);
         bc_call_set(bc, &e1, i+4, &expr);
         reg_free(bc, &expr);
@@ -460,6 +472,8 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
 static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1, e2;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -562,6 +576,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         }
         case UNARY_EXPRESSION:{
             lgx_val_t e1;
+            lgx_val_init(&e1);
             if (bc_expr(bc, node->child[0], &e1)) {
                 return 1;
             }
@@ -593,9 +608,18 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case BLOCK_STATEMENT:{
             int i;
             // 为当前作用域的变量分配寄存器
-            for(i = 0; i < node->u.symbols->table_offset; i++) {
-                node->u.symbols->table[i].v.u.reg.type = R_LOCAL;
-                node->u.symbols->table[i].v.u.reg.reg = reg_pop(bc);
+            for(i = 0; i < node->u.symbols->size; i++) {
+                lgx_hash_node_t *head = &node->u.symbols->table[i];
+                if (head->k.type == T_UNDEFINED) {
+                    continue;
+                }
+                head->v.u.reg.type = R_LOCAL;
+                head->v.u.reg.reg = reg_pop(bc);
+                lgx_hash_node_t *p;
+                lgx_list_for_each_entry(p, lgx_hash_node_t, &head->head, head) {
+                    p->v.u.reg.type = R_LOCAL;
+                    p->v.u.reg.reg = reg_pop(bc);
+                }
             }
 
             for(i = 0; i < node->children; i++) {
@@ -605,14 +629,22 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             // 释放局部变量的寄存器
-            for(i = node->u.symbols->table_offset - 1; i >= 0; i--) {
-                reg_push(bc, node->u.symbols->table[i].v.u.reg.reg);
+            for(i = 0; i < node->u.symbols->size; i++) {
+                lgx_hash_node_t *head = &node->u.symbols->table[i];
+                if (head->k.type == T_UNDEFINED) {
+                    continue;
+                }
+                reg_push(bc, head->v.u.reg.reg);
+                lgx_hash_node_t *p;
+                lgx_list_for_each_entry(p, lgx_hash_node_t, &head->head, head) {
+                    reg_push(bc, p->v.u.reg.reg);
+                }
             }
             break;
         }
         case IF_STATEMENT:{
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -642,7 +674,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case IF_ELSE_STATEMENT:{
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -686,7 +718,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case WHILE_STATEMENT:{
             unsigned start = bc->bc_top; // 循环起始位置
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -728,7 +760,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[1], &e)) {
                 return 1;
             }
@@ -777,8 +809,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         case RETURN_STATEMENT:{
             lgx_val_t r;
+            lgx_val_init(&r);
             r.u.reg.type = R_LOCAL;
-            r.u.reg.reg = 0;
 
             // 计算返回值
             if (node->child[0]) {
@@ -794,7 +826,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case ECHO_STATEMENT:{
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -807,7 +839,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             if (node->child[1]) {
                 // 如果声明中附带初始化，则执行一次赋值操作
                 lgx_val_t e;
-                memset(&e, 0, sizeof(e));
+                lgx_val_init(&e);
                 if (bc_expr_binary_assignment(bc, node, &e)) {
                     return 1;
                 }
@@ -816,7 +848,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
         case EXPRESSION_STATEMENT: {
             lgx_val_t e;
-            memset(&e, 0, sizeof(e));
+            lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -858,8 +890,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             // 始终写入一条返回语句，确保函数调用正常返回
             lgx_val_t r;
+            lgx_val_init(&r);
             r.u.reg.type = R_LOCAL;
-            r.u.reg.reg = 0;
             bc_ret(bc, &r);
 
             bc_set_pe(bc, start, bc->bc_top);
@@ -892,7 +924,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->err_len = 0;
     bc->errno = 0;
 
-    lgx_hash_init(&bc->constant, 32);
+    bc->constant = lgx_hash_new(32);
 
     if (bc_stat(bc, ast->root)) {
         bc_error(bc, "[Error] unknown error\n");

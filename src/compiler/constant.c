@@ -1,17 +1,15 @@
+#include "../common/common.h"
 #include "constant.h"
 
 int const_get(lgx_bc_t *bc, lgx_val_t *v) {
-    int idx = lgx_hash_get(&bc->constant, v);
-    if (idx >= 0) {
-        return idx;
-    } else {
-        lgx_hash_node_t n;
-        n.k = *v;
-        n.v.type = T_UNDEFINED;
-        if (lgx_hash_set(&bc->constant, &n) == 0) {
-            return lgx_hash_get(&bc->constant, v);
-        } else {
+    lgx_hash_node_t *n = lgx_hash_find(bc->constant, v);
+    if (!n) {
+        bc->constant = lgx_hash_add(bc->constant, v);
+        if (UNEXPECTED(!bc->constant)) {
             return -1;
         }
+        n = lgx_hash_find(bc->constant, v);
     }
+
+    return n->k.v.l;
 }

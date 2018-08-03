@@ -66,29 +66,15 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     }
     vm->regs = vm->stack.buf + vm->stack.base;
 
-    // 初始化老年代堆内存
-    if (lgx_vm_stack_init(&vm->heap.old, 4096)) {
-        return 1;
-    }
-
-    // 初始化新生代堆内存
-    int i;
-    lgx_list_init(&vm->heap.young.head);
-    for (i = 0; i < 16; i++) {
-        lgx_vm_stack_t *stack = malloc(sizeof(lgx_vm_stack_t));
-        if (!stack) {
-            return 1;
-        }
-        if (lgx_vm_stack_init(stack, 512)) {
-            return 1;
-        }
-        lgx_list_add_tail(&stack->head, &vm->heap.young.head);
-    }
+    lgx_list_init(&vm->heap.young);
+    lgx_list_init(&vm->heap.old);
+    vm->heap.young_size = 0;
+    vm->heap.old_size = 0;
 
     vm->bc = bc->bc;
     vm->bc_size = bc->bc_size;
     
-    vm->constant = &bc->constant;
+    vm->constant = bc->constant;
 
     vm->pc = 0;
 
@@ -102,36 +88,29 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
-    int i;
     // 释放栈
     // TODO 解除所有引用
     lgx_vm_stack_cleanup(&vm->stack);
 
-    // 遍历堆，清理所有变量
-    lgx_vm_stack_t *stack;
-    lgx_list_for_each_entry(stack, lgx_vm_stack_t, &vm->heap.young.head, head) {
-        for (i = 0; i < stack->base; i++) {
-            lgx_gc_free(&stack->buf[i]);
-        }
+    // 清理所有变量
+    lgx_list_t *list = vm->heap.young.next;
+    while(list != &vm->heap.young) {
+        lgx_list_t *next = list->next;
+        free(list);
+        list = next;
     }
-    for (i = 0; i < vm->heap.old.base; i++) {
-        lgx_gc_free(&vm->heap.old.buf[i]);
-    }
-
-    // 释放堆
-    lgx_vm_stack_cleanup(&vm->heap.old);
-    while (!lgx_list_empty(&vm->heap.young.head)) {
-        lgx_vm_stack_t *stack = lgx_list_first_entry(&vm->heap.young.head, lgx_vm_stack_t, head);
-        lgx_vm_stack_cleanup(stack);
-        lgx_list_del(&stack->head);
-        free(stack);
+    list = vm->heap.old.next;
+    while(list != &vm->heap.old) {
+        lgx_list_t *next = list->next;
+        free(list);
+        list = next;
     }
 
     return 0;
 }
 
 #define R(r)  (vm->regs[r])
-#define C(r)  (vm->constant->table[r].k)
+#define C(r)  (vm->constant->table[r].v)
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
@@ -682,7 +661,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                         lgx_hash_node_t n;
                         n.k = R(PB(i));
                         n.v = R(PC(i));
-                        lgx_hash_set(R(PA(i)).v.arr, &n);
+                        lgx_hash_t *hash = lgx_hash_set(R(PA(i)).v.arr, &n);
+                        if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
+                            R(PA(i)).v.arr = hash;
+                            lgx_gc_trace(vm, &R(PA(i)));
+                        }
+                        lgx_gc_ref_add(&R(PC(i)));
                     } else {
                         // runtime warning
                         throw_exception(vm, "attempt to set a %s key, integer expected", lgx_val_typeof(&R(PA(i))));
@@ -695,7 +679,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_ARRAY_ADD:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
-                    lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
+                    lgx_hash_t *hash = lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
+                    if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
+                        R(PA(i)).v.arr = hash;
+                        lgx_gc_trace(vm, &R(PA(i)));
+                    }
+                    lgx_gc_ref_add(&R(PB(i)));
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(PA(i))));
@@ -705,17 +694,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_ARRAY_NEW:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                lgx_val_t *v = lgx_gc_alloc(vm);
-                if (UNEXPECTED(!v)) {
+                R(PA(i)).type = T_ARRAY;
+                R(PA(i)).v.arr = lgx_hash_new(0);
+                if (UNEXPECTED(!R(PA(i)).v.arr)) {
                     throw_exception(vm, "out of memory");
                 }
-                // todo malloc 太慢了
-                v->type = T_ARRAY;
-                v->v.arr = malloc(sizeof(lgx_hash_t));
-                lgx_hash_init(v->v.arr, 32);
-                lgx_gc_ref_set(v, 1);
-
-                R(PA(i)) = *v;
+                lgx_gc_ref_add(&R(PA(i)));
                 break;
             }
             case OP_ARRAY_GET:{
@@ -723,8 +707,9 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 if (EXPECTED(R(PB(i)).type == T_ARRAY)) {
                     if (EXPECTED(R(PC(i)).type == T_LONG)) {
-                        if (R(PC(i)).v.l >= 0 && R(PC(i)).v.l < R(PB(i)).v.arr->table_offset) {
-                            R(PA(i)) = R(PB(i)).v.arr->table[R(PC(i)).v.l].v;
+                        lgx_hash_node_t *n = lgx_hash_get(R(PB(i)).v.arr, &R(PC(i)));
+                        if (n) {
+                            R(PA(i)) = n->v;
                         } else {
                             // runtime warning
                             R(PA(i)).type = T_UNDEFINED;

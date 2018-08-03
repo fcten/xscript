@@ -12,7 +12,6 @@ void lgx_gc_disable(lgx_vm_t *vm) {
 }
 
 void lgx_gc_free(lgx_val_t *val) {
-    int i;
     switch (val->type) {
         case T_STRING:
             if (val->v.str->gc.ref_cnt) {
@@ -25,13 +24,7 @@ void lgx_gc_free(lgx_val_t *val) {
             if (val->v.arr->gc.ref_cnt) {
                 return;
             }
-            // 递归释放子节点
-            for(i = 0; i < val->v.arr->table_offset; i++) {
-                lgx_gc_free(&val->v.arr->table[i].k);
-                lgx_gc_free(&val->v.arr->table[i].v);
-            }
-            lgx_hash_cleanup(val->v.arr);
-            free(val->v.arr);
+            lgx_hash_delete(val->v.arr);
             val->type = T_UNDEFINED;
             break;
         case T_OBJECT:
@@ -53,53 +46,84 @@ static int full_gc(lgx_vm_t *vm) {
     return 1;
 }
 
-static int minor_gc(lgx_vm_t *vm, lgx_vm_stack_t *stack) {
-    int i, cnt = 0;
-    // 第一次遍历，清理垃圾
-    for (i = 0; i < stack->base; i++) {
-        lgx_gc_free(&stack->buf[i]);
-    }
-    // 第二次遍历，把没有被释放的变量移动到老年代
-    for (i = 0; i < stack->base; i++) {
-        lgx_val_t *v = &stack->buf[i];
+static int minor_gc(lgx_vm_t *vm) {
+    int cnt = 0;
 
-        if (v->type == T_UNDEFINED) {
-            continue;
-        }
+    lgx_list_t *list = vm->heap.young.next;
+    while(list != &vm->heap.young) {
+        lgx_list_t *next = list->next;
+        lgx_list_del(list);
+        
+        switch (((lgx_gc_t*)list)->type) {
+            case T_STRING: {
+                unsigned size = sizeof(lgx_str_t) + ((lgx_str_t*)list)->size;
+                if (((lgx_gc_t*)list)->ref_cnt == 0) {
+                    free(list);
+                } else {
+                    lgx_list_add_tail(list, &vm->heap.old);
 
-        if (vm->heap.old.base >= vm->heap.old.size) {
-            // 老年代已满
-            if (full_gc(vm)) {
-                return 1;
+                    vm->heap.old_size += size;
+                    cnt ++;
+                }
+                vm->heap.young_size -= size;
+                break;
+            }
+            case T_ARRAY: {
+                unsigned size = sizeof(lgx_hash_t) + ((lgx_str_t*)list)->size * sizeof(lgx_hash_node_t);
+                if (((lgx_gc_t*)list)->ref_cnt == 0) {
+                    lgx_hash_delete((lgx_hash_t *)list);
+                    vm->heap.young_size -= size;
+                } else {
+                    /*
+                    lgx_list_add_tail(list, &vm->heap.old);
+
+                    vm->heap.young_size -= size;
+                    vm->heap.old_size += size;
+                    */
+                    cnt ++;
+                }
+                break;
             }
         }
-        // 把变量移动到老年代
-        vm->heap.old.buf[vm->heap.old.base++] = *v;
-        v->type = T_UNDEFINED;
-        cnt ++;
+
+        list = next;
     }
 
-    stack->base = 0;
-
     // TODO
-    //printf("[minor gc] %d move to old\n", cnt);
+    //printf("[minor gc] %d remain\n", cnt);
+
+    if (vm->heap.old_size >= 4 * 1024 * 1024) {
+        if (full_gc(vm)) {
+            // Out Of Memory
+            return 1;
+        }
+
+    }
 
     return 0;
 }
 
-lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm) {
-    lgx_vm_stack_t *cur = lgx_list_first_entry(&vm->heap.young.head, lgx_vm_stack_t, head);
-
-    if (cur->base >= cur->size) {
-        // 当前内存块已满
-        lgx_vm_stack_t *next = lgx_list_next_entry(cur, lgx_vm_stack_t, head);
-        if (minor_gc(vm, next)) {
-            // Out Of Memory
-            return NULL;
-        }
-        lgx_list_move_tail(&cur->head, &vm->heap.young.head);
-        cur = next;
+int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
+    switch (v->type) {
+        case T_STRING:
+            lgx_list_add_tail(&v->v.str->gc.head ,&vm->heap.young);
+            vm->heap.young_size += sizeof(lgx_str_t) + v->v.str->size;
+            break;
+        case T_ARRAY:
+            lgx_list_add_tail(&v->v.arr->gc.head ,&vm->heap.young);
+            vm->heap.young_size += sizeof(lgx_hash_t) + v->v.arr->size * sizeof(lgx_hash_node_t);
+            break;
+        default:
+            return 0;
     }
 
-    return &cur->buf[cur->base++];
+    if (vm->heap.young_size >= 4 * 1024 * 1024) {
+        if (minor_gc(vm)) {
+            // Out Of Memory
+            return 1;
+        }
+
+    }
+
+    return 0;
 }

@@ -407,8 +407,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_node_append_child(parent, block_statement);
 
     // 创建新的作用域
-    block_statement->u.symbols = malloc(sizeof(lgx_hash_t));
-    lgx_hash_init(block_statement->u.symbols, 32);
+    block_statement->u.symbols = lgx_hash_new(32);
 
     // 优先把函数参数添加到符号表
     if (parent->type == FUNCTION_DECLARATION) {
@@ -741,8 +740,7 @@ int lgx_ast_parser(lgx_ast_t* ast) {
     ast->root->type = BLOCK_STATEMENT;
 
     // 全局作用域
-    ast->root->u.symbols = malloc(sizeof(lgx_hash_t));
-    lgx_hash_init(ast->root->u.symbols, 32);
+    ast->root->u.symbols = lgx_hash_new(32);
 
     ast_step(ast);
 

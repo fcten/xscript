@@ -4,6 +4,16 @@
 #include "../common/val.h"
 #include "vm.h"
 
+typedef struct {
+    lgx_list_t head;
+    // 该 gc 所管理的类型
+    unsigned char type;
+    // GC 标记
+    unsigned char color;
+    // 引用计数
+    unsigned ref_cnt;
+} lgx_gc_t;
+
 // 启用垃圾回收
 void lgx_gc_enable(lgx_vm_t *vm);
 
@@ -12,8 +22,8 @@ void lgx_gc_enable(lgx_vm_t *vm);
 // 执行任何脚本所使用的内存会在脚本执行完毕时彻底释放
 void lgx_gc_disable(lgx_vm_t *vm);
 
-// 分配一个变量
-lgx_val_t* lgx_gc_alloc(lgx_vm_t *vm);
+// 把一个变量加入 GC 跟踪
+int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
 
 // 释放一个变量
 void lgx_gc_free(lgx_val_t *val);

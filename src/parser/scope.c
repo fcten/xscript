@@ -18,7 +18,7 @@ void lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_ref_t *s) {
     n.k.v.str = lgx_str_new(s->buffer,s->length);
     n.v.type = T_UNDEFINED;
 
-    lgx_hash_set(cur->u.symbols, &n);
+    cur->u.symbols = lgx_hash_set(cur->u.symbols, &n);
 }
 
 // 查找局部变量
@@ -29,9 +29,9 @@ lgx_val_t* lgx_scope_local_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
 
     lgx_ast_node_t *cur = find_scope(node);
     while (cur->parent) {
-        int i = lgx_hash_get(cur->u.symbols, &v);
-        if (i >= 0) {
-            return &cur->u.symbols->table[i].v;
+        lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
+        if (n) {
+            return &n->v;
         } else {
             cur = find_scope(cur->parent);
         }
@@ -51,9 +51,9 @@ lgx_val_t* lgx_scope_global_val_get(lgx_ast_node_t *node, lgx_str_ref_t *s) {
         cur = find_scope(cur->parent);
     }
 
-    int i = lgx_hash_get(cur->u.symbols, &v);
-    if (i >= 0) {
-        return &cur->u.symbols->table[i].v;
+    lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
+    if (n) {
+        return &n->v;
     } else {
         return NULL;
     }

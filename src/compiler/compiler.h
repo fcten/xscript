@@ -14,10 +14,10 @@ typedef struct {
     unsigned bc_top;
 
     // 常量表
-    lgx_hash_t constant;
+    lgx_hash_t* constant;
 
     // 全局变量
-    lgx_hash_t global;
+    lgx_hash_t* global;
 
     int errno;
     char *err_info;

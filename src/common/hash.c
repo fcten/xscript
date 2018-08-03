@@ -1,80 +1,106 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "common.h"
 #include "hash.h"
 
-int lgx_hash_init(lgx_hash_t *hash, unsigned size) {
+lgx_hash_t* _lgx_hash_new_const();
+int lgx_hash_delete(lgx_hash_t *hash);
+
+lgx_hash_t* _lgx_hash_new(unsigned size) {
+    // 规范化 size 取值
+    int i = 3;
+    if (size >= 0x80000000) {
+        /* prevent overflow */
+        size = 0x80000000;
+    } else {
+        while ((1U << i) < size) {
+            i++;
+        }
+        size = 1 << i;
+    }
+
+    lgx_hash_t *hash = calloc(1, sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t));
+    if (UNEXPECTED(!hash)) {
+        return NULL;
+    }
+
     hash->size = size;
-    hash->key_offset = 0;
-    hash->table_offset = 0;
-    
-    hash->key = calloc(hash->size, sizeof(lgx_hash_key_t));
-    if (!hash->key) {
-        hash->size = 0;
-        return 1;
-    }
-    
-    hash->table = malloc(hash->size * sizeof(lgx_hash_node_t));
-    if (!hash->table) {
-        hash->size = 0;
-        free(hash->key);
-        return 2;
-    }
-    
-    int i;
-    for (i = 0; i < hash->size; i++) {
-        lgx_list_init(&hash->key[i].vl.head);
-    }
-    
-    return 0;
+    hash->length = 0;
+
+    hash->gc.type = T_ARRAY;
+
+    return hash;
 }
 
-int lgx_hash_cleanup(lgx_hash_t *hash) {
+lgx_hash_t* _lgx_hash_new_const() {
+    static lgx_hash_t *hash = NULL;
+
+    if (UNEXPECTED(!hash)) {
+        hash = _lgx_hash_new(LGX_HASH_MIN_SIZE);
+        if (UNEXPECTED(!hash)) {
+            return NULL;
+        }
+        hash->gc.ref_cnt = 1;
+    }
+
+    return hash;
+}
+
+// TODO 引用计数
+int lgx_hash_delete(lgx_hash_t *hash) {
     int i;
     for (i = 0; i < hash->size; i ++) {
-        while (!lgx_list_empty(&hash->key[i].vl.head)) {
-            lgx_val_list_t *list = lgx_list_first_entry(&hash->key[i].vl.head, lgx_val_list_t, head);
-            lgx_list_del(&list->head);
-            free(list);
+        if (hash->table[i].k.type == T_UNDEFINED) {
+            continue;
+        }
+        while (!lgx_list_empty(&hash->table[i].head)) {
+            lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
+            lgx_list_del(&n->head);
+            free(n);
         }
     }
 
-    hash->size = 0;
-
-    free(hash->key);
-    hash->key = NULL;
-    hash->key_offset = 0;
-
-    free(hash->table);
-    hash->table = NULL;
-    hash->table_offset = 0;
+    free(hash);
 
     return 0;
 }
 
+// 把 src 的元素复制到 dst 中
+// dst->size 应当大于等于 src->size
+static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
+    int i;
+    for (i = 0; i < src->size; i++) {
+        if (src->table[i].k.type == T_UNDEFINED) {
+            continue;
+        }
+        lgx_hash_set(dst, &src->table[i]);
+        lgx_hash_node_t *p;
+        lgx_list_for_each_entry(p, lgx_hash_node_t, &src->table[i].head, head) {
+            lgx_hash_set(dst, p);
+        }
+    }
+}
+
 // 将 hash table 扩容一倍
-static int hash_resize(lgx_hash_t *hash) {
-    if (hash->table_offset < hash->size) {
-        return 0;
-    }
-    
-    // resize
-    lgx_hash_t new;
-    lgx_hash_init(&new, hash->size*2);
-
-    for (int i = 0; i < hash->table_offset; i++) {
-        lgx_hash_set(&new, &hash->table[i]);
+// TODO 引用计数
+static lgx_hash_t* hash_resize(lgx_hash_t *hash) {
+    if (EXPECTED(hash->size > hash->length)) {
+        return hash;
     }
 
-    hash->size = new.size;
+    lgx_hash_t *resize = lgx_hash_new(hash->size * 2);
+    if (UNEXPECTED(!resize)) {
+        return NULL;
+    }
 
-    free(hash->key);
-    hash->key = new.key;
+    hash_copy(hash, resize);
 
-    free(hash->table);
-    hash->table = new.table;
+    resize->gc = hash->gc;
 
-    return 0;
+    lgx_hash_delete(hash);
+
+    return resize;
 }
 
 static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
@@ -84,7 +110,7 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     switch (k->type) {
         case T_LONG:
         case T_DOUBLE:
-            ret = (unsigned long long)k->v.l % hash->size;
+            ret = (unsigned long long)k->v.l & (hash->size - 1);
             break;
         case T_BOOL:
             if (k->v.l) {
@@ -98,10 +124,10 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
             for (i = 0 ; i < length ; i ++) {
                 ret = (ret << 5) - ret + k->v.str->buffer[i];
             }
-            ret %= hash->size;
+            ret &= hash->size - 1;
             break;
         case T_FUNCTION:
-            ret = k->v.fun->addr % hash->size;
+            ret = k->v.fun->addr & (hash->size - 1);
             break;
         default:
             // error
@@ -111,130 +137,144 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     return ret;
 }
 
-// TODO value 复制需要复制内部数据结构，否则会导致循环引用
-int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
-    unsigned k = hash_bkdr(hash, &node->k);
-    lgx_val_list_t *p;
-    lgx_hash_node_t *n;
-    lgx_list_for_each_entry(p, lgx_val_list_t, &hash->key[k].vl.head, head) {
-        if (p->v->type == node->k.type) {
-            switch (p->v->type) {
-                case T_LONG:
-                case T_DOUBLE:
-                    if (p->v->v.l == node->k.v.l) {
-                        // key 已存在
-                        n = (lgx_hash_node_t *)p->v;
-                        n->v = node->v;
-                        return 0;
-                    }
-                    break;
-                case T_BOOL:
-                    if ( (p->v->v.l && node->k.v.l) || (!p->v->v.l && !node->k.v.l) ) {
-                        // key 已存在
-                        n = (lgx_hash_node_t *)p->v;
-                        n->v = node->v;
-                        return 0;
-                    }
-                    break;
-                case T_STRING:
-                    if (lgx_str_cmp(p->v->v.str, node->k.v.str) == 0) {
-                        // key 已存在
-                        n = (lgx_hash_node_t *)p->v;
-                        n->v = node->v;
-                        return 0;
-                    }
-                    break;
-                case T_FUNCTION:
-                    if (p->v->v.fun == node->k.v.fun) {
-                        // key 已存在
-                        n = (lgx_hash_node_t *)p->v;
-                        n->v = node->v;
-                        return 0;
-                    }
-                default:
-                    // key 类型不合法
+static unsigned hash_cmp(lgx_val_t *k1, lgx_val_t *k2) {
+    if (k1->type == k2->type) {
+        switch (k1->type) {
+            case T_LONG:
+            case T_DOUBLE:
+                if (k1->v.l == k2->v.l) {
                     return 1;
-            }
+                }
+                break;
+            case T_BOOL:
+                if ( (k1->v.l && k2->v.l) || (!k1->v.l && !k2->v.l) ) {
+                    return 1;
+                }
+                break;
+            case T_STRING:
+                if (lgx_str_cmp(k1->v.str, k2->v.str) == 0) {
+                    return 1;
+                }
+                break;
+            case T_FUNCTION:
+                if (k1->v.fun == k2->v.fun) {
+                    return 1;
+                }
+                break;
         }
     }
 
-    // key 不存在
-    hash->table[hash->table_offset++] = *node;
-    
-    lgx_val_list_t* vl = malloc(sizeof(lgx_val_list_t));
-    if (!vl) {
-        hash->table_offset--;
-        return 2;
-    }
-    vl->v = &hash->table[hash->table_offset-1].k;
-    lgx_list_init(&vl->head);
+    return 0;
+}
 
-    lgx_list_add_tail(&vl->head, &hash->key[k].vl.head);
-    hash->key[k].count ++;
+// TODO value 复制需要复制内部数据结构，否则会导致循环引用
+// TODO 引用计数
+lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
+    // 如果引用计数大于 1，则进行复制
+    if (UNEXPECTED(hash->gc.ref_cnt > 1)) {
+        hash->gc.ref_cnt --;
+        lgx_hash_t *dst = _lgx_hash_new(hash->size);
+        hash_copy(hash, dst);
+        hash = dst;
+        hash->gc.ref_cnt = 1;
+    }
+
+    unsigned k = hash_bkdr(hash, &node->k);
+
+    if (EXPECTED(hash->table[k].k.type == T_UNDEFINED)) {
+        // 插入位置是空的
+        hash->table[k] = *node;
+        lgx_list_init(&hash->table[k].head);
+
+        hash->length ++;
+    } else {
+        // 插入位置已经有元素了，遍历寻找
+        lgx_hash_node_t *p;
+        lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
+            if (hash_cmp(&p->k, &node->k)) {
+                // 覆盖旧元素
+                p->v = node->v;
+                return 0;
+            }
+        }
+
+        // 没有找到，新插入一个元素
+        p = malloc(sizeof(lgx_hash_node_t));
+        if (UNEXPECTED(!p)) {
+            return NULL;
+        }
+        *p = *node;
+        lgx_list_add_tail(&p->head, &hash->table[k].head);
+
+        hash->length ++;
+    }
     
     return hash_resize(hash);
 }
 
-int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
+lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
     lgx_hash_node_t node;
 
     node.v = *v;
 
     node.k.type = T_LONG;
-    node.k.v.l = hash->table_offset;
+    node.k.v.l = hash->length;
 
     return lgx_hash_set(hash, &node);
 }
 
-int lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
+lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
     unsigned k = hash_bkdr(hash, key);
-    lgx_val_list_t *p;
-    lgx_list_for_each_entry(p, lgx_val_list_t, &hash->key[k].vl.head, head) {
-        if (p->v->type == key->type) {
-            switch (p->v->type) {
-                case T_LONG:
-                case T_DOUBLE:
-                    if (p->v->v.l == key->v.l) {
-                        // key 存在
-                        return (lgx_hash_node_t *)p->v - hash->table;
-                    }
-                    break;
-                case T_BOOL:
-                    if ( (p->v->v.l && key->v.l) || (!p->v->v.l && !key->v.l) ) {
-                        // key 已存在
-                        return (lgx_hash_node_t *)p->v - hash->table;
-                    }
-                    break;
-                case T_STRING:
-                    if (lgx_str_cmp(p->v->v.str, key->v.str) == 0) {
-                        // key 存在
-                        return (lgx_hash_node_t *)p->v - hash->table;
-                    }
-                    break;
-                case T_FUNCTION:
-                    if (p->v->v.fun == key->v.fun) {
-                        // key 存在
-                        return (lgx_hash_node_t *)p->v - hash->table;
-                    }
-                    break;
-                default:
-                    // key 类型不合法
-                    return -1;
+
+    if (hash->table[k].k.type == T_UNDEFINED) {
+        return NULL;
+    }
+
+    if (hash_cmp(&hash->table[k].k, key)) {
+        return &hash->table[k];
+    }
+
+    lgx_hash_node_t *p;
+    lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
+        if (hash_cmp(&p->k, key)) {
+            return p;
+        }
+    }
+
+    return NULL;
+}
+
+lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
+    int i;
+    for (i = 0; i < hash->size; i++) {
+        if (hash->table[i].k.type == T_UNDEFINED) {
+            continue;
+        }
+        if (lgx_val_cmp(&hash->table[i].v, v)) {
+            return &hash->table[i];
+        }
+        lgx_hash_node_t *p;
+        lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[i].head, head) {
+            if (lgx_val_cmp(&p->v, v)) {
+                return p;
             }
         }
     }
 
-    return -1;
+    return NULL;
 }
 
 int lgx_hash_print(lgx_hash_t *hash) {
     printf("[");
-    int i;
-    for (i = 0 ; i < hash->table_offset ; i ++) {
+    int i, count = 0;
+    for (i = 0 ; i < hash->size ; i ++) {
+        if (hash->table[i].k.type == T_UNDEFINED) {
+            continue;
+        }
         //lgx_val_print(&hash->table[i].k);
-        //printf("=");
+        //printf("=>");
         lgx_val_print(&hash->table[i].v);
-        if (i < hash->table_offset - 1) {
+        if (++count < hash->length) {
             printf(",");
         }
         //printf("\n");
