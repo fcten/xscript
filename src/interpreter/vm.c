@@ -211,13 +211,20 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_DIV:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                // TODO 判断除数是否为 0
                 if (R(PB(i)).type == T_LONG && R(PC(i)).type == T_LONG) {
-                    R(PA(i)).type = T_LONG;
-                    R(PA(i)).v.l = R(PB(i)).v.l / R(PC(i)).v.l;
+                    if (UNEXPECTED(R(PC(i)).v.l == 0)) {
+                        throw_exception(vm, "division by zero\n");
+                    } else {
+                        R(PA(i)).type = T_LONG;
+                        R(PA(i)).v.l = R(PB(i)).v.l / R(PC(i)).v.l;
+                    }
                 } else if (R(PB(i)).type == T_DOUBLE && R(PC(i)).type == T_DOUBLE) {
-                    R(PA(i)).type = T_DOUBLE;
-                    R(PA(i)).v.d = R(PB(i)).v.d / R(PC(i)).v.d;
+                    if (UNEXPECTED(R(PC(i)).v.d == 0)) {
+                        throw_exception(vm, "division by zero\n");
+                    } else {
+                        R(PA(i)).type = T_DOUBLE;
+                        R(PA(i)).v.d = R(PB(i)).v.d / R(PC(i)).v.d;
+                    }
                 } else {
                     if (lgx_op_div(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
                         throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "/", lgx_val_typeof(&R(PC(i))));

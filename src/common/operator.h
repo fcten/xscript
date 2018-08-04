@@ -3,6 +3,12 @@
 
 #include "val.h"
 
+enum {
+    E_OP_UNKNOWN = 1,
+    E_OP_TYPE_CAST,
+    E_OP_DIV_ZERO
+};
+
 int lgx_op_add(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right);
 int lgx_op_sub(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right);
 int lgx_op_mul(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right);

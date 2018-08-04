@@ -1,4 +1,5 @@
 #include "../tokenizer/tokens.h"
+#include "common.h"
 #include "operator.h"
 #include "cast.h"
 #include "hash.h"
@@ -42,7 +43,7 @@ int lgx_op_mul(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     } else {
         lgx_val_t l,r;
         if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
-            return 1;
+            return E_OP_TYPE_CAST;
         }
         ret->type = T_DOUBLE;
         ret->v.d = l.v.d * r.v.d;
@@ -52,17 +53,24 @@ int lgx_op_mul(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
 }
 
 int lgx_op_div(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
-    // TODO 判断除数为 0 的情况
     if (left->type == T_LONG && right->type == T_LONG) {
-        ret->type = T_LONG;
-        ret->v.l = left->v.l / right->v.l;
+        if (UNEXPECTED(right->v.l == 0)) {
+            return E_OP_DIV_ZERO;
+        } else {
+            ret->type = T_LONG;
+            ret->v.l = left->v.l / right->v.l;
+        }
     } else {
         lgx_val_t l,r;
         if (lgx_cast_double(&l, left) || lgx_cast_double(&r, right)) {
-            return 1;
+            return E_OP_TYPE_CAST;
         }
-        ret->type = T_DOUBLE;
-        ret->v.d = l.v.d / r.v.d;
+        if (UNEXPECTED(r.v.d == 0)) {
+            return E_OP_DIV_ZERO;
+        } else {
+            ret->type = T_DOUBLE;
+            ret->v.d = l.v.d / r.v.d;
+        }
     }
 
     return 0;
@@ -351,7 +359,7 @@ int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
         case TK_ATTR:
         default:
             // error
-            return 1;
+            return E_OP_UNKNOWN;
     }
 }
 
@@ -362,6 +370,6 @@ int lgx_op_unary(int op, lgx_val_t *ret, lgx_val_t *right) {
         case '-': return lgx_op_neg(ret, right);
         default:
             // error
-            return 1;
+            return E_OP_UNKNOWN;
     }
 }
