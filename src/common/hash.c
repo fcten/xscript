@@ -39,9 +39,9 @@ int lgx_hash_delete(lgx_hash_t *hash) {
     if (hash->flag_non_basic_elements) {
         int i, length;
         if (hash->flag_non_compact_elements) {
-            length = hash->length;
-        } else {
             length = hash->size;
+        } else {
+            length = hash->length;
         }
         for (i = 0; i < length; i ++) {
             if (hash->table[i].k.type == T_UNDEFINED) {
@@ -254,9 +254,9 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
     int i, length;
 
     if (hash->flag_non_compact_elements) {
-        length = hash->length;
-    } else {
         length = hash->size;
+    } else {
+        length = hash->length;
     }
 
     for (i = 0; i < length; i++) {
@@ -281,9 +281,9 @@ int lgx_hash_print(lgx_hash_t *hash) {
     int i, length, count = 0;
 
     if (hash->flag_non_compact_elements) {
-        length = hash->length;
-    } else {
         length = hash->size;
+    } else {
+        length = hash->length;
     }
 
     printf("[");
