@@ -135,36 +135,6 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     return ret;
 }
 
-static unsigned hash_cmp(lgx_val_t *k1, lgx_val_t *k2) {
-    if (k1->type == k2->type) {
-        switch (k1->type) {
-            case T_LONG:
-            case T_DOUBLE:
-                if (k1->v.l == k2->v.l) {
-                    return 1;
-                }
-                break;
-            case T_BOOL:
-                if ( (k1->v.l && k2->v.l) || (!k1->v.l && !k2->v.l) ) {
-                    return 1;
-                }
-                break;
-            case T_STRING:
-                if (lgx_str_cmp(k1->v.str, k2->v.str) == 0) {
-                    return 1;
-                }
-                break;
-            case T_FUNCTION:
-                if (k1->v.fun == k2->v.fun) {
-                    return 1;
-                }
-                break;
-        }
-    }
-
-    return 0;
-}
-
 // TODO value 复制需要复制内部数据结构，否则会导致循环引用
 // TODO 引用计数
 lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
@@ -200,7 +170,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         // TODO 节点本身也包含一个 value
         lgx_hash_node_t *p;
         lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
-            if (hash_cmp(&p->k, &node->k)) {
+            if (lgx_val_cmp(&p->k, &node->k)) {
                 // 覆盖旧元素
                 p->v = node->v;
                 return 0;
@@ -243,13 +213,13 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
         return NULL;
     }
 
-    if (hash_cmp(&hash->table[k].k, key)) {
+    if (lgx_val_cmp(&hash->table[k].k, key)) {
         return &hash->table[k];
     }
 
     lgx_hash_node_t *p;
     lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
-        if (hash_cmp(&p->k, key)) {
+        if (lgx_val_cmp(&p->k, key)) {
             return p;
         }
     }

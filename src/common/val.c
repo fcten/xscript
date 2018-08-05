@@ -93,6 +93,11 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                     return 1;
                 }
                 break;
+            case T_FUNCTION:
+                if (src->v.fun == dst->v.fun) {
+                    return 1;
+                }
+                break;
         }
     }
 
