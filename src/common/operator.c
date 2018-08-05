@@ -197,11 +197,11 @@ int lgx_op_le(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
 }
 
 int lgx_op_eq(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
-    if ( (left->type == right->type) && (left->v.l == right->v.l) ) {
-        ret->type = T_BOOL;
+    ret->type = T_BOOL;
+
+    if ( lgx_val_cmp(left, right) ) {        
         ret->v.l = 1;
     } else {
-        ret->type = T_BOOL;
         ret->v.l = 0;
     }
 

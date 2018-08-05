@@ -287,7 +287,7 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if ( !is_register(&e1) && !is_number(&e1) ) {
+    if (node->u.op != TK_EQ && !is_register(&e1) && !is_number(&e1)) {
         bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -296,7 +296,7 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if ( !is_register(&e2) && !is_number(&e2) ) {
+    if (node->u.op != TK_EQ && !is_register(&e2) && !is_number(&e2) ) {
         bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
         return 1;
     }

@@ -451,10 +451,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).v.l = R(PB(i)).v.l == PC(i);
-                } else if (R(PB(i)).type == T_DOUBLE) {
-                    R(PA(i)).v.l = R(PB(i)).v.d == PC(i);
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
