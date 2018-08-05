@@ -30,6 +30,7 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     {TK_TYPEOF, "typeof"},
     {TK_INSTANCEOF, "instanceof"},
     // 特殊值
+    {TK_UNDEFINED, "undefined"},
     {TK_TRUE, "true"},  // 布尔
     {TK_FALSE, "false"},// 布尔
     {TK_NULL, "null"},  // 引用

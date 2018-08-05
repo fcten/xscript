@@ -304,6 +304,13 @@ void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
             ast_step(ast);
             break;
+        case TK_UNDEFINED:
+            id = ast_node_token_new(ast);
+            id->type = UNDEFINED_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(ast);
+            break;
         case '[':
             // 数组字面量
             ast_parse_array_expression(ast, parent);
@@ -862,6 +869,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case FALSE_TOKEN:
             printf("%*s%s\n", indent, "", "FALSE_TOKEN");
+            break;
+        case UNDEFINED_TOKEN:
+            printf("%*s%s\n", indent, "", "UNDEFINED_TOKEN");
             break;
         case ARRAY_TOKEN:
             printf("%*s%s\n", indent, "", "[");

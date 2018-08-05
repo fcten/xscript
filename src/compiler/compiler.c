@@ -100,6 +100,15 @@ static int bc_false(lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
+static int bc_undefined(lgx_ast_node_t *node, lgx_val_t *expr) {
+    expr->type = T_UNDEFINED;
+
+    expr->u.reg.type = 0;
+    expr->u.reg.reg = 0;
+
+    return 0;
+}
+
 static int bc_string(lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
     expr->v.str = lgx_str_new(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
@@ -519,6 +528,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             return bc_true(node, e);
         case FALSE_TOKEN:
             return bc_false(node, e);
+        case UNDEFINED_TOKEN:
+            return bc_undefined(node, e);
         case ARRAY_TOKEN:
             return bc_expr_array(bc, node, e);
         case CONDITIONAL_EXPRESSION:

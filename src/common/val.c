@@ -76,9 +76,13 @@ void lgx_val_print(lgx_val_t *v) {
     }
 }
 
+
+// 相等返回 1，不相等返回 0
 int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
     if (src->type == dst->type) {
         switch (src->type) {
+            case T_UNDEFINED:
+                return 1;
             case T_LONG:
                 return src->v.l == dst->v.l;
             case T_DOUBLE:

@@ -36,6 +36,7 @@ enum {
     TK_TYPEOF,
     TK_INSTANCEOF,
 
+    TK_UNDEFINED,
     TK_TRUE,
     TK_FALSE,
     TK_NULL,

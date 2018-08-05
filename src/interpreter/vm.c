@@ -409,7 +409,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 R(PA(i)).type = T_BOOL;
 
-                if (R(PB(i)).type == R(PC(i)).type && R(PB(i)).v.l == R(PC(i)).v.l) {
+                if (lgx_val_cmp(&R(PB(i)), &R(PC(i)))) {
                     R(PA(i)).v.l = 1;
                 } else {
                     R(PA(i)).v.l = 0;

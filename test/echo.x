@@ -1,4 +1,5 @@
 echo "hello world";
+echo undefined;
 echo 123;
 echo 123.6;
 echo true;
