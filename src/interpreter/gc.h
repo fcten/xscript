@@ -4,16 +4,6 @@
 #include "../common/val.h"
 #include "vm.h"
 
-typedef struct {
-    lgx_list_t head;
-    // 该 gc 所管理的类型
-    unsigned char type;
-    // GC 标记
-    unsigned char color;
-    // 引用计数
-    unsigned ref_cnt;
-} lgx_gc_t;
-
 // 启用垃圾回收
 void lgx_gc_enable(lgx_vm_t *vm);
 

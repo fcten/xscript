@@ -8,13 +8,15 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     // 规范化 size 取值
     size = ALIGN(size);
 
-    lgx_hash_t *hash = xcalloc(1, sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t));
+    unsigned mem_size = sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t);
+
+    lgx_hash_t *hash = xcalloc(1, mem_size);
     if (UNEXPECTED(!hash)) {
         return NULL;
     }
 
     hash->size = size;
-
+    hash->gc.size = mem_size;
     hash->gc.type = T_ARRAY;
 
     return hash;
@@ -87,7 +89,12 @@ static lgx_hash_t* hash_resize(lgx_hash_t *hash) {
 
     hash_copy(hash, resize);
 
+    // 更新 GC 信息
+    hash->gc.size = resize->gc.size;
     resize->gc = hash->gc;
+
+    resize->gc.head.prev->next = &resize->gc.head;
+    resize->gc.head.next->prev = &resize->gc.head;
 
     lgx_hash_delete(hash);
 

@@ -1,19 +1,11 @@
 #ifndef LGX_STR_H
 #define LGX_STR_H
 
-#include "list.h"
+#include "typedef.h"
 
 typedef struct {
     // GC 信息
-    struct {
-        lgx_list_t head;
-        // 该 gc 所管理的类型
-        unsigned char type:4;
-        // GC 标记
-        unsigned char color:2;
-        // 引用计数
-        unsigned ref_cnt:26;
-    } gc;
+    lgx_gc_t gc;
 
     // 缓冲区长度
     unsigned size;

@@ -1,7 +1,7 @@
 #ifndef LGX_HASH_H
 #define	LGX_HASH_H
 
-#include "list.h"
+#include "typedef.h"
 #include "val.h"
 
 typedef struct {
@@ -15,15 +15,7 @@ typedef struct {
 // lgx_hash_node_t 48 字节
 typedef struct lgx_hash_s {
     // GC 信息
-    struct {
-        lgx_list_t head;
-        // 该 gc 所管理的类型
-        unsigned char type:4;
-        // GC 标记
-        unsigned char color:2;
-        // 引用计数
-        unsigned ref_cnt:26;
-    } gc;
+    lgx_gc_t gc;
 
     // 总容量
     unsigned size;

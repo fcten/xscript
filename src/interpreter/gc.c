@@ -54,30 +54,29 @@ static int minor_gc(lgx_vm_t *vm) {
         
         switch (((lgx_gc_t*)list)->type) {
             case T_STRING: {
-                unsigned size = sizeof(lgx_str_t) + ((lgx_str_t*)list)->size;
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
+                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     xfree(list);
                 } else {
                     lgx_list_add_tail(list, &vm->heap.old);
 
-                    vm->heap.old_size += size;
+                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
+                    vm->heap.old_size += ((lgx_gc_t*)list)->size;
+
                     cnt ++;
                 }
-                vm->heap.young_size -= size;
                 break;
             }
             case T_ARRAY: {
-                unsigned size = sizeof(lgx_hash_t) + ((lgx_str_t*)list)->size * sizeof(lgx_hash_node_t);
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
+                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     lgx_hash_delete((lgx_hash_t *)list);
-                    vm->heap.young_size -= size;
                 } else {
-                    /*
                     lgx_list_add_tail(list, &vm->heap.old);
 
-                    vm->heap.young_size -= size;
-                    vm->heap.old_size += size;
-                    */
+                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
+                    vm->heap.old_size += ((lgx_gc_t*)list)->size;
+
                     cnt ++;
                 }
                 break;
@@ -105,11 +104,11 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
     switch (v->type) {
         case T_STRING:
             lgx_list_add_tail(&v->v.str->gc.head ,&vm->heap.young);
-            vm->heap.young_size += sizeof(lgx_str_t) + v->v.str->size;
+            vm->heap.young_size += v->v.str->gc.size;
             break;
         case T_ARRAY:
             lgx_list_add_tail(&v->v.arr->gc.head ,&vm->heap.young);
-            vm->heap.young_size += sizeof(lgx_hash_t) + v->v.arr->size * sizeof(lgx_hash_node_t);
+            vm->heap.young_size += v->v.arr->gc.size;
             break;
         default:
             return 0;
