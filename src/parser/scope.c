@@ -1,5 +1,4 @@
-#include <stdlib.h>
-
+#include "../common/common.h"
 #include "scope.h"
 
 static lgx_ast_node_t* find_scope(lgx_ast_node_t *node) {

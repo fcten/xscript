@@ -1,3 +1,4 @@
+#include "common.h"
 #include "cast.h"
 
 int lgx_cast_long(lgx_val_t *ret, lgx_val_t *src) {

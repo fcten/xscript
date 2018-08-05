@@ -1,5 +1,5 @@
-#include "../tokenizer/tokens.h"
 #include "common.h"
+#include "../tokenizer/tokens.h"
 #include "operator.h"
 #include "cast.h"
 #include "hash.h"

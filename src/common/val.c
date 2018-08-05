@@ -1,5 +1,4 @@
-#include <stdio.h>
-
+#include "common.h"
 #include "val.h"
 #include "hash.h"
 

@@ -1,6 +1,4 @@
-#include <stdlib.h>
-#include <memory.h>
-
+#include "common.h"
 #include "../interpreter/vm.h"
 #include "fun.h"
 

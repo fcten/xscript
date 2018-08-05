@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <memory.h>
-
 #include "../common/common.h"
 #include "../common/bytecode.h"
 #include "../common/operator.h"

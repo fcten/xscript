@@ -1,6 +1,4 @@
-#include <stdlib.h>
-#include <string.h>
-
+#include "common.h"
 #include "str.h"
 
 lgx_str_t* lgx_str_new(char *str, unsigned len) {

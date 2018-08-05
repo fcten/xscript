@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "common.h"
 #include "../tokenizer/lex.h"
 #include "val.h"
 #include "list.h"

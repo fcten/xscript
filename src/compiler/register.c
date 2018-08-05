@@ -1,3 +1,4 @@
+#include "../common/common.h"
 #include "register.h"
 
 void reg_push(lgx_bc_t *bc, unsigned char i) {

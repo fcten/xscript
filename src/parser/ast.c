@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <memory.h>
-
+#include "../common/common.h"
 #include "../common/val.h"
 #include "scope.h"
 #include "ast.h"

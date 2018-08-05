@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "../common/common.h"
 #include "../common/bytecode.h"
 #include "constant.h"
 #include "register.h"

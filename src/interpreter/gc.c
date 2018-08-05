@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "../common/common.h"
 #include "gc.h"
 
 void lgx_gc_enable(lgx_vm_t *vm) {

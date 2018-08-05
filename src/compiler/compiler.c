@@ -1,8 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-
+#include "../common/common.h"
 #include "../parser/scope.h"
 #include "../common/val.h"
 #include "../common/operator.h"
