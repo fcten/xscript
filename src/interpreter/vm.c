@@ -682,7 +682,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_ARRAY_ADD:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
                     lgx_hash_t *hash = lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
-                    if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
+                    if (R(PA(i)).v.arr != hash) {
                         R(PA(i)).v.arr = hash;
                         lgx_gc_trace(vm, &R(PA(i)));
                     }

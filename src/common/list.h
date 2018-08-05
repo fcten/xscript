@@ -1,6 +1,8 @@
 #ifndef LGX_LIST_H
 #define	LGX_LIST_H
 
+#include "common.h"
+
 typedef struct lgx_list_s {  
     struct lgx_list_s *next, *prev;  
 } lgx_list_t;
@@ -32,35 +34,35 @@ typedef struct lgx_list_s {
 	     &pos->member != (head);					\
 	     pos = lgx_list_next_entry(pos, type, member))
 
-static inline void __lgx_list_add(lgx_list_t *list, lgx_list_t *prev, lgx_list_t *next) {
+static lgx_inline void __lgx_list_add(lgx_list_t *list, lgx_list_t *prev, lgx_list_t *next) {
     next->prev = list;
     list->next = next;
     list->prev = prev;
     prev->next = list;
 }
 
-static inline void __lgx_list_del(lgx_list_t *prev, lgx_list_t *next) {
+static lgx_inline void __lgx_list_del(lgx_list_t *prev, lgx_list_t *next) {
     next->prev = prev;
     prev->next = next;
 }
   
-static inline void lgx_list_add(lgx_list_t *list, lgx_list_t *head) {
+static lgx_inline void lgx_list_add(lgx_list_t *list, lgx_list_t *head) {
     __lgx_list_add(list, head, head->next);
 }
 
-static inline void lgx_list_add_tail(lgx_list_t *list, lgx_list_t *head) {
+static lgx_inline void lgx_list_add_tail(lgx_list_t *list, lgx_list_t *head) {
     __lgx_list_add(list, head->prev, head);
 }  
 
-static inline void lgx_list_del(lgx_list_t *entry) {
+static lgx_inline void lgx_list_del(lgx_list_t *entry) {
     __lgx_list_del(entry->prev, entry->next);
 }
 
-static inline int lgx_list_empty(const lgx_list_t *head) {
+static lgx_inline int lgx_list_empty(const lgx_list_t *head) {
 	return head->next == head;
 }
 
-static inline void lgx_list_move_tail(lgx_list_t *list, lgx_list_t *head) {
+static lgx_inline void lgx_list_move_tail(lgx_list_t *list, lgx_list_t *head) {
 	lgx_list_del(list);
 	lgx_list_add_tail(list, head);
 }

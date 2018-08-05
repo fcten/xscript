@@ -6,16 +6,7 @@ int lgx_hash_delete(lgx_hash_t *hash);
 
 lgx_hash_t* _lgx_hash_new(unsigned size) {
     // 规范化 size 取值
-    int i = 3;
-    if (size >= 0x80000000) {
-        /* prevent overflow */
-        size = 0x80000000;
-    } else {
-        while ((1U << i) < size) {
-            i++;
-        }
-        size = 1 << i;
-    }
+    size = ALIGN(size);
 
     lgx_hash_t *hash = xcalloc(1, sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t));
     if (UNEXPECTED(!hash)) {
@@ -23,7 +14,6 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     }
 
     hash->size = size;
-    hash->length = 0;
 
     hash->gc.type = T_ARRAY;
 
