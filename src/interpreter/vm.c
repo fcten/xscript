@@ -459,7 +459,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d == PC(i);
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -473,7 +473,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d >= PC(i);
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -487,7 +487,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d <= PC(i);
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -501,7 +501,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d > PC(i);
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -515,7 +515,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d < PC(i);
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -524,10 +524,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
                 R(PA(i)).type = T_BOOL;
                 
-                if (R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL) {
+                if (EXPECTED(R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL)) {
                     R(PA(i)).v.l = R(PB(i)).v.l && R(PC(i)).v.l;
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "&&", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -539,7 +539,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 if (R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL) {
                     R(PA(i)).v.l = R(PB(i)).v.l || R(PC(i)).v.l;
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "||", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -551,7 +551,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 if (R(PB(i)).type == T_BOOL) {
                     R(PA(i)).v.l = !R(PB(i)).v.l;
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -565,7 +565,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 if (R(PA(i)).type == T_LONG) {
                     vm->pc = R(PA(i)).v.l;
                 } else {
-                    // 类型转换
+                    throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
