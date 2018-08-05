@@ -36,15 +36,22 @@ lgx_hash_t* _lgx_hash_new_const() {
 
 // TODO 引用计数
 int lgx_hash_delete(lgx_hash_t *hash) {
-    int i;
-    for (i = 0; i < hash->size; i ++) {
-        if (hash->table[i].k.type == T_UNDEFINED) {
-            continue;
+    if (hash->flag_non_basic_elements) {
+        int i, length;
+        if (hash->flag_non_compact_elements) {
+            length = hash->length;
+        } else {
+            length = hash->size;
         }
-        while (!lgx_list_empty(&hash->table[i].head)) {
-            lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
-            lgx_list_del(&n->head);
-            xfree(n);
+        for (i = 0; i < length; i ++) {
+            if (hash->table[i].k.type == T_UNDEFINED) {
+                continue;
+            }
+            while (!lgx_list_empty(&hash->table[i].head)) {
+                lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
+                lgx_list_del(&n->head);
+                xfree(n);
+            }
         }
     }
 
@@ -55,6 +62,7 @@ int lgx_hash_delete(lgx_hash_t *hash) {
 
 // 把 src 的元素复制到 dst 中
 // dst->size 应当大于等于 src->size
+// TODO 不复制 T_UNDEFINED 类型的元素
 static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
     int i;
     for (i = 0; i < src->size; i++) {
@@ -72,10 +80,6 @@ static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
 // 将 hash table 扩容一倍
 // TODO 引用计数
 static lgx_hash_t* hash_resize(lgx_hash_t *hash) {
-    if (EXPECTED(hash->size > hash->length)) {
-        return hash;
-    }
-
     lgx_hash_t *resize = lgx_hash_new(hash->size * 2);
     if (UNEXPECTED(!resize)) {
         return NULL;
@@ -170,6 +174,14 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
 
     unsigned k = hash_bkdr(hash, &node->k);
 
+    if (k > hash->length) {
+        hash->flag_non_compact_elements = 1;
+    }
+
+    if (node->v.type > T_BOOL) {
+        hash->flag_non_basic_elements = 1;
+    }
+
     if (EXPECTED(hash->table[k].k.type == T_UNDEFINED)) {
         // 插入位置是空的
         hash->table[k] = *node;
@@ -178,6 +190,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->length ++;
     } else {
         // 插入位置已经有元素了，遍历寻找
+        // TODO 节点本身也包含一个 value
         lgx_hash_node_t *p;
         lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
             if (hash_cmp(&p->k, &node->k)) {
@@ -198,7 +211,11 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->length ++;
     }
     
-    return hash_resize(hash);
+    if (EXPECTED(hash->size > hash->length)) {
+        return hash;
+    } else {
+        return hash_resize(hash);
+    }
 }
 
 lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
@@ -234,8 +251,15 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
 }
 
 lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
-    int i;
-    for (i = 0; i < hash->size; i++) {
+    int i, length;
+
+    if (hash->flag_non_compact_elements) {
+        length = hash->length;
+    } else {
+        length = hash->size;
+    }
+
+    for (i = 0; i < length; i++) {
         if (hash->table[i].k.type == T_UNDEFINED) {
             continue;
         }
@@ -254,20 +278,29 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
 }
 
 int lgx_hash_print(lgx_hash_t *hash) {
+    int i, length, count = 0;
+
+    if (hash->flag_non_compact_elements) {
+        length = hash->length;
+    } else {
+        length = hash->size;
+    }
+
     printf("[");
-    int i, count = 0;
-    for (i = 0 ; i < hash->size ; i ++) {
+
+    for (i = 0 ; i < length ; i ++) {
         if (hash->table[i].k.type == T_UNDEFINED) {
             continue;
         }
         //lgx_val_print(&hash->table[i].k);
         //printf("=>");
         lgx_val_print(&hash->table[i].v);
-        if (++count < hash->length) {
+        if (++count < length) {
             printf(",");
         }
         //printf("\n");
     }
+
     printf("]");
 
     return 0;

@@ -8,11 +8,11 @@ typedef struct {
     struct {
         lgx_list_t head;
         // 该 gc 所管理的类型
-        unsigned char type;
+        unsigned char type:4;
         // GC 标记
-        unsigned char color;
+        unsigned char color:2;
         // 引用计数
-        unsigned ref_cnt;
+        unsigned ref_cnt:26;
     } gc;
 
     // 缓冲区长度

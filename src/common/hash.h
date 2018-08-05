@@ -18,11 +18,11 @@ typedef struct lgx_hash_s {
     struct {
         lgx_list_t head;
         // 该 gc 所管理的类型
-        unsigned char type;
+        unsigned char type:4;
         // GC 标记
-        unsigned char color;
+        unsigned char color:2;
         // 引用计数
-        unsigned ref_cnt;
+        unsigned ref_cnt:26;
     } gc;
 
     // 总容量
@@ -30,6 +30,12 @@ typedef struct lgx_hash_s {
 
     // 已使用的容量
     unsigned length;
+
+    // 是否包含非基本类型元素
+    unsigned flag_non_basic_elements:1;
+
+    // 是否包含非连续元素
+    unsigned flag_non_compact_elements:1;
 
     // 存储数据的结构
     lgx_hash_node_t table[];
