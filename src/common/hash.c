@@ -171,7 +171,9 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     if (UNEXPECTED(hash->gc.ref_cnt > 1)) {
         hash->gc.ref_cnt --;
         lgx_hash_t *dst = _lgx_hash_new(hash->size);
-        hash_copy(hash, dst);
+        if (hash->length) {
+            hash_copy(hash, dst);
+        }
         hash = dst;
         hash->gc.ref_cnt = 1;
     }
