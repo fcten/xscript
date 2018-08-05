@@ -2,7 +2,7 @@
 #include "str.h"
 
 lgx_str_t* lgx_str_new(char *str, unsigned len) {
-    lgx_str_t* ret = malloc(sizeof(lgx_str_t) + len * sizeof(char));
+    lgx_str_t* ret = xmalloc(sizeof(lgx_str_t) + len * sizeof(char));
     if (!ret) {
         return NULL;
     }

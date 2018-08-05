@@ -43,7 +43,7 @@ int lgx_vm_stack_init(lgx_vm_stack_t *stack, unsigned size) {
     lgx_list_init(&stack->head);
     stack->size = size;
     stack->base = 0;
-    stack->buf = calloc(stack->size, sizeof(lgx_val_t));
+    stack->buf = xcalloc(stack->size, sizeof(lgx_val_t));
     if (!stack->buf) {
         return 1;
     }
@@ -51,7 +51,7 @@ int lgx_vm_stack_init(lgx_vm_stack_t *stack, unsigned size) {
 }
 
 void lgx_vm_stack_cleanup(lgx_vm_stack_t *stack) {
-    free(stack->buf);
+    xfree(stack->buf);
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
@@ -91,13 +91,13 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     lgx_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
         lgx_list_t *next = list->next;
-        free(list);
+        xfree(list);
         list = next;
     }
     list = vm->heap.old.next;
     while(list != &vm->heap.old) {
         lgx_list_t *next = list->next;
-        free(list);
+        xfree(list);
         list = next;
     }
 
@@ -118,7 +118,7 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
         size *= 2;
     }
 
-    lgx_val_t *s = realloc(vm->stack.buf, size * sizeof(lgx_val_t));
+    lgx_val_t *s = xrealloc(vm->stack.buf, size * sizeof(lgx_val_t));
     if (!s) {
         return 1;
     }

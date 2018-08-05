@@ -177,7 +177,7 @@ void dict_tree_add(int token, char* s) {
     size_t l = strlen(s), i;
     for (i = 0; i < l; ++i) {
         if (node->next[s[i] - 'a'] == NULL) {
-            node->next[s[i] - 'a'] = calloc(1, sizeof(struct dict_tree));
+            node->next[s[i] - 'a'] = xcalloc(1, sizeof(struct dict_tree));
         }
         node = node->next[s[i] - 'a'];
     }

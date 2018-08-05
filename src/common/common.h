@@ -8,6 +8,13 @@
 #include <string.h>
 #include <memory.h>
 
+#include <jemalloc/jemalloc.h>
+
+#define xmalloc malloc
+#define xcalloc calloc
+#define xrealloc realloc
+#define xfree free
+
 #if defined(__GNUC__)
 #define EXPECTED(x)	(__builtin_expect(((x) != 0), 1))
 #define UNEXPECTED(x)	(__builtin_expect(((x) != 0), 0))

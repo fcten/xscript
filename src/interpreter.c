@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "./common/common.h"
 #include "./tokenizer/lex.h"
 #include "./parser/ast.h"
 #include "./parser/scope.h"
@@ -14,7 +12,7 @@ int read_file(const char* file, char** p) {
 
     fseek(fp, 0L, SEEK_END);  /* 定位到文件末尾 */
     int flen = ftell(fp);     /* 得到文件大小 */
-    *p = (char*)malloc(flen); /* 根据文件大小动态分配内存空间 */
+    *p = (char*)xmalloc(flen); /* 根据文件大小动态分配内存空间 */
     if (*p == NULL) {
         fclose(fp);
         return 0;

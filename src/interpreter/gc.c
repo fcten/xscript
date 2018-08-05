@@ -15,7 +15,7 @@ void lgx_gc_free(lgx_val_t *val) {
             if (val->v.str->gc.ref_cnt) {
                 return;
             }
-            free(val->v.str);
+            xfree(val->v.str);
             val->type = T_UNDEFINED;
             break;
         case T_ARRAY:
@@ -56,7 +56,7 @@ static int minor_gc(lgx_vm_t *vm) {
             case T_STRING: {
                 unsigned size = sizeof(lgx_str_t) + ((lgx_str_t*)list)->size;
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
-                    free(list);
+                    xfree(list);
                 } else {
                     lgx_list_add_tail(list, &vm->heap.old);
 

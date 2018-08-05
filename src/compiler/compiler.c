@@ -192,7 +192,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
     // 初始化
     if (!loop->u.jmps) {
-        loop->u.jmps = malloc(sizeof(lgx_ast_node_list_t));
+        loop->u.jmps = xmalloc(sizeof(lgx_ast_node_list_t));
         if (loop->u.jmps) {
             lgx_list_init(&loop->u.jmps->head);
             loop->u.jmps->node = NULL;
@@ -202,7 +202,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
     }
 
-    lgx_ast_node_list_t *n = malloc(sizeof(lgx_ast_node_list_t));
+    lgx_ast_node_list_t *n = xmalloc(sizeof(lgx_ast_node_list_t));
     if (n) {
         n->node = node;
         lgx_list_init(&n->head);
@@ -871,7 +871,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             unsigned char *regs = bc->regs;
             unsigned char reg_top = bc->reg_top;
 
-            bc->regs = calloc(256, sizeof(unsigned char));
+            bc->regs = xcalloc(256, sizeof(unsigned char));
             bc->reg_top = 0;
             for(int i = 255; i >= 4; i--) {
                 reg_push(bc, i);
@@ -906,7 +906,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 }
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
-    bc->regs = calloc(256, sizeof(unsigned char));
+    bc->regs = xcalloc(256, sizeof(unsigned char));
     bc->reg_top = 0;
     for(int i = 255; i >= 4; i--) {
         reg_push(bc, i);
@@ -914,9 +914,9 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     
     bc->bc_size = 1024;
     bc->bc_top = 0;
-    bc->bc = malloc(bc->bc_size);
+    bc->bc = xmalloc(bc->bc_size);
 
-    bc->err_info = malloc(256);
+    bc->err_info = xmalloc(256);
     bc->err_len = 0;
     bc->errno = 0;
 

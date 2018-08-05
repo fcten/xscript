@@ -17,7 +17,7 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
         size = 1 << i;
     }
 
-    lgx_hash_t *hash = calloc(1, sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t));
+    lgx_hash_t *hash = xcalloc(1, sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t));
     if (UNEXPECTED(!hash)) {
         return NULL;
     }
@@ -54,11 +54,11 @@ int lgx_hash_delete(lgx_hash_t *hash) {
         while (!lgx_list_empty(&hash->table[i].head)) {
             lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
             lgx_list_del(&n->head);
-            free(n);
+            xfree(n);
         }
     }
 
-    free(hash);
+    xfree(hash);
 
     return 0;
 }
@@ -196,7 +196,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         }
 
         // 没有找到，新插入一个元素
-        p = malloc(sizeof(lgx_hash_node_t));
+        p = xmalloc(sizeof(lgx_hash_node_t));
         if (UNEXPECTED(!p)) {
             return NULL;
         }
