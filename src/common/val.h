@@ -43,12 +43,12 @@ typedef struct {
         lgx_ref_t         *ref;
         lgx_fun_t         *fun;
     } v;
-    unsigned type:4;
+    unsigned char type;
     union {
         // 变量所使用的寄存器类型，仅在编译时使用
         struct {
             // 寄存器类型
-            unsigned type:4;
+            unsigned char type;
             // 寄存器编号
             unsigned char reg;
         } reg;

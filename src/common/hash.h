@@ -10,6 +10,9 @@ typedef struct {
     lgx_val_t v;
 } lgx_hash_node_t;
 
+#define HASH_HAS_NON_BASIC_ELEMENTS    1
+#define HASH_HAS_NON_COMPACT_ELEMENTS  2
+
 // TODO lgx_hash_t 太大了 size=8 时需要多达 416 字节。
 // lgx_hash_t 32 字节
 // lgx_hash_node_t 48 字节
@@ -24,10 +27,10 @@ typedef struct lgx_hash_s {
     unsigned length;
 
     // 是否包含非基本类型元素
-    unsigned flag_non_basic_elements:1;
+    unsigned char flag_non_basic_elements;
 
     // 是否包含非连续元素
-    unsigned flag_non_compact_elements:1;
+    unsigned char flag_non_compact_elements;
 
     // 存储数据的结构
     lgx_hash_node_t table[];
