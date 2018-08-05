@@ -295,7 +295,7 @@ int lgx_hash_print(lgx_hash_t *hash) {
         //lgx_val_print(&hash->table[i].k);
         //printf("=>");
         lgx_val_print(&hash->table[i].v);
-        if (++count < length) {
+        if (++count < hash->length) {
             printf(",");
         }
         //printf("\n");
