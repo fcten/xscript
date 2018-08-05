@@ -51,12 +51,17 @@ static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
 }
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
-    // TODO 只有在前一条指令为 mov、add 等指定指令时才可复用
-    //if (b->u.reg.type == R_TEMP) {
-    //    reg_free(bc, b);
-    //    bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
-    //    return;
-    //}
+    // 在前一条指令为 mov、add 等指定指令时，直接复用
+    if (b->u.reg.type == R_TEMP) {
+        unsigned i = bc->bc[bc->bc_top-1];
+        if ( (OP(i) >= OP_ADD && OP(i) <= OP_DIVI) ||
+            (OP(i) >= OP_SHL && OP(i) <= OP_XOR) ||
+            (OP(i) >= OP_EQ && OP(i) <= OP_LOR) ) {
+            reg_free(bc, b);
+            bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
+            return;
+        }
+    }
 
     if (!is_register(b)) {
         if (is_instant16(b)) {

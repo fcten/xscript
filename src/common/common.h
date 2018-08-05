@@ -8,7 +8,7 @@
 #include <string.h>
 #include <memory.h>
 
-#include <jemalloc/jemalloc.h>
+//#include <jemalloc/jemalloc.h>
 
 #define lgx_inline inline
 
