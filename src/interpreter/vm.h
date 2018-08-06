@@ -17,8 +17,7 @@ typedef struct {
 
 typedef struct {
     // 字节码
-    unsigned *bc;
-    unsigned bc_size;
+    lgx_bc_t *bc;
 
     // 栈内存
     lgx_vm_stack_t stack;

@@ -49,9 +49,13 @@ int lgx_hash_delete(lgx_hash_t *hash) {
             if (hash->table[i].k.type == T_UNDEFINED) {
                 continue;
             }
+            lgx_val_free(&hash->table[i].k);
+            lgx_val_free(&hash->table[i].v);
             while (!lgx_list_empty(&hash->table[i].head)) {
                 lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
                 lgx_list_del(&n->head);
+                lgx_val_free(&n->k);
+                lgx_val_free(&n->v);
                 xfree(n);
             }
         }
@@ -155,7 +159,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->flag_non_compact_elements = 1;
     }
 
-    if (node->v.type > T_BOOL) {
+    if (node->v.type > T_BOOL || node->k.type > T_BOOL) {
         hash->flag_non_basic_elements = 1;
     }
 

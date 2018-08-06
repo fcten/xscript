@@ -61,6 +61,55 @@ int lgx_ast_init(lgx_ast_t* ast) {
     return 0;
 }
 
+void ast_node_cleanup(lgx_ast_node_t* node) {
+    int i;
+    switch (node->type) {
+        case IDENTIFIER_TOKEN:
+        case UNDEFINED_TOKEN:
+        case LONG_TOKEN:
+        case DOUBLE_TOKEN:
+        case STRING_TOKEN:
+        case TRUE_TOKEN:
+        case FALSE_TOKEN:
+            xfree(node);
+            return;
+        case BLOCK_STATEMENT:
+            if (node->u.symbols) {
+                lgx_hash_delete(node->u.symbols);
+            }
+            break;
+        case FOR_STATEMENT:
+        case WHILE_STATEMENT:
+        case DO_WHILE_STATEMENT:
+        case SWITCH_CASE_STATEMENT:
+        case FUNCTION_DECLARATION:
+            if (node->u.jmps) {
+                while (!lgx_list_empty(&node->u.jmps->head)) {
+                    lgx_ast_node_list_t *n = lgx_list_first_entry(&node->u.jmps->head, lgx_ast_node_list_t, head);
+                    lgx_list_del(&n->head);
+                    xfree(n);
+                }
+                xfree(node->u.jmps);
+            }
+            break;
+    }
+    for(i = 0; i < node->children; i++) {
+        if (node->child[i]) {
+            ast_node_cleanup(node->child[i]);
+        }
+    }
+    xfree(node);
+}
+
+int lgx_ast_cleanup(lgx_ast_t* ast) {
+    xfree(ast->err_info);
+    xfree(ast->lex.source);
+
+    ast_node_cleanup(ast->root);
+
+    return 0;
+}
+
 void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
     va_list   args;
 

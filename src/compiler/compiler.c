@@ -917,6 +917,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 }
 
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
+    bc->ast = ast;
+
     bc->regs = xcalloc(256, sizeof(unsigned char));
     bc->reg_top = 0;
     for(int i = 255; i >= 4; i--) {
@@ -939,5 +941,16 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     }
 
     bc_hlt(bc);    
+    return 0;
+}
+
+int lgx_bc_cleanup(lgx_bc_t *bc) {
+    xfree(bc->regs);
+    xfree(bc->bc);
+    xfree(bc->err_info);
+    lgx_hash_delete(bc->constant);
+
+    lgx_ast_cleanup(bc->ast);
+
     return 0;
 }

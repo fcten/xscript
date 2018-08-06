@@ -9,28 +9,6 @@ void lgx_gc_disable(lgx_vm_t *vm) {
     vm->gc_enable = 0;
 }
 
-void lgx_gc_free(lgx_val_t *val) {
-    switch (val->type) {
-        case T_STRING:
-            if (val->v.str->gc.ref_cnt) {
-                return;
-            }
-            xfree(val->v.str);
-            val->type = T_UNDEFINED;
-            break;
-        case T_ARRAY:
-            if (val->v.arr->gc.ref_cnt) {
-                return;
-            }
-            lgx_hash_delete(val->v.arr);
-            val->type = T_UNDEFINED;
-            break;
-        case T_OBJECT:
-            // TODO
-            break;
-    }
-}
-
 static int full_gc(lgx_vm_t *vm) {
     // TODO
     printf("[full gc]\n");

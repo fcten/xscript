@@ -15,9 +15,6 @@ void lgx_gc_disable(lgx_vm_t *vm);
 // 把一个变量加入 GC 跟踪
 int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
 
-// 释放一个变量
-void lgx_gc_free(lgx_val_t *val);
-
 // 引用计数设置为指定值
 #define lgx_gc_ref_set(p, cnt) do {\
     switch ((p)->type) {\

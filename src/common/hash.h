@@ -5,7 +5,7 @@
 #include "val.h"
 
 typedef struct {
-    lgx_list_t head;
+    lgx_list_t head; // TODO 当前结构会导致数组扩容出现问题
     lgx_val_t k;
     lgx_val_t v;
 } lgx_hash_node_t;

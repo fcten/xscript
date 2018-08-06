@@ -102,8 +102,24 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                     return 1;
                 }
                 break;
+            case T_ARRAY:
+                break;
         }
     }
 
     return 0;
+}
+
+void lgx_val_free(lgx_val_t *src) {
+    switch (src->type) {
+        case T_STRING:
+            lgx_str_delete(src->v.str);
+            break;
+        case T_ARRAY:
+            lgx_hash_delete(src->v.arr);
+            break;
+        case T_FUNCTION:
+            lgx_fun_delete(src->v.fun);
+            break;
+    }
 }

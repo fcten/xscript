@@ -18,6 +18,7 @@ typedef struct {
 } lgx_str_t;
 
 lgx_str_t* lgx_str_new(char *str, unsigned len);
+void lgx_str_delete(lgx_str_t *str);
 
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
 

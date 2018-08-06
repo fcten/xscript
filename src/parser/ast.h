@@ -102,6 +102,7 @@ typedef struct lgx_ast {
 int lgx_ast_init(lgx_ast_t* ast);
 int lgx_ast_parser(lgx_ast_t* ast);
 int lgx_ast_optimizer(lgx_ast_t* ast);
+int lgx_ast_cleanup(lgx_ast_t* ast);
 void lgx_ast_print(lgx_ast_node_t* node, int indent);
 
 #endif // LGX_AST_H

@@ -66,8 +66,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->heap.young_size = 0;
     vm->heap.old_size = 0;
 
-    vm->bc = bc->bc;
-    vm->bc_size = bc->bc_size;
+    vm->bc = bc;
     
     vm->constant = bc->constant;
 
@@ -100,6 +99,8 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
         xfree(list);
         list = next;
     }
+
+    lgx_bc_cleanup(vm->bc);
 
     return 0;
 }
@@ -134,9 +135,10 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
 
 int lgx_vm_start(lgx_vm_t *vm) {
     unsigned i;
+    unsigned *bc = vm->bc->bc;
 
     for(;;) {
-        i = vm->bc[vm->pc++];
+        i = bc[vm->pc++];
 
         switch(OP(i)) {
             case OP_MOV:{
