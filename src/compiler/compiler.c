@@ -23,7 +23,7 @@ void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
 
 static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     lgx_val_t *v;
-    lgx_str_ref_t s;
+    lgx_str_t s;
 
     s.buffer = ((lgx_ast_node_token_t *)node)->tk_start;
     s.length = ((lgx_ast_node_token_t *)node)->tk_length;
@@ -867,7 +867,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_jmp(bc, 0);
 
             lgx_val_t *e;
-            lgx_str_ref_t s;
+            lgx_str_t s;
             s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
             e = lgx_scope_global_val_get(node, &s);

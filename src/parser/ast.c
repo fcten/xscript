@@ -414,7 +414,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     // 优先把函数参数添加到符号表
     if (parent->type == FUNCTION_DECLARATION) {
-        lgx_str_ref_t s;
+        lgx_str_t s;
         for (int i = 0; i < parent->child[1]->children; i++) {
             s.buffer = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_start;
             s.length = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_length;
@@ -671,7 +671,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
 
         // 创建变量加入作用域
-        lgx_str_ref_t s;
+        lgx_str_t s;
         s.buffer = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
 
@@ -709,7 +709,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_id_token(ast, function_declaration);
 
     // 创建函数加入作用域
-    lgx_str_ref_t s;
+    lgx_str_t s;
     lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)function_declaration->child[0];
     s.buffer = n->tk_start;
     s.length = n->tk_length;

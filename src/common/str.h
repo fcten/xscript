@@ -11,14 +11,11 @@ typedef struct {
     unsigned size;
     // 已使用的缓冲区长度（字符串长度）
     unsigned length;
-    // 缓冲区
-    char buffer[];
-} lgx_str_t;
-
-typedef struct {
-    unsigned length;
+    // 指针
     char *buffer;
-} lgx_str_ref_t;
+    // 缓冲区
+    char str[];
+} lgx_str_t;
 
 lgx_str_t* lgx_str_new(char *str, unsigned len);
 

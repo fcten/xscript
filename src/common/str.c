@@ -6,6 +6,8 @@ lgx_str_t* lgx_str_new(char *str, unsigned len) {
     if (!ret) {
         return NULL;
     }
+
+    ret->buffer = ret->str;
     
     ret->size = len;
     ret->length = len;
