@@ -617,15 +617,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 为当前作用域的变量分配寄存器
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
-                if (head->k.type == T_UNDEFINED) {
-                    continue;
+                if (head->k.type != T_UNDEFINED) {
+                    head->v.u.reg.type = R_LOCAL;
+                    head->v.u.reg.reg = reg_pop(bc);
                 }
-                head->v.u.reg.type = R_LOCAL;
-                head->v.u.reg.reg = reg_pop(bc);
-                lgx_hash_node_t *p;
-                lgx_list_for_each_entry(p, lgx_hash_node_t, &head->head, head) {
-                    p->v.u.reg.type = R_LOCAL;
-                    p->v.u.reg.reg = reg_pop(bc);
+                lgx_hash_node_t *next = head->next;
+                while (next) {
+                    next->v.u.reg.type = R_LOCAL;
+                    next->v.u.reg.reg = reg_pop(bc);
                 }
             }
 
@@ -638,13 +637,12 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 释放局部变量的寄存器
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
-                if (head->k.type == T_UNDEFINED) {
-                    continue;
+                if (head->k.type != T_UNDEFINED) {
+                    reg_push(bc, head->v.u.reg.reg);
                 }
-                reg_push(bc, head->v.u.reg.reg);
-                lgx_hash_node_t *p;
-                lgx_list_for_each_entry(p, lgx_hash_node_t, &head->head, head) {
-                    reg_push(bc, p->v.u.reg.reg);
+                lgx_hash_node_t *next = head->next;
+                while (next) {
+                    reg_push(bc, next->v.u.reg.reg);
                 }
             }
             break;

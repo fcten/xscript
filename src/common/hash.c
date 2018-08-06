@@ -1,5 +1,6 @@
 #include "common.h"
 #include "hash.h"
+#include "../interpreter/gc.h"
 
 lgx_hash_t* _lgx_hash_new_const();
 int lgx_hash_delete(lgx_hash_t *hash);
@@ -36,7 +37,7 @@ lgx_hash_t* _lgx_hash_new_const() {
     return hash;
 }
 
-// TODO 引用计数
+// 删除哈希表，并删除有所引用计数小于等于 1 的子元素
 int lgx_hash_delete(lgx_hash_t *hash) {
     if (hash->flag_non_basic_elements) {
         int i, length;
@@ -46,17 +47,15 @@ int lgx_hash_delete(lgx_hash_t *hash) {
             length = hash->length;
         }
         for (i = 0; i < length; i ++) {
-            if (hash->table[i].k.type == T_UNDEFINED) {
-                continue;
-            }
             lgx_val_free(&hash->table[i].k);
             lgx_val_free(&hash->table[i].v);
-            while (!lgx_list_empty(&hash->table[i].head)) {
-                lgx_hash_node_t *n = lgx_list_first_entry(&hash->table[i].head, lgx_hash_node_t, head);
-                lgx_list_del(&n->head);
-                lgx_val_free(&n->k);
-                lgx_val_free(&n->v);
-                xfree(n);
+            lgx_hash_node_t *cur, *next = hash->table[i].next;
+            while (next) {
+                cur = next;
+                next = cur->next;
+                lgx_val_free(&cur->k);
+                lgx_val_free(&cur->v);
+                xfree(cur);
             }
         }
     }
@@ -66,19 +65,20 @@ int lgx_hash_delete(lgx_hash_t *hash) {
     return 0;
 }
 
-// 把 src 的元素复制到 dst 中
+// 把 src 的元素复制到 dst 中，忽略 undefined 类型的 key
 // dst->size 应当大于等于 src->size
-// TODO 不复制 T_UNDEFINED 类型的元素
 static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
     int i;
     for (i = 0; i < src->size; i++) {
-        if (src->table[i].k.type == T_UNDEFINED) {
-            continue;
+        if (src->table[i].k.type != T_UNDEFINED) {
+            lgx_hash_set(dst, &src->table[i]);
         }
-        lgx_hash_set(dst, &src->table[i]);
-        lgx_hash_node_t *p;
-        lgx_list_for_each_entry(p, lgx_hash_node_t, &src->table[i].head, head) {
-            lgx_hash_set(dst, p);
+        lgx_hash_node_t *next = src->table[i].next;
+        while (next) {
+            if (next->k.type != T_UNDEFINED) {
+                lgx_hash_set(dst, next);
+            }
+            next = next->next;
         }
     }
 }
@@ -139,8 +139,7 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     return ret;
 }
 
-// TODO value 复制需要复制内部数据结构，否则会导致循环引用
-// TODO 引用计数
+// TODO 正确处理循环引用
 lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     // 如果引用计数大于 1，则进行复制
     if (UNEXPECTED(hash->gc.ref_cnt > 1)) {
@@ -165,33 +164,39 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
 
     if (EXPECTED(hash->table[k].k.type == T_UNDEFINED)) {
         // 插入位置是空的
-        hash->table[k] = *node;
-        lgx_list_init(&hash->table[k].head);
-
-        hash->length ++;
+        lgx_gc_ref_add(&node->k);
+        lgx_gc_ref_add(&node->v);
+        hash->table[k].k = node->k;
+        hash->table[k].v = node->v;
     } else {
         // 插入位置已经有元素了，遍历寻找
-        // TODO 节点本身也包含一个 value
-        lgx_hash_node_t *p;
-        lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
-            if (lgx_val_cmp(&p->k, &node->k)) {
+        lgx_hash_node_t *next = hash->table[k].next;
+        while (next) {
+            if (lgx_val_cmp(&next->k, &node->k)) {
                 // 覆盖旧元素
-                p->v = node->v;
+                lgx_gc_ref_del(&next->v);
+                lgx_gc_ref_add(&node->v);
+                next->v = node->v;
                 return 0;
             }
+            next = next->next;
         }
 
         // 没有找到，新插入一个元素
-        p = xmalloc(sizeof(lgx_hash_node_t));
-        if (UNEXPECTED(!p)) {
+        next = xmalloc(sizeof(lgx_hash_node_t));
+        if (UNEXPECTED(!next)) {
             return NULL;
         }
-        *p = *node;
-        lgx_list_add_tail(&p->head, &hash->table[k].head);
-
-        hash->length ++;
+        lgx_gc_ref_add(&node->k);
+        lgx_gc_ref_add(&node->v);
+        next->k = node->k;
+        next->v = node->v;
+        next->next = hash->table[k].next;
+        hash->table[k].next = next;
     }
     
+    hash->length ++;
+
     if (EXPECTED(hash->size > hash->length)) {
         return hash;
     } else {
@@ -213,7 +218,7 @@ lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
 lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
     unsigned k = hash_bkdr(hash, key);
 
-    if (hash->table[k].k.type == T_UNDEFINED) {
+    if (UNEXPECTED(key->type == T_UNDEFINED)) {
         return NULL;
     }
 
@@ -221,11 +226,12 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
         return &hash->table[k];
     }
 
-    lgx_hash_node_t *p;
-    lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[k].head, head) {
-        if (lgx_val_cmp(&p->k, key)) {
-            return p;
+    lgx_hash_node_t *next = hash->table[k].next;
+    while (next) {
+        if (lgx_val_cmp(&next->k, key)) {
+            return next;
         }
+        next = next->next;
     }
 
     return NULL;
@@ -241,17 +247,15 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
     }
 
     for (i = 0; i < length; i++) {
-        if (hash->table[i].k.type == T_UNDEFINED) {
-            continue;
-        }
         if (lgx_val_cmp(&hash->table[i].v, v)) {
             return &hash->table[i];
         }
-        lgx_hash_node_t *p;
-        lgx_list_for_each_entry(p, lgx_hash_node_t, &hash->table[i].head, head) {
-            if (lgx_val_cmp(&p->v, v)) {
-                return p;
+        lgx_hash_node_t *next = hash->table[i].next;
+        while (next) {
+            if (lgx_val_cmp(&next->v, v)) {
+                return next;
             }
+            next = next->next;
         }
     }
 

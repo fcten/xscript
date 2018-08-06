@@ -42,6 +42,7 @@ typedef struct {
         lgx_res_t         *res;
         lgx_ref_t         *ref;
         lgx_fun_t         *fun;
+        lgx_gc_t          *gc; // 方便访问任意高级类型的 gc 字段，gc 字段必须在高级类型结构体的头部
     } v;
     unsigned char type;
     union {

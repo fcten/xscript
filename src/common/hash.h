@@ -4,8 +4,8 @@
 #include "typedef.h"
 #include "val.h"
 
-typedef struct {
-    lgx_list_t head; // TODO 当前结构会导致数组扩容出现问题
+typedef struct lgx_hash_node_s {
+    struct lgx_hash_node_s *next;
     lgx_val_t k;
     lgx_val_t v;
 } lgx_hash_node_t;

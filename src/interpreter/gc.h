@@ -17,25 +17,22 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
 
 // 引用计数设置为指定值
 #define lgx_gc_ref_set(p, cnt) do {\
-    switch ((p)->type) {\
-        case T_STRING: (p)->v.str->gc.ref_cnt = cnt; break;\
-        case T_ARRAY: (p)->v.arr->gc.ref_cnt = cnt; break;\
+    if ((p)->type > T_BOOL) {\
+        (p)->v.gc->ref_cnt = cnt;\
     }\
 } while(0);
 
 // 引用计数加一
 #define lgx_gc_ref_add(p) do {\
-    switch ((p)->type) {\
-        case T_STRING: (p)->v.str->gc.ref_cnt ++; break;\
-        case T_ARRAY: (p)->v.arr->gc.ref_cnt ++; break;\
+    if ((p)->type > T_BOOL) {\
+        (p)->v.gc->ref_cnt ++;\
     }\
 } while(0);
 
 // 引用计数减一
 #define lgx_gc_ref_del(p) do {\
-    switch ((p)->type) {\
-        case T_STRING: (p)->v.str->gc.ref_cnt --; break;\
-        case T_ARRAY: (p)->v.arr->gc.ref_cnt --; break;\
+    if ((p)->type > T_BOOL) {\
+        (p)->v.gc->ref_cnt --;\
     }\
 } while(0);
 
