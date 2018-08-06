@@ -158,7 +158,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->flag_non_compact_elements = 1;
     }
 
-    if (node->v.type > T_BOOL || node->k.type > T_BOOL) {
+    if (IS_GC_VALUE(&node->v) || IS_GC_VALUE(&node->k)) {
         hash->flag_non_basic_elements = 1;
     }
 

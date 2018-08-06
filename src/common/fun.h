@@ -6,6 +6,8 @@ typedef struct {
 } lgx_fun_args_t;
 
 typedef struct {
+    // GC 信息
+    lgx_gc_t gc;
     // 参数列表
     lgx_fun_args_t args;
     // 需求的堆栈空间

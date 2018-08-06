@@ -9,6 +9,9 @@ typedef void lgx_obj_t;
 typedef void lgx_res_t;
 typedef void lgx_ref_t;
 
+#define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
+#define IS_GC_VALUE(x) ((x)->type > T_BOOL)
+
 enum {
     // 基本类型
     T_UNDEFINED = 0,// 变量尚未定义

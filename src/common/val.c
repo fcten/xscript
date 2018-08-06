@@ -113,13 +113,25 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
 void lgx_val_free(lgx_val_t *src) {
     switch (src->type) {
         case T_STRING:
-            lgx_str_delete(src->v.str);
+            if (src->v.gc->ref_cnt <= 1) {
+                lgx_str_delete(src->v.str);
+            } else {
+                src->v.gc->ref_cnt --;
+            }
             break;
         case T_ARRAY:
-            lgx_hash_delete(src->v.arr);
+            if (src->v.gc->ref_cnt <= 1) {
+                lgx_hash_delete(src->v.arr);
+            } else {
+                src->v.gc->ref_cnt --;
+            }
             break;
         case T_FUNCTION:
-            lgx_fun_delete(src->v.fun);
+            if (src->v.gc->ref_cnt <= 1) {
+                lgx_fun_delete(src->v.fun);
+            } else {
+                src->v.gc->ref_cnt --;
+            }
             break;
     }
 }

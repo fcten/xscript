@@ -15,25 +15,34 @@ void lgx_gc_disable(lgx_vm_t *vm);
 // 把一个变量加入 GC 跟踪
 int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
 
+// 获取指定 val 的引用计数
+#define lgx_gc_ref_get(n, p) do {\
+    if ((p)->type > T_BOOL) {\
+        n = (p)->v.gc->ref_cnt;\
+    } else {\
+        n = 0;\
+    }\
+} while(0)
+
 // 引用计数设置为指定值
 #define lgx_gc_ref_set(p, cnt) do {\
     if ((p)->type > T_BOOL) {\
         (p)->v.gc->ref_cnt = cnt;\
     }\
-} while(0);
+} while(0)
 
 // 引用计数加一
 #define lgx_gc_ref_add(p) do {\
     if ((p)->type > T_BOOL) {\
         (p)->v.gc->ref_cnt ++;\
     }\
-} while(0);
+} while(0)
 
 // 引用计数减一
 #define lgx_gc_ref_del(p) do {\
     if ((p)->type > T_BOOL) {\
         (p)->v.gc->ref_cnt --;\
     }\
-} while(0);
+} while(0)
 
 #endif // LGX_GC_H
