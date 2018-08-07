@@ -162,15 +162,64 @@ echo "Hello World";
 
 ## 函数作用域
 
-# 语句
+# 语句 (statement)
 
-## 赋值语句
+## 表达式语句
+
+```
+expression;
+```
+
+以下是几种典型的表达式语句
+
+```
+a = 1 + 1;
+
+do_something();
+```
 
 ## if 语句
 
+```
+if (condition) {
+    // do something
+}
+
+if (condition) {
+    // do something
+} else {
+    // do something
+}
+
+// TODO else if 尚未实现
+if (condition) {
+    // do something
+} else if (condition) {
+    // do something
+}
+```
+
+注意：语句中的圆括号与花括号均不能省略
+
 ## while 语句
 
+```
+while (condition) {
+    // do something
+}
+```
+
+注意：语句中的圆括号与花括号均不能省略
+
 ## do while 语句
+
+```
+do {
+    // do something
+} while (condition);
+```
+
+注意：语句中的圆括号与花括号均不能省略
 
 ## for 语句
 
@@ -185,6 +234,12 @@ echo "Hello World";
 ## import & export
 
 # 垃圾回收
+
+xscript 使用引用计数为主，标记清除为辅的垃圾回收策略。
+
+- 为了允许同时运行成千上万个虚拟机，xscript 需要尽量节省内存
+- 为了实现虚拟机级别的用户隔离，xscript 需要尽量避免 GC 停顿，防止用户遭遇间歇性卡顿
+- xscript 需要使用引用计数实现写时复制，减少值传递的开销，以实现默认的值传递策略
 
 # 调试
 
