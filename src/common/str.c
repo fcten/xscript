@@ -2,13 +2,19 @@
 #include "str.h"
 
 lgx_str_t* lgx_str_new(char *str, unsigned len) {
-    lgx_str_t* ret = xmalloc(sizeof(lgx_str_t) + len * sizeof(char));
+    unsigned size = sizeof(lgx_str_t) + len * sizeof(char);
+
+    lgx_str_t* ret = xmalloc(size);
     if (!ret) {
         return NULL;
     }
 
     ret->buffer = ret->str;
     
+    ret->gc.ref_cnt = 0;
+    ret->gc.size = size;
+    ret->gc.type = T_STRING;
+
     ret->size = len;
     ret->length = len;
     memcpy(ret->buffer, str, len);

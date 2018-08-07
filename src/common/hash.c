@@ -17,6 +17,7 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     }
 
     hash->size = size;
+
     hash->gc.size = mem_size;
     hash->gc.type = T_ARRAY;
 
