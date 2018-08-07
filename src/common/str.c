@@ -1,5 +1,6 @@
 #include "common.h"
 #include "str.h"
+#include "val.h"
 
 lgx_str_t* lgx_str_new(char *str, unsigned len) {
     unsigned size = sizeof(lgx_str_t) + len * sizeof(char);

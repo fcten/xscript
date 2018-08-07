@@ -3,7 +3,6 @@
 #include "../interpreter/gc.h"
 
 lgx_hash_t* _lgx_hash_new_const();
-int lgx_hash_delete(lgx_hash_t *hash);
 
 lgx_hash_t* _lgx_hash_new(unsigned size) {
     // 规范化 size 取值
@@ -71,10 +70,7 @@ int lgx_hash_delete(lgx_hash_t *hash) {
 static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
     int i;
     for (i = 0; i < src->size; i++) {
-        if (src->table[i].k.type != T_UNDEFINED) {
-            lgx_hash_set(dst, &src->table[i]);
-        }
-        lgx_hash_node_t *next = src->table[i].next;
+        lgx_hash_node_t *next = &src->table[i];
         while (next) {
             if (next->k.type != T_UNDEFINED) {
                 lgx_hash_set(dst, next);
@@ -171,14 +167,14 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->table[k].v = node->v;
     } else {
         // 插入位置已经有元素了，遍历寻找
-        lgx_hash_node_t *next = hash->table[k].next;
+        lgx_hash_node_t *next = &hash->table[k];
         while (next) {
             if (lgx_val_cmp(&next->k, &node->k)) {
                 // 覆盖旧元素
                 lgx_gc_ref_del(&next->v);
                 lgx_gc_ref_add(&node->v);
                 next->v = node->v;
-                return 0;
+                return hash;
             }
             next = next->next;
         }
@@ -223,11 +219,7 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
         return NULL;
     }
 
-    if (lgx_val_cmp(&hash->table[k].k, key)) {
-        return &hash->table[k];
-    }
-
-    lgx_hash_node_t *next = hash->table[k].next;
+    lgx_hash_node_t *next = &hash->table[k];
     while (next) {
         if (lgx_val_cmp(&next->k, key)) {
             return next;
@@ -248,10 +240,7 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
     }
 
     for (i = 0; i < length; i++) {
-        if (lgx_val_cmp(&hash->table[i].v, v)) {
-            return &hash->table[i];
-        }
-        lgx_hash_node_t *next = hash->table[i].next;
+        lgx_hash_node_t *next = &hash->table[i];
         while (next) {
             if (lgx_val_cmp(&next->v, v)) {
                 return next;
@@ -275,16 +264,18 @@ int lgx_hash_print(lgx_hash_t *hash) {
     printf("[");
 
     for (i = 0 ; i < length ; i ++) {
-        if (hash->table[i].k.type == T_UNDEFINED) {
-            continue;
+        lgx_hash_node_t *next = &hash->table[i];
+        while (next) {
+            if (next->k.type != T_UNDEFINED) {
+                //lgx_val_print(&next->k);
+                //printf(" => ");
+                lgx_val_print(&next->v);
+                if (++count < hash->length) {
+                    printf(",");
+                }
+            }
+            next = next->next;
         }
-        //lgx_val_print(&hash->table[i].k);
-        //printf("=>");
-        lgx_val_print(&hash->table[i].v);
-        if (++count < hash->length) {
-            printf(",");
-        }
-        //printf("\n");
     }
 
     printf("]");

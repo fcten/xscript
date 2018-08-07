@@ -48,19 +48,4 @@ static lgx_inline unsigned ALIGN(unsigned x) {
 }
 #endif
 
-enum {
-    // 基本类型
-    T_UNDEFINED = 0,// 变量尚未定义
-    T_LONG,         // 64 位有符号整数
-    T_DOUBLE,       // 64 位有符号浮点数
-    T_BOOL,         // T_BOOL 必须是基本类型的最后一种，因为它被用于是否为基本类型的判断
-    // 高级类型
-    T_REDERENCE,
-    T_STRING,
-    T_ARRAY,
-    T_OBJECT,
-    T_FUNCTION,
-    T_RESOURCE
-};
-
 #endif // LGX_COMMON_H

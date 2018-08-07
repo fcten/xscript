@@ -82,7 +82,11 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
+    // 释放 main 函数
+    lgx_fun_delete(vm->regs[0].v.fun);
+
     // 释放栈
+
     // TODO 解除所有引用
     lgx_vm_stack_cleanup(&vm->stack);
 
@@ -682,7 +686,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_ARRAY_ADD:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
                     lgx_hash_t *hash = lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
-                    if (R(PA(i)).v.arr != hash) {
+                    if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
                         R(PA(i)).v.arr = hash;
                         lgx_gc_trace(vm, &R(PA(i)));
                     }
@@ -727,7 +731,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 lgx_gc_ref_del(&R(PA(i)));
-
+                lgx_gc_ref_add(&C(PD(i)));
                 R(PA(i)) = C(PD(i));
                 break;
             }

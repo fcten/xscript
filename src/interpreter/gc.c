@@ -79,18 +79,12 @@ static int minor_gc(lgx_vm_t *vm) {
 }
 
 int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
-    switch (v->type) {
-        case T_STRING:
-            lgx_list_add_tail(&v->v.str->gc.head ,&vm->heap.young);
-            vm->heap.young_size += v->v.str->gc.size;
-            break;
-        case T_ARRAY:
-            lgx_list_add_tail(&v->v.arr->gc.head ,&vm->heap.young);
-            vm->heap.young_size += v->v.arr->gc.size;
-            break;
-        default:
-            return 0;
+    if (IS_BASIC_VALUE(v)) {
+        return 0;
     }
+
+    lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
+    vm->heap.young_size += v->v.gc->size;
 
     if (vm->heap.young_size >= 4 * 1024 * 1024) {
         if (minor_gc(vm)) {
