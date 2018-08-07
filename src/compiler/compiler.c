@@ -647,6 +647,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             // 释放局部变量的寄存器
+            // TODO 寄存器释放顺序
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
                 if (head->k.type != T_UNDEFINED) {
