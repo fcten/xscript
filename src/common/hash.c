@@ -2,8 +2,6 @@
 #include "hash.h"
 #include "../interpreter/gc.h"
 
-lgx_hash_t* _lgx_hash_new_const();
-
 lgx_hash_t* _lgx_hash_new(unsigned size) {
     // 规范化 size 取值
     size = ALIGN(size);
@@ -19,20 +17,6 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
 
     hash->gc.size = mem_size;
     hash->gc.type = T_ARRAY;
-
-    return hash;
-}
-
-lgx_hash_t* _lgx_hash_new_const() {
-    static lgx_hash_t *hash = NULL;
-
-    if (UNEXPECTED(!hash)) {
-        hash = _lgx_hash_new(LGX_HASH_MIN_SIZE);
-        if (UNEXPECTED(!hash)) {
-            return NULL;
-        }
-        hash->gc.ref_cnt = 1;
-    }
 
     return hash;
 }
@@ -138,17 +122,6 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
 
 // TODO 正确处理循环引用
 lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
-    // 如果引用计数大于 1，则进行复制
-    if (UNEXPECTED(hash->gc.ref_cnt > 1)) {
-        hash->gc.ref_cnt --;
-        lgx_hash_t *dst = _lgx_hash_new(hash->size);
-        if (hash->length) {
-            hash_copy(hash, dst);
-        }
-        hash = dst;
-        hash->gc.ref_cnt = 1;
-    }
-
     unsigned k = hash_bkdr(hash, &node->k);
 
     if (k > hash->length) {

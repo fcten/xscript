@@ -42,7 +42,7 @@ typedef struct lgx_hash_s {
 #define lgx_hash_new(size) \
 	(__builtin_constant_p(size) ? \
 		((((unsigned)(size)) <= LGX_HASH_MIN_SIZE) ? \
-			_lgx_hash_new_const() \
+			_lgx_hash_new(LGX_HASH_MIN_SIZE) \
 		: \
 			_lgx_hash_new((size)) \
 		) \
