@@ -156,6 +156,44 @@ echo "Hello World";
 
 ## 变量作用域
 
+xscript 支持函数级作用域和块级作用域。
+
+## 变量值传递
+
+在 xscript 中，变量赋值、参数传递均是通过值传递的方式完成的。
+
+```
+auto a = [1,2,3];
+
+function assign(auto a) {
+    a = [4,5,6];
+}
+
+assign(a);
+
+echo a; // output [1,2,3]
+```
+
+在上面的代码中，调用函数 assign(a) 并不会改变变量 a 的值。
+
+## 引用类型变量
+
+在 xscript 中，string、array、object、function 类型均为隐式引用类型。
+
+```
+auto a = [1,2,3];
+
+function assign(auto a) {
+    a[] = 4;
+}
+
+assign(a);
+
+echo a; // output [1,2,3,4]
+```
+
+在上面的代码中，调用函数 assign(a) 会使变量 a 的值发生改变，因为参数 a 与 变量 a 是对同一个数组的引用。
+
 # 函数
 
 ## 函数声明

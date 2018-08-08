@@ -915,6 +915,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
+            const_add(bc, e);
             bc_load(bc, e, const_get(bc, e));
             
             break;
