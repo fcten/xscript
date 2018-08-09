@@ -521,7 +521,44 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* for_statement = ast_node_new(ast, 4);
+    for_statement->type = FOR_STATEMENT;
+    ast_node_append_child(parent, for_statement);
+
+    // ast->cur_token == TK_FOR
     ast_step(ast);
+
+    if (ast->cur_token != '(') {
+        ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
+        return;
+    }
+    ast_step(ast);
+
+    ast_parse_expression(ast, for_statement);
+
+    if (ast->cur_token != ';') {
+        ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
+        return;
+    }
+    ast_step(ast);
+
+    ast_parse_expression(ast, for_statement);
+
+    if (ast->cur_token != ';') {
+        ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
+        return;
+    }
+    ast_step(ast);
+
+    ast_parse_expression(ast, for_statement);
+
+    if (ast->cur_token != ')') {
+        ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
+        return;
+    }
+    ast_step(ast);
+
+    ast_parse_block_statement(ast, for_statement);
 }
 
 void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {

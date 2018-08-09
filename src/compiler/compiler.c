@@ -731,7 +731,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case FOR_STATEMENT:
-
+            // TODO
             break;
         case WHILE_STATEMENT:{
             unsigned start = bc->bc_top; // 循环起始位置
@@ -823,7 +823,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_jmp(bc, 0);
             break;
         case SWITCH_CASE_STATEMENT:
-
+            // TODO
             break;
         case RETURN_STATEMENT:{
             lgx_val_t r;
