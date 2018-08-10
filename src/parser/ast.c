@@ -502,6 +502,9 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     ast_parse_expression(ast, if_statement);
+    if (if_statement->children == 0) {
+        ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    }
 
     if (ast->cur_token != ')') {
         ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
@@ -535,6 +538,9 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     ast_parse_expression(ast, for_statement);
+    if (for_statement->children == 0) {
+        for_statement->children ++;
+    }
 
     if (ast->cur_token != ';') {
         ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
@@ -543,6 +549,9 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     ast_parse_expression(ast, for_statement);
+    if (for_statement->children == 1) {
+        for_statement->children ++;
+    }
 
     if (ast->cur_token != ';') {
         ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
@@ -551,6 +560,9 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     ast_parse_expression(ast, for_statement);
+    if (for_statement->children == 2) {
+        for_statement->children ++;
+    }
 
     if (ast->cur_token != ')') {
         ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
@@ -576,6 +588,9 @@ void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     ast_parse_expression(ast, while_statement);
+    if (while_statement->children == 0) {
+        ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    }
 
     if (ast->cur_token != ')') {
         ast_error(ast, "[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);

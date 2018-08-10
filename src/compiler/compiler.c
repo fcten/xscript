@@ -730,9 +730,66 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
             break;
         }
-        case FOR_STATEMENT:
-            // TODO
+        case FOR_STATEMENT:{
+            // exp1: 循环开始前执行一次
+            if (node->child[0]) {
+                lgx_val_t e;
+                lgx_val_init(&e);
+                if (bc_expr(bc, node->child[0], &e)) {
+                    return 1;
+                }
+            }
+
+            unsigned pos1 = bc->bc_top; // 跳转指令位置
+            unsigned pos2 = 0; // 跳出指令位置
+
+            // exp2: 每次循环开始前执行一次，如果值为假，则跳出循环
+            if (node->child[1]) {
+                lgx_val_t e;
+                lgx_val_init(&e);
+                if (bc_expr(bc, node->child[1], &e)) {
+                    return 1;
+                }
+
+                if (e.type == T_BOOL) {
+                    if (e.v.l == 0) {
+                        break;
+                    }
+                } else if (is_register(&e)) {
+                    pos2 = bc->bc_top; 
+                    bc_test(bc, &e, 0);
+                    reg_free(bc, &e);
+                } else {
+                    // error
+                }
+            }
+
+            // 循环主体
+            if (bc_stat(bc, node->child[3])) {
+                return 1;
+            }
+
+            unsigned pos3 = bc->bc_top; // 跳转指令位置
+
+            // exp3: 每次循环结束后执行一次
+            if (node->child[2]) {
+                lgx_val_t e;
+                lgx_val_init(&e);
+                if (bc_expr(bc, node->child[2], &e)) {
+                    return 1;
+                }
+            }
+
+            bc_jmp(bc, pos1);
+
+            if (pos2) {
+                bc_set_pd(bc, pos2, bc->bc_top);
+            }
+
+            jmp_fix(bc, node, pos3, bc->bc_top);
+
             break;
+        }
         case WHILE_STATEMENT:{
             unsigned start = bc->bc_top; // 循环起始位置
             lgx_val_t e;
