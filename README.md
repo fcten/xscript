@@ -35,7 +35,7 @@ echo "Hello World";
 - string
 - array
 
-未定义类型
+未定义值
 
 - undefined
 
@@ -53,13 +53,17 @@ echo "Hello World";
 
 - if
 - else
-- do
-- while
 - switch
 - case
 - default
 - break
 - continue
+
+循环
+
+- do
+- while
+- for
 
 # 基本数据类型
 
@@ -101,11 +105,25 @@ echo "Hello World";
 
 ## array
 
-下标访问：arr[1]
+```
+// 创建空数组
+auto arr = [];
+
+// 追加元素
+arr[] = 1;
+
+// 设置指定下标
+arr[1] = 2;
+
+// 访问指定下标
+echo arr[0];
+```
 
 ### 数组字面量
 
-[1, 2, 3]
+```
+auto arr = [1, 2, 3];
+```
 
 ## function
 
