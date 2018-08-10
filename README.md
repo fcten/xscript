@@ -245,69 +245,124 @@ do_something();
 ### if 语句
 
 ```
-if (condition) {
+if (expression) {
     // do something
 }
 
-if (condition) {
+if (expression) {
     // do something
 } else {
     // do something
 }
 
 // TODO else if 尚未实现
-if (condition) {
+if (expression) {
     // do something
 } else if (condition) {
     // do something
 }
 ```
 
+if 语句中的 expression 的运算结果必须是 boolean。
+
+如果 expression 的运算结果为 true，控制流会跳转到紧跟的代码块。如果运算结果为 false，控制流会跳过紧跟的代码块。
+
+if 语句中的任意代码块执行结束时，控制流会跳出 if 语句。
+
 注意：语句中的圆括号与花括号均不能省略
 
-### switch-case 语句
+### switch 语句
+
+```
+switch (expression) {
+    case constant-expression:
+       // do something
+       break;
+    case constant-expression:
+       // do something
+       break;
+    default:
+       // do something
+}
+```
+
+switch 语句中的 expression 的运算结果必须是 number 或者 string。
+
+switch 语句中可以有任意数量的 case 代码块。当某一个 case 匹配均为 true 时，控制流将跳转到该 case 代码块。
+
+switch 语句中可以有最多一个 default 代码块。当所有的 case 匹配均为 false 时，控制流将跳转到 default 代码块。
+
+case 代码块中的 constant-expression 的运算结果必须是 number 或者 string，它的类型必须和 expression 相同，并且它的运算结果必须能够在编译时确定。
+
+case 代码块中的 constant-expression 的运算结果必须各不相同。
+
+当一个 case 代码块或 default 代码块执行完毕时，控制流会继续执行下一个代码块。如果不希望继续执行下一个代码块，应当使用 break 主动跳出 switch 语句。
 
 ### break 语句
 
+```
+break;
+```
+
+break 语句用于跳出循环语句和 switch 语句。
+
 ### continue 语句
+
+```
+continue;
+```
+
+continue 语句用于跳过剩余的循环体，继续开始下一次循环。
 
 ## 循环语句
 
 ### while 语句
 
 ```
-while (condition) {
+while (expression) {
     // do something
 }
 ```
 
+while 语句中的 expression 的运算结果必须是 boolean。
+
 注意：语句中的圆括号与花括号均不能省略
 
-### do while 语句
+### do-while 语句
 
 ```
 do {
     // do something
-} while (condition);
+} while (expression);
 ```
+
+do-while 语句中的 expression 的运算结果必须是 boolean。
 
 注意：语句中的圆括号与花括号均不能省略
 
 ### for 语句
 
 ```
-for (expression; condition; expression) {
+for (expression; expression; expression) {
     // do something
 }
 ```
 
-expression 和 condition 可以省略。所以如下代码也是合法的：
+第一个 expression 会在循环开始前执行一次。
+
+第二个 expression 会在每次循环开始前执行，并且它的运算结果必须是 boolean。如果它的运算结果为 false，则会跳出循环。
+
+第三个 expression 会在每次循环结束后执行。
+
+所有三个 expression 均可省略，如下代码也是合法的：
 
 ```
 for (;;) { // 死循环
     // do something
 }
 ```
+
+
 
 注意：语句中的圆括号与花括号均不能省略
 

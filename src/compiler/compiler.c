@@ -687,6 +687,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_set_pd(bc, pos, bc->bc_top);
             } else {
                 bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                return 1;
             }
             break;
         }
@@ -727,6 +728,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_set_pe(bc, pos2, bc->bc_top);
             } else {
                 bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                return 1;
             }
             break;
         }
@@ -761,6 +763,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     reg_free(bc, &e);
                 } else {
                     bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                    return 1;
                 }
             }
 
@@ -822,6 +825,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_set_pd(bc, pos, bc->bc_top);
             } else {
                 bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                return 1;
             }
 
             jmp_fix(bc, node, start, bc->bc_top);
@@ -879,9 +883,31 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             node->u.pos = bc->bc_top;
             bc_jmp(bc, 0);
             break;
-        case SWITCH_STATEMENT:
-            // TODO
+        case SWITCH_STATEMENT:{
+            // 执行表达式
+            lgx_val_t e;
+            lgx_val_init(&e);
+            if (bc_expr(bc, node->child[0], &e)) {
+                return 1;
+            }
+
+            if (!is_register(&e) &&
+                e.type != T_LONG &&
+                e.type != T_DOUBLE &&
+                e.type != T_STRING) {
+                bc_error(bc, "[Error] [Line:%d] makes number or string from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                return 1;
+            }
+
+            if (node->children == 1) {
+                // 没有 case 和 default，什么都不用做
+            } else if (node->children < 6) {
+                // TODO case default 数量小于等于 4，使用 TEST 判断
+            } else {
+                // TODO case default 数量大于 4，查表跳转
+            }
             break;
+        }
         case RETURN_STATEMENT:{
             lgx_val_t r;
             lgx_val_init(&r);
