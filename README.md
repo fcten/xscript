@@ -8,9 +8,9 @@ Yet another scripting language.
 echo "Hello World";
 ```
 
-# 基本语法
+# 基本语法 (syntax)
 
-## 注释
+## 注释 (comment)
 
 ```
 // 单行注释
@@ -20,11 +20,11 @@ echo "Hello World";
 */
 ```
 
-## 标识符
+## 标识符 (identifier)
 
 标示符由字母 (A-Za-z)、数字 (0-9) 和下划线 (_) 所组成，并且不能以数字开头。标识符区分大小写。
 
-## 保留字
+## 保留字 (reserved word)
 
 类型声明
 
@@ -65,7 +65,7 @@ echo "Hello World";
 - while
 - for
 
-# 基本数据类型
+# 基本数据类型 (data type)
 
 ## undefined
 
@@ -129,7 +129,7 @@ auto arr = [1, 2, 3];
 
 ### 函数字面量
 
-# 运算符
+# 运算符 (operator)
 
 ## 算数运算符
 
@@ -275,9 +275,18 @@ auto a2 = (1 + 2) + 3;
 
 ## 类型转换
 
-# 变量
+# 变量 (variable)
 
 ## 变量声明
+
+xscript 变量必须先声明再使用。
+
+```
+auto a;
+
+a = 1; // OK
+b = 1; // Error: undefined variable `b`
+```
 
 ## 全局变量
 
@@ -285,7 +294,23 @@ auto a2 = (1 + 2) + 3;
 
 ## 变量作用域
 
-xscript 支持函数级作用域和块级作用域。
+xscript 支持函数级变量作用域和块级变量作用域。
+
+```
+function add (auto a, auto b) {
+    auto c = 1;
+    return a + b + c;
+}
+
+if (true) {
+    auto d = 1;
+}
+
+echo a; // Error: undefined variable `a`
+echo b; // Error: undefined variable `b`
+echo c; // Error: undefined variable `c`
+echo d; // Error: undefined variable `d`
+```
 
 ## 变量值传递
 
@@ -323,7 +348,7 @@ echo a; // output [1,2,3,4]
 
 在上面的代码中，调用函数 assign(a) 会使变量 a 的值发生改变，因为参数 a 与 变量 a 是对同一个数组的引用。
 
-# 函数
+# 函数 (function)
 
 ## 函数声明
 
@@ -474,13 +499,7 @@ for (;;) { // 死循环
 
 # 异常
 
-# 包与模块
-
-## package
-
-## import & export
-
-# 垃圾回收
+# 垃圾回收 (garbage collection)
 
 xscript 默认使用引用计数为主，标记清除为辅的垃圾回收策略。
 
@@ -491,12 +510,33 @@ TODO: 引用计数机制可以单独关闭，只使用标记清除完成垃圾�
 
 # 调试
 
-# 标准库
+# 包与模块
 
-## IO
+## 包 (package)
 
-## Network
+## import & export
 
-## 协程、线程与进程
+# 标准库 (std)
 
-## 缓存
+xscript 标准库是以包的形式提供的。
+
+std.io.*
+std.time.*
+std.math.*
+std.string.*
+std.array.*
+std.coroutine.*
+
+## 扩展库
+
+os.thread.*
+os.process.*
+
+redis.*
+mysql.*
+net.http.*
+encoding.json.*
+compress.*
+crypto.*
+image.*
+regexp.*
