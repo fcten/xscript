@@ -430,10 +430,10 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             return 1;
         }
 
-        *e = e1;
+        // 写入表达式的值
+        *e = e2;
 
         reg_free(bc, &e1);
-        reg_free(bc, &e2);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_INDEX) {
         lgx_val_t e1, e2, e3;
         lgx_val_init(&e1);
@@ -472,11 +472,11 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             bc_array_add(bc, &e1, &e3);
         }
 
-        *e = e1;
+        // 写入表达式的值
+        *e = e3;
 
         reg_free(bc, &e1);
         reg_free(bc, &e2);
-        reg_free(bc, &e3);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_ATTR) {
         // TODO 对象属性赋值
     } else {
