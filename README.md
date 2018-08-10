@@ -240,8 +240,9 @@ a = 1 + 1;
 
 do_something();
 ```
+## 流程控制语句
 
-## if 语句
+### if 语句
 
 ```
 if (condition) {
@@ -264,7 +265,15 @@ if (condition) {
 
 注意：语句中的圆括号与花括号均不能省略
 
-## while 语句
+### switch-case 语句
+
+### break 语句
+
+### continue 语句
+
+## 循环语句
+
+### while 语句
 
 ```
 while (condition) {
@@ -274,7 +283,7 @@ while (condition) {
 
 注意：语句中的圆括号与花括号均不能省略
 
-## do while 语句
+### do while 语句
 
 ```
 do {
@@ -284,7 +293,23 @@ do {
 
 注意：语句中的圆括号与花括号均不能省略
 
-## for 语句
+### for 语句
+
+```
+for (expression; condition; expression) {
+    // do something
+}
+```
+
+expression 和 condition 可以省略。所以如下代码也是合法的：
+
+```
+for (;;) { // 死循环
+    // do something
+}
+```
+
+注意：语句中的圆括号与花括号均不能省略
 
 # 面向对象
 

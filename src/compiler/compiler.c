@@ -686,7 +686,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pd(bc, pos, bc->bc_top);
             } else {
-                // error
+                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
             }
             break;
         }
@@ -726,7 +726,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pe(bc, pos2, bc->bc_top);
             } else {
-                // error
+                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
             }
             break;
         }
@@ -760,7 +760,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     bc_test(bc, &e, 0);
                     reg_free(bc, &e);
                 } else {
-                    // error
+                    bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
                 }
             }
 
@@ -821,7 +821,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 // 更新条件跳转
                 bc_set_pd(bc, pos, bc->bc_top);
             } else {
-                // error
+                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
             }
 
             jmp_fix(bc, node, start, bc->bc_top);
