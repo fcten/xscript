@@ -432,7 +432,25 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
 
     int p = ast_operator_precedence(ast->cur_token);
     lgx_ast_node_t* binary_expression;
-    while (p >= 0 && p < precedence) {
+    while (1) {
+        if (p < 0) {
+            return;
+        } else {
+            switch (ast->cur_token) {
+                case TK_AND: case TK_OR: case '=':
+                    // 右结合操作符
+                    if (p > precedence) {
+                        return;
+                    }
+                    break;
+                default:
+                    // 左结合操作符
+                    if (p >= precedence) {
+                        return;
+                    }
+            }
+        }
+
         binary_expression = ast_node_new(ast, 2);
         binary_expression->type = BINARY_EXPRESSION;
         binary_expression->parent = parent;

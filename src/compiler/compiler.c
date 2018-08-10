@@ -430,6 +430,8 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             return 1;
         }
 
+        *e = e1;
+
         reg_free(bc, &e1);
         reg_free(bc, &e2);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_INDEX) {
@@ -469,6 +471,8 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 
             bc_array_add(bc, &e1, &e3);
         }
+
+        *e = e1;
 
         reg_free(bc, &e1);
         reg_free(bc, &e2);
