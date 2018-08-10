@@ -190,7 +190,7 @@ static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
 }
 
 static lgx_ast_node_t *jmp_find_loop_or_switch(lgx_ast_node_t *node) {
-    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_WHILE_STATEMENT && node->type != SWITCH_CASE_STATEMENT) {
+    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_WHILE_STATEMENT && node->type != SWITCH_STATEMENT) {
         node = node->parent;
     }
     return node;
@@ -240,7 +240,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
     if (node->type != FOR_STATEMENT &&
         node->type != WHILE_STATEMENT && 
         node->type != DO_WHILE_STATEMENT &&
-        node->type != SWITCH_CASE_STATEMENT) {
+        node->type != SWITCH_STATEMENT) {
         bc_error(bc, "[Error] [Line:%d] switch or loop statement expected\n", node->line);
         return 1;
     }
@@ -879,7 +879,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             node->u.pos = bc->bc_top;
             bc_jmp(bc, 0);
             break;
-        case SWITCH_CASE_STATEMENT:
+        case SWITCH_STATEMENT:
             // TODO
             break;
         case RETURN_STATEMENT:{

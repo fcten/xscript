@@ -81,7 +81,7 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
         case FOR_STATEMENT:
         case WHILE_STATEMENT:
         case DO_WHILE_STATEMENT:
-        case SWITCH_CASE_STATEMENT:
+        case SWITCH_STATEMENT:
         case FUNCTION_DECLARATION:
             if (node->u.jmps) {
                 while (!lgx_list_empty(&node->u.jmps->head)) {
@@ -249,7 +249,6 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_step(ast);
             break;
         case TK_ID:
-            // todo
             ast_parse_id_token(ast, parent);
             break;
         default:
@@ -449,6 +448,22 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
     }
 }
 
+void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    if (ast->cur_token != '(') {
+        ast_error(ast, "[Error] [Line:%d] '(' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+    ast_step(ast);
+
+    ast_parse_sub_expression(ast, parent, 15);
+
+    if (ast->cur_token != ')') {
+        ast_error(ast, "[Error] [Line:%d] ')' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+    ast_step(ast);
+}
+
 void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_sub_expression(ast, parent, 15);
 }
@@ -471,17 +486,21 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             lgx_scope_val_add(parent->child[2], &s);
         }
     }
+    
+    ast_parse_statement(ast, block_statement);
+}
 
+void ast_parse_block_statement_with_braces(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     if (ast->cur_token != '{') {
-        ast_error(ast, "[Error] [Line:%d] '{' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '{' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
-    
-    ast_parse_statement(ast, block_statement);
+
+    ast_parse_block_statement(ast, parent);
 
     if (ast->cur_token != '}') {
-        ast_error(ast, "[Error] [Line:%d] '}' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '}' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -495,24 +514,12 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // ast->cur_token == TK_IF
     ast_step(ast);
     
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
-        return;
-    }
-    ast_step(ast);
-    
-    ast_parse_expression(ast, if_statement);
+    ast_parse_expression_with_parentheses(ast, if_statement);
     if (if_statement->children == 0) {
         ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
     }
-
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected\n", ast->cur_line);
-        return;
-    }
-    ast_step(ast);
     
-    ast_parse_block_statement(ast, if_statement);
+    ast_parse_block_statement_with_braces(ast, if_statement);
     
     if (ast->cur_token != TK_ELSE) {
         return;
@@ -520,7 +527,7 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     if_statement->type = IF_ELSE_STATEMENT;
-    ast_parse_block_statement(ast, if_statement);
+    ast_parse_block_statement_with_braces(ast, if_statement);
 }
 
 void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -532,7 +539,7 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 
     if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] '(' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -543,7 +550,7 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 
     if (ast->cur_token != ';') {
-        ast_error(ast, "[Error] [Line:%d] ';' expected\n", ast->cur_line);
+        ast_error(ast, "[Error] [Line:%d] ';' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
@@ -570,7 +577,7 @@ void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_step(ast);
 
-    ast_parse_block_statement(ast, for_statement);
+    ast_parse_block_statement_with_braces(ast, for_statement);
 }
 
 void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -580,25 +587,13 @@ void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     // ast->cur_token == TK_WHILE
     ast_step(ast);
-
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        return;
-    }
-    ast_step(ast);
     
-    ast_parse_expression(ast, while_statement);
+    ast_parse_expression_with_parentheses(ast, while_statement);
     if (while_statement->children == 0) {
         ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
     }
-
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        return;
-    }
-    ast_step(ast);
     
-    ast_parse_block_statement(ast, while_statement);
+    ast_parse_block_statement_with_braces(ast, while_statement);
 }
 
 void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -609,7 +604,7 @@ void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // ast->cur_token == TK_DO
     ast_step(ast);
     
-    ast_parse_block_statement(ast, do_statement);
+    ast_parse_block_statement_with_braces(ast, do_statement);
 
     if (ast->cur_token != TK_WHILE) {
         ast_error(ast, "[Error] [Line:%d] 'while' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
@@ -617,19 +612,7 @@ void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_step(ast);
     
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        return;
-    }
-    ast_step(ast);
-    
-    ast_parse_expression(ast, do_statement);
-
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-        return;
-    }
-    ast_step(ast);
+    ast_parse_expression_with_parentheses(ast, do_statement);
 }
 
 void ast_parse_break_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -650,7 +633,93 @@ void ast_parse_continue_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 }
 
+void ast_parse_case_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* case_statement = ast_node_new(ast, 2);
+    case_statement->type = CASE_STATEMENT;
+    ast_node_append_child(parent, case_statement);
+
+    // ast->cur_token == TK_CASE
+    ast_step(ast);
+
+    ast_parse_expression(ast, case_statement);
+    if (case_statement->children == 0) {
+        ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    }
+
+    if (ast->cur_token != ':') {
+        ast_error(ast, "[Error] [Line:%d] ':' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+    ast_step(ast);
+
+    if (ast->cur_token == '{') {
+        ast_parse_block_statement_with_braces(ast, case_statement);
+    } else {
+        ast_parse_block_statement(ast, case_statement);
+    }
+}
+
+void ast_parse_default_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* default_statement = ast_node_new(ast, 1);
+    default_statement->type = CASE_STATEMENT;
+    ast_node_append_child(parent, default_statement);
+
+    // ast->cur_token == TK_DEFAULT
+    ast_step(ast);
+
+    if (ast->cur_token != ':') {
+        ast_error(ast, "[Error] [Line:%d] ':' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+    ast_step(ast);
+
+    if (ast->cur_token == '{') {
+        ast_parse_block_statement_with_braces(ast, default_statement);
+    } else {
+        ast_parse_block_statement(ast, default_statement);
+    }
+}
+
 void ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* switch_statement = ast_node_new(ast, 128);
+    switch_statement->type = SWITCH_STATEMENT;
+    ast_node_append_child(parent, switch_statement);
+
+    // ast->cur_token == TK_SWITCH
+    ast_step(ast);
+
+    ast_parse_expression_with_parentheses(ast, switch_statement);
+    if (switch_statement->children == 0) {
+        ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    }
+
+    if (ast->cur_token != '{') {
+        ast_error(ast, "[Error] [Line:%d] '{' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+    ast_step(ast);
+
+    // 解析所有 case 和 default
+    int has_default = 0;
+    while (1) {
+        if (ast->cur_token == TK_CASE) {
+            ast_parse_case_statement(ast, switch_statement);
+        } else if (ast->cur_token == TK_DEFAULT) {
+            if (has_default) {
+                ast_error(ast, "[Error] [Line:%d] switch statements should only contain one default clause\n", ast->cur_line);
+            }
+            has_default = 1;
+
+            ast_parse_default_statement(ast, switch_statement);
+        } else {
+            break;
+        }
+    }
+
+    if (ast->cur_token != '}') {
+        ast_error(ast, "[Error] [Line:%d] '}' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
     ast_step(ast);
 }
 
@@ -836,7 +905,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_step(ast);
     
-    ast_parse_block_statement(ast, function_declaration);
+    ast_parse_block_statement_with_braces(ast, function_declaration);
 }
 
 int lgx_ast_parser(lgx_ast_t* ast) {
@@ -901,8 +970,8 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
         case BREAK_STATEMENT:
             printf("%*s%s\n", indent, "", "BREAK_STATEMENT");
             break;
-        case SWITCH_CASE_STATEMENT:
-            printf("%*s%s\n", indent, "", "SWITCH_CASE_STATEMENT");
+        case SWITCH_STATEMENT:
+            printf("%*s%s\n", indent, "", "SWITCH_STATEMENT");
             break;
         case RETURN_STATEMENT:
             printf("%*s%s\n", indent, "", "RETURN_STATEMENT");
