@@ -127,10 +127,12 @@ echo "Hello World";
 - 或 (||)
 - 非 (!)
 
-与 (&&) 和 或 (||) 运算符存在短路特性。因此下面的代码基本是等价的。
+与 (&&) 和 或 (||) 运算符存在短路特性，因此下面的代码基本是等价的：
 
 ```
 auto ret1 = fun1() && fun2();
+
+// 等价于
 
 auto ret2;
 if (fun1() == false) {
@@ -142,6 +144,8 @@ if (fun1() == false) {
 
 ```
 auto ret1 = fun1() || fun2();
+
+// 等价于
 
 auto ret2;
 if (fun1() == true) {
