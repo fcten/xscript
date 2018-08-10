@@ -686,6 +686,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     throw_exception(vm, "out of memory");
                 }
                 lgx_gc_ref_add(&R(PA(i)));
+                lgx_gc_trace(vm, &R(PA(i)));
                 break;
             }
             case OP_ARRAY_GET:{
