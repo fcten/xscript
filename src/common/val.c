@@ -103,6 +103,9 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                 }
                 break;
             case T_ARRAY:
+                if (src->v.arr == dst->v.arr) {
+                    return 1;
+                }
                 break;
         }
     }

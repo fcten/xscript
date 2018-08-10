@@ -34,8 +34,6 @@ const char* op_name[] = {
     "LEI",
     "GTI",
     "LTI",
-    "LAND",
-    "LOR",
     "LNOT",
     "TEST",
     "JMP",
@@ -72,8 +70,6 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_EQ:
             case OP_LE:
             case OP_LT:
-            case OP_LAND:
-            case OP_LOR:
             case OP_SHL:
             case OP_SHR:
             case OP_AND:

@@ -168,8 +168,6 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '&': return 1;
         case '^': return 1;
         case '|': return 1;
-        case TK_AND: return 1;
-        case TK_OR: return 1;
         case '=': bc_mov(bc, e1, e2); break;
         case TK_INDEX: bc_array_get(bc, e, e1, e2); break;
         case TK_ATTR:
@@ -285,9 +283,44 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     return 0;
 }
 
-static int bc_expr_binary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    bc_error(bc, "[Error] [Line:%d] undo features\n", node->line);
-    return 1;
+// TODO
+static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    // if (e1 == false) {
+    //     return false;
+    // } else {
+    //     return e2;
+    // }
+
+    lgx_val_t e1, e2;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
+
+
+
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+
+    return 0;
+}
+
+// TODO
+static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    // if (e1 == true) {
+    //     return true;
+    // } else {
+    //     return e2;
+    // }
+
+    lgx_val_t e1, e2;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
+
+
+
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+
+    return 0;
 }
 
 static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
@@ -548,9 +581,13 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             break;
         case BINARY_EXPRESSION:{
             switch (node->u.op) {
-                case TK_AND: case TK_OR:
-                    // 逻辑运算符 && 和 || 存在熔断特性
-                    if (bc_expr_binary_logic(bc, node, e)) {
+                case TK_AND:
+                    if (bc_expr_binary_logic_and(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case TK_OR:
+                    if (bc_expr_binary_logic_or(bc, node, e)) {
                         return 1;
                     }
                     break;

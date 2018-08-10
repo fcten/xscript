@@ -518,30 +518,6 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 }
                 break;
             }
-            case OP_LAND:{
-                lgx_gc_ref_del(&R(PA(i)));
-
-                R(PA(i)).type = T_BOOL;
-                
-                if (EXPECTED(R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL)) {
-                    R(PA(i)).v.l = R(PB(i)).v.l && R(PC(i)).v.l;
-                } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "&&", lgx_val_typeof(&R(PC(i))));
-                }
-                break;
-            }
-            case OP_LOR:{
-                lgx_gc_ref_del(&R(PA(i)));
-
-                R(PA(i)).type = T_BOOL;
-                
-                if (EXPECTED(R(PB(i)).type == T_BOOL && R(PC(i)).type == T_BOOL)) {
-                    R(PA(i)).v.l = R(PB(i)).v.l || R(PC(i)).v.l;
-                } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "||", lgx_val_typeof(&R(PC(i))));
-                }
-                break;
-            }
             case OP_LNOT:{
                 lgx_gc_ref_del(&R(PA(i)));
 

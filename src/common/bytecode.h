@@ -46,8 +46,6 @@ enum {
     OP_LEI,   // LE   R R I
     OP_GTI,   // GTI  R R I
     OP_LTI,   // LTI  R R I
-    OP_LAND,  // LAND R R R
-    OP_LOR,   // LOR  R R R
     OP_LNOT,  // LNOT R R
 
     // 跳转

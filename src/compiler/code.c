@@ -56,7 +56,7 @@ void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
         unsigned i = bc->bc[bc->bc_top-1];
         if ( (OP(i) >= OP_ADD && OP(i) <= OP_DIVI) ||
             (OP(i) >= OP_SHL && OP(i) <= OP_XOR) ||
-            (OP(i) >= OP_EQ && OP(i) <= OP_LOR) ) {
+            (OP(i) >= OP_EQ && OP(i) <= OP_LTI) ) {
             reg_free(bc, b);
             bc_set_pa(bc, bc->bc_top-1, a->u.reg.reg);
             return;

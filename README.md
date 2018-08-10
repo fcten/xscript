@@ -55,6 +55,9 @@ echo "Hello World";
 - else
 - do
 - while
+- switch
+- case
+- default
 - break
 - continue
 
@@ -123,6 +126,30 @@ echo "Hello World";
 - 与 (&&)
 - 或 (||)
 - 非 (!)
+
+与 (&&) 和 或 (||) 运算符存在短路特性。因此下面的代码基本是等价的。
+
+```
+auto ret1 = fun1() && fun2();
+
+auto ret2;
+if (fun1() == false) {
+    ret2 = false;
+} else {
+    ret2 = fun2();
+}
+```
+
+```
+auto ret1 = fun1() || fun2();
+
+auto ret2;
+if (fun1() == true) {
+    ret2 = true;
+} else {
+    ret2 = fun2();
+}
+```
 
 ### 短路运算
 
