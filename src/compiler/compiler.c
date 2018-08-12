@@ -1063,6 +1063,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             } else {
                 // TODO case default 数量大于 4，查表跳转
             }
+
+            jmp_fix(bc, node, 0, bc->bc_top);
             break;
         }
         case RETURN_STATEMENT:{
