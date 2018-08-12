@@ -265,6 +265,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
 
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e);
 
+// TODO 常量优化
 static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
@@ -286,29 +287,86 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
 // TODO
 static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     // if (e1 == false) {
-    //     return false;
+    //     e = false;
     // } else {
-    //     return e2;
+    //     e = e2;
     // }
 
     lgx_val_t e1, e2;
     lgx_val_init(&e1);
     lgx_val_init(&e2);
 
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
 
+    if (is_bool(&e1)) {
+        if (e1.v.l == 0) {
+            *e = e1;
+            return 0;
+        }
 
-    reg_free(bc, &e1);
-    reg_free(bc, &e2);
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
 
-    return 0;
+        if (is_bool(&e2) || is_register(&e2)) {
+            *e = e2;
+            return 0;
+        } else {
+            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            return 1;
+        }
+    } else if (is_register(&e1)) {
+        e->u.reg.type = R_TEMP;
+        e->u.reg.reg = reg_pop(bc);
+
+        int pos1 = bc->bc_top;
+        bc_test(bc, &e1, 0);
+        reg_free(bc, &e1);
+
+        // e1 == true
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
+
+        if (is_bool(&e2)) {
+            const_add(bc, &e2);
+            bc_load(bc, e, const_get(bc, &e2));
+        } else if (is_register(&e2)) {
+            bc_mov(bc, e, &e2);
+        } else {
+            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            return 1;
+        }
+
+        int pos2 = bc->bc_top;
+        bc_jmp(bc, 0);
+
+        bc_set_pd(bc, pos1, bc->bc_top);
+
+        // e1 == false
+        lgx_val_t tmp;
+        tmp.type = T_BOOL;
+        tmp.v.l = 0;
+        const_add(bc, &tmp);
+        bc_load(bc, e, const_get(bc, &tmp));
+
+        bc_set_pe(bc, pos2, bc->bc_top);
+
+        return 0;
+    } else {
+        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
 }
 
 // TODO
 static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     // if (e1 == true) {
-    //     return true;
+    //     e = true;
     // } else {
-    //     return e2;
+    //     e = e2;
     // }
 
     lgx_val_t e1, e2;
