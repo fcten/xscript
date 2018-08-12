@@ -284,7 +284,6 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     return 0;
 }
 
-// TODO
 static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     // if (e1 == false) {
     //     e = false;
@@ -373,12 +372,69 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
     lgx_val_init(&e1);
     lgx_val_init(&e2);
 
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
 
+    if (is_bool(&e1)) {
+        if (e1.v.l) {
+            *e = e1;
+            return 0;
+        }
 
-    reg_free(bc, &e1);
-    reg_free(bc, &e2);
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
 
-    return 0;
+        if (is_bool(&e2) || is_register(&e2)) {
+            *e = e2;
+            return 0;
+        } else {
+            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            return 1;
+        }
+    } else if (is_register(&e1)) {
+        e->u.reg.type = R_TEMP;
+        e->u.reg.reg = reg_pop(bc);
+
+        int pos1 = bc->bc_top;
+        bc_test(bc, &e1, 0);
+        reg_free(bc, &e1);
+
+        // e1 == true
+        lgx_val_t tmp;
+        tmp.type = T_BOOL;
+        tmp.v.l = 1;
+        const_add(bc, &tmp);
+        bc_load(bc, e, const_get(bc, &tmp));
+
+        int pos2 = bc->bc_top;
+        bc_jmp(bc, 0);
+
+        bc_set_pd(bc, pos1, bc->bc_top);
+
+        // e1 == false
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
+
+        if (is_bool(&e2)) {
+            const_add(bc, &e2);
+            bc_load(bc, e, const_get(bc, &e2));
+        } else if (is_register(&e2)) {
+            bc_mov(bc, e, &e2);
+        } else {
+            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            return 1;
+        }
+
+        bc_set_pe(bc, pos2, bc->bc_top);
+
+        return 0;
+    } else {
+        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
 }
 
 static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
@@ -736,6 +792,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 while (next) {
                     next->v.u.reg.type = R_LOCAL;
                     next->v.u.reg.reg = reg_pop(bc);
+                    next = next->next;
                 }
             }
 
@@ -755,6 +812,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 lgx_hash_node_t *next = head->next;
                 while (next) {
                     reg_push(bc, next->v.u.reg.reg);
+                    next = next->next;
                 }
             }
             break;
