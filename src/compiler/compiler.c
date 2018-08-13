@@ -1077,6 +1077,11 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                             return 1;
                         }
 
+                        if (lgx_hash_get(condition.v.arr, &case_node.k)) {
+                            bc_error(bc, "[Error] [Line:%d] duplicate case value", child->line);
+                            return 1;
+                        }
+
                         case_node.v.type = T_LONG;
                         case_node.v.v.l = 0;
 
