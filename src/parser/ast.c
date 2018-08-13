@@ -461,6 +461,10 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         ast_step(ast);
 
         ast_parse_sub_expression(ast, binary_expression, p);
+        if (binary_expression->children == 1) {
+            ast_error(ast, "[Error] [Line:%d] unexpected right value for binary operation near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
 
         p = ast_operator_precedence(ast->cur_token);
     }
