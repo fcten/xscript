@@ -67,8 +67,6 @@ static int bc_long(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
 
-    const_add(bc, expr);
-
     return 0;
 }
 
@@ -78,8 +76,6 @@ static int bc_double(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
-
-    const_add(bc, expr);
 
     return 0;
 }
@@ -91,8 +87,6 @@ static int bc_true(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
 
-    const_add(bc, expr);
-
     return 0;
 }
 
@@ -103,8 +97,6 @@ static int bc_false(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
 
-    const_add(bc, expr);
-
     return 0;
 }
 
@@ -113,8 +105,6 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
-
-    const_add(bc, expr);
 
     return 0;
 }
@@ -125,8 +115,6 @@ static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     expr->u.reg.type = 0;
     expr->u.reg.reg = 0;
-
-    const_add(bc, expr);
 
     return 0;
 }
@@ -330,7 +318,6 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         }
 
         if (is_bool(&e2)) {
-            const_add(bc, &e2);
             bc_load(bc, e, const_get(bc, &e2));
         } else if (is_register(&e2)) {
             bc_mov(bc, e, &e2);
@@ -348,7 +335,6 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         lgx_val_t tmp;
         tmp.type = T_BOOL;
         tmp.v.l = 0;
-        const_add(bc, &tmp);
         bc_load(bc, e, const_get(bc, &tmp));
 
         bc_set_pe(bc, pos2, bc->bc_top);
@@ -405,7 +391,6 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         lgx_val_t tmp;
         tmp.type = T_BOOL;
         tmp.v.l = 1;
-        const_add(bc, &tmp);
         bc_load(bc, e, const_get(bc, &tmp));
 
         int pos2 = bc->bc_top;
@@ -419,7 +404,6 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         }
 
         if (is_bool(&e2)) {
-            const_add(bc, &e2);
             bc_load(bc, e, const_get(bc, &e2));
         } else if (is_register(&e2)) {
             bc_mov(bc, e, &e2);
@@ -649,6 +633,11 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
 
     if ( !is_register(&e1) && e1.type != T_ARRAY ) {
         bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (!node->child[1]) {
+        bc_error(bc, "[Error] [Line:%d] index can not be empty\n", node->line);
         return 1;
     }
 
@@ -1091,13 +1080,10 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     }
                 }
 
-                const_add(bc, &condition);
-
                 lgx_val_t undef;
                 undef.type = T_UNDEFINED;
                 undef.u.reg.type = R_TEMP;
                 undef.u.reg.reg = reg_pop(bc);
-                const_add(bc, &undef);
 
                 lgx_val_t tmp, result;
                 tmp.u.reg.type = R_TEMP;
@@ -1243,7 +1229,6 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
-            const_add(bc, e);
             bc_load(bc, e, const_get(bc, e));
             
             break;
