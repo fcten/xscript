@@ -340,7 +340,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         }
 
         int pos2 = bc->bc_top;
-        bc_jmp(bc, 0);
+        bc_jmpi(bc, 0);
 
         bc_set_pd(bc, pos1, bc->bc_top);
 
@@ -409,7 +409,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         bc_load(bc, e, const_get(bc, &tmp));
 
         int pos2 = bc->bc_top;
-        bc_jmp(bc, 0);
+        bc_jmpi(bc, 0);
 
         bc_set_pd(bc, pos1, bc->bc_top);
 
@@ -769,7 +769,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             break;
         }
         default:
-            bc_error(bc, "[Error] [Line:%d] expression expected\n", node->line);
+            bc_error(bc, "[Error] [Line:%d] expression expected, ast-node type: %d\n", node->line, node->type);
             return 1;
     }
 
@@ -875,7 +875,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
 
                 unsigned pos2 = bc->bc_top; // 跳转指令位置
-                bc_jmp(bc, 0);
+                bc_jmpi(bc, 0);
                 bc_set_pd(bc, pos1, bc->bc_top);
 
                 if (bc_stat(bc, node->child[2])) {
@@ -940,7 +940,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
             }
 
-            bc_jmp(bc, pos1);
+            bc_jmpi(bc, pos1);
 
             if (pos2) {
                 bc_set_pd(bc, pos2, bc->bc_top);
@@ -966,7 +966,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                     // 写入无条件跳转
-                    bc_jmp(bc, start);
+                    bc_jmpi(bc, start);
                 }
             } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top; // 循环跳出指令位置
@@ -977,7 +977,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     return 1;
                 }
                 // 写入无条件跳转
-                bc_jmp(bc, start);
+                bc_jmpi(bc, start);
                 // 更新条件跳转
                 bc_set_pd(bc, pos, bc->bc_top);
             } else {
@@ -1006,12 +1006,12 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     break;
                 } else {
                     // 写入无条件跳转
-                    bc_jmp(bc, start);
+                    bc_jmpi(bc, start);
                 }
             } else if (is_register(&e)) {
                 unsigned pos = bc->bc_top;
                 bc_test(bc, &e, 0);
-                bc_jmp(bc, start);
+                bc_jmpi(bc, start);
                 reg_free(bc, &e);
 
                 bc_set_pd(bc, pos, bc->bc_top);
@@ -1029,7 +1029,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 break;
             }
             node->u.pos = bc->bc_top;
-            bc_jmp(bc, 0);
+            bc_jmpi(bc, 0);
             break;
         case BREAK_STATEMENT:
             // 只能出现在循环语句和 switch 语句中
@@ -1038,7 +1038,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 break;
             }
             node->u.pos = bc->bc_top;
-            bc_jmp(bc, 0);
+            bc_jmpi(bc, 0);
             break;
         case SWITCH_STATEMENT:{
             // 执行表达式
@@ -1048,20 +1048,100 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (!is_register(&e) &&
-                e.type != T_LONG &&
-                e.type != T_DOUBLE &&
-                e.type != T_STRING) {
-                bc_error(bc, "[Error] [Line:%d] makes number or string from %s without a cast\n", node->line, lgx_val_typeof(&e));
+            if (!is_register(&e) && e.type != T_LONG && e.type != T_STRING) {
+                bc_error(bc, "[Error] [Line:%d] makes integer or string from %s without a cast\n", node->line, lgx_val_typeof(&e));
                 return 1;
             }
 
             if (node->children == 1) {
                 // 没有 case 和 default，什么都不用做
-            } else if (node->children < 6) {
-                // TODO case default 数量小于等于 4，使用 TEST 判断
+                reg_free(bc, &e);
             } else {
-                // TODO case default 数量大于 4，查表跳转
+                lgx_val_t condition;
+                condition.type = T_ARRAY;
+                condition.v.arr = lgx_hash_new(node->children - 1);
+
+                int i, has_default = 0;
+                for (i = 1; i < node->children; i ++) {
+                    lgx_ast_node_t *child = node->child[i];
+                    if (child->type == CASE_STATEMENT) {
+                        lgx_hash_node_t case_node;
+                        lgx_val_init(&case_node.k);
+
+                        if (bc_expr(bc, child->child[0], &case_node.k)) {
+                            return 1;
+                        }
+
+                        if (case_node.k.type != T_LONG && case_node.k.type != T_STRING) {
+                            bc_error(bc, "[Error] [Line:%d] only constant expression allowed in case label", child->line);
+                            return 1;
+                        }
+
+                        case_node.v.type = T_LONG;
+                        case_node.v.v.l = 0;
+
+                        condition.v.arr = lgx_hash_set(condition.v.arr, &case_node);
+                    } else {
+                        has_default = 1;
+                    }
+                }
+
+                const_add(bc, &condition);
+
+                lgx_val_t undef;
+                undef.type = T_UNDEFINED;
+                undef.u.reg.type = R_TEMP;
+                undef.u.reg.reg = reg_pop(bc);
+                const_add(bc, &undef);
+
+                lgx_val_t tmp, result;
+                tmp.u.reg.type = R_TEMP;
+                tmp.u.reg.reg = reg_pop(bc);
+                result.u.reg.type = R_TEMP;
+                result.u.reg.reg = reg_pop(bc);
+
+                bc_load(bc, &tmp, const_get(bc, &condition));
+                bc_array_get(bc, &tmp, &tmp, &e);
+                bc_load(bc, &undef, const_get(bc, &undef));
+                bc_eq(bc, &result, &tmp, &undef);
+                bc_test(bc, &result, bc->bc_top + 2);
+
+                unsigned pos = bc->bc_top;
+                bc_jmpi(bc, 0);
+                bc_jmp(bc, &tmp);
+
+                reg_free(bc, &result);
+                reg_free(bc, &tmp);
+                reg_free(bc, &undef);
+                reg_free(bc, &e);
+
+                for (i = 1; i < node->children; i ++) {
+                    lgx_ast_node_t *child = node->child[i];
+
+                    if (child->type == CASE_STATEMENT) {
+                        lgx_val_t k;
+                        if (bc_expr(bc, child->child[0], &k)) {
+                            return 1;
+                        }
+
+                        lgx_hash_node_t *n = lgx_hash_get(condition.v.arr, &k);
+                        n->v.v.l = bc->bc_top;
+
+                        if (bc_stat(bc, child->child[1])) {
+                            return 1;
+                        }
+                    } else { // child->type == DEFAULT_STATEMENT
+                        bc_set_pe(bc, pos, bc->bc_top);
+
+                        if (bc_stat(bc, child->child[0])) {
+                            return 1;
+                        }
+                    }
+                }
+
+                if (!has_default) {
+                    bc_set_pe(bc, pos, bc->bc_top);
+                }
             }
 
             jmp_fix(bc, node, 0, bc->bc_top);
@@ -1087,6 +1167,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case ECHO_STATEMENT:{
             lgx_val_t e;
             lgx_val_init(&e);
+
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
@@ -1117,7 +1198,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         // Declaration
         case FUNCTION_DECLARATION:{
             unsigned start = bc->bc_top;
-            bc_jmp(bc, 0);
+            bc_jmpi(bc, 0);
 
             lgx_val_t *e;
             lgx_str_t s;

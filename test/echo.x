@@ -1,4 +1,5 @@
 echo "hello world";
+echo "你好，世界！";
 echo undefined;
 echo 123;
 echo 123.6;

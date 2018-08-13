@@ -419,7 +419,7 @@ switch 语句中的 expression 的运算结果必须是 number 或者 string。
 
 switch 语句中可以有任意数量的 case 代码块。当某一个 case 匹配均为 true 时，控制流将跳转到该 case 代码块。
 
-switch 语句中可以有最多一个 default 代码块。当所有的 case 匹配均为 false 时，控制流将跳转到 default 代码块。
+switch 语句中可以有最多一个 default 代码块。当所有的 case 匹配均为 false 时，控制流将跳转到 default 代码块。default 代码块只能出现在 switch 语句的末尾。
 
 case 代码块中的 constant-expression 的运算结果必须是 number 或者 string，它的类型必须和 expression 相同，并且它的运算结果必须能够在编译时确定。
 

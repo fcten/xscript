@@ -679,7 +679,7 @@ void ast_parse_case_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
 void ast_parse_default_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* default_statement = ast_node_new(ast, 1);
-    default_statement->type = CASE_STATEMENT;
+    default_statement->type = DEFAULT_STATEMENT;
     ast_node_append_child(parent, default_statement);
 
     // ast->cur_token == TK_DEFAULT
@@ -724,7 +724,8 @@ void ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_parse_case_statement(ast, switch_statement);
         } else if (ast->cur_token == TK_DEFAULT) {
             if (has_default) {
-                ast_error(ast, "[Error] [Line:%d] switch statements should only contain one default clause\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] switch statement should only contain one default label\n", ast->cur_line);
+                return;
             }
             has_default = 1;
 

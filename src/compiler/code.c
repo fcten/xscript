@@ -423,7 +423,11 @@ void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos) {
     bc_append(bc, I2(OP_TEST, a->u.reg.reg, pos));
 }
 
-void bc_jmp(lgx_bc_t *bc, unsigned pos) {
+void bc_jmp(lgx_bc_t *bc, lgx_val_t *a) {
+    bc_append(bc, I1(OP_JMP, a->u.reg.reg));
+}
+
+void bc_jmpi(lgx_bc_t *bc, unsigned pos) {
     bc_append(bc, I1(OP_JMPI, pos));
 }
 
