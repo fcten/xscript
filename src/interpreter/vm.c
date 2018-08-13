@@ -643,7 +643,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_ARRAY_SET:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
-                    if (EXPECTED(R(PB(i)).type == T_LONG)) {
+                    if (EXPECTED(R(PB(i)).type == T_LONG || R(PB(i)).type == T_STRING)) {
                         lgx_hash_node_t n;
                         n.k = R(PB(i));
                         n.v = R(PC(i));
@@ -655,7 +655,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                         lgx_gc_ref_add(&R(PC(i)));
                     } else {
                         // runtime warning
-                        throw_exception(vm, "attempt to set a %s key, integer expected", lgx_val_typeof(&R(PA(i))));
+                        throw_exception(vm, "attempt to set a %s key, integer or string expected", lgx_val_typeof(&R(PA(i))));
                     }
                 } else {
                     // runtime error
@@ -693,7 +693,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 lgx_gc_ref_del(&R(PA(i)));
 
                 if (EXPECTED(R(PB(i)).type == T_ARRAY)) {
-                    if (EXPECTED(R(PC(i)).type == T_LONG)) {
+                    if (EXPECTED(R(PC(i)).type == T_LONG || R(PC(i)).type == T_STRING)) {
                         lgx_hash_node_t *n = lgx_hash_get(R(PB(i)).v.arr, &R(PC(i)));
                         if (n) {
                             R(PA(i)) = n->v;
@@ -703,7 +703,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                         }
                     } else {
                         // runtime warning
-                        throw_exception(vm, "attempt to index a %s key, integer expected", lgx_val_typeof(&R(PC(i))));
+                        throw_exception(vm, "attempt to index a %s key, integer or string expected", lgx_val_typeof(&R(PC(i))));
                     }
                 } else {
                     throw_exception(vm, "attempt to index a %s value, array expected", lgx_val_typeof(&R(PB(i))));

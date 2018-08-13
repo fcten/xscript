@@ -179,6 +179,7 @@ lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
 
     node.v = *v;
 
+    // TODO 检查该 key 是否存在，确保没有 key 会被覆盖
     node.k.type = T_LONG;
     node.k.v.l = hash->length;
 
@@ -240,8 +241,10 @@ int lgx_hash_print(lgx_hash_t *hash) {
         lgx_hash_node_t *next = &hash->table[i];
         while (next) {
             if (next->k.type != T_UNDEFINED) {
-                //lgx_val_print(&next->k);
-                //printf(" => ");
+                if (hash->flag_non_compact_elements) {
+                    lgx_val_print(&next->k);
+                    printf(":");
+                }
                 lgx_val_print(&next->v);
                 if (++count < hash->length) {
                     printf(",");

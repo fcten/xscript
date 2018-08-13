@@ -568,8 +568,8 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 return 1;
             }
 
-            if ( !is_register(&e2) && e2.type != T_LONG ) {
-                bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            if ( !is_register(&e2) && e2.type != T_LONG && e2.type != T_STRING ) {
+                bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
                 return 1;
             }
 
@@ -656,12 +656,12 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
         return 1;
     }
 
-    if ( !is_register(&e2) && e2.type != T_LONG ) {
-        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+    if ( !is_register(&e2) && e2.type != T_LONG && e2.type != T_STRING ) {
+        bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
         return 1;
     }
 
-    if ( e1.type == T_ARRAY && e2.type == T_LONG ) {
+    if ( e1.type == T_ARRAY && (e2.type == T_LONG || e2.type == T_STRING) ) {
         if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
             return 1;
         }

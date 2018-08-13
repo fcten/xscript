@@ -31,3 +31,11 @@ arr6[3] = arr2;
 arr6[1][] = 7;
 
 echo arr6;
+
+auto arr7 = [];
+
+arr7["k-a"] = "v-a";
+arr7["k-b"] = "v-b";
+arr7[] = "v-c";
+
+echo arr7;
