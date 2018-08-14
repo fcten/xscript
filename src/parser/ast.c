@@ -570,7 +570,12 @@ void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
     
     if_statement->type = IF_ELSE_STATEMENT;
-    ast_parse_block_statement_with_braces(ast, if_statement);
+
+    if (ast->cur_token == TK_IF) {
+        ast_parse_if_statement(ast, if_statement);
+    } else {
+        ast_parse_block_statement_with_braces(ast, if_statement);
+    }
 }
 
 void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {

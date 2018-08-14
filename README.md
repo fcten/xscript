@@ -392,17 +392,20 @@ if (expression) {
     // do something
 }
 
-// TODO else if 尚未实现
 if (expression) {
     // do something
-} else if (condition) {
+} else if (expression) {
+    // do something
+} else if (expression) {
+    // do something
+} else {
     // do something
 }
 ```
 
 if 语句中的 expression 的运算结果必须是 boolean。
 
-如果 expression 的运算结果为 true，控制流会跳转到紧跟的代码块。如果运算结果为 false，控制流会跳过紧跟的代码块。
+如果 expression 的值为 true，控制流会跳转到紧跟的代码块。如果值为 false，控制流会跳转到下一个代码块。
 
 if 语句中的任意代码块执行结束时，控制流会跳出 if 语句。
 
