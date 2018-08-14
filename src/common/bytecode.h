@@ -10,6 +10,7 @@ enum {
     OP_NOP,   // NOP
 
     // 读取一个常量
+    // 常量数量上限为 64K 个
     OP_LOAD,  // LOAD R C
 
     // 寄存器赋值
