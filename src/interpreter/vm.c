@@ -69,6 +69,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->bc = bc;
     
     vm->constant = bc->constant;
+    vm->global = bc->ast->root->u.symbols;
 
     vm->pc = 0;
 
@@ -533,7 +534,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             case OP_TEST:{
                 if (EXPECTED(R(PA(i)).type == T_BOOL)) {
                     if (!R(PA(i)).v.l) {
-                        vm->pc = PD(i);
+                        vm->pc += PD(i);
                     }
                 } else {
                     throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
@@ -712,8 +713,14 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 lgx_gc_ref_del(&R(PA(i)));
-                lgx_gc_ref_add(&C(PD(i)));
+                //lgx_gc_ref_add(&C(PD(i)));
                 R(PA(i)) = C(PD(i));
+                break;
+            }
+            case OP_GLOBAL_GET:{
+                break;
+            }
+            case OP_GLOBAL_SET:{
                 break;
             }
             case OP_NOP: break;

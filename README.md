@@ -97,7 +97,9 @@ echo "Hello World";
 
 ## string
 
-
+```
+auto str = "hello";
+```
 
 ### 字符串字面量
 
@@ -287,7 +289,7 @@ auto a2 = (1 + 2) + 3;
 
 ## 变量声明
 
-xscript 变量必须先声明再使用。
+变量必须先声明再使用。
 
 ```
 auto a;
@@ -360,7 +362,11 @@ echo a; // output [1,2,3,4]
 
 ## 函数声明
 
-## 函数作用域
+```
+function add(auto a, auto b) {
+    return a + b;
+}
+```
 
 # 语句 (statement)
 
@@ -499,8 +505,6 @@ for (;;) { // 死循环
     // do something
 }
 ```
-
-
 
 注意：语句中的圆括号与花括号均不能省略
 

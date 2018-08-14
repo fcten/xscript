@@ -329,7 +329,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         int pos2 = bc->bc_top;
         bc_jmpi(bc, 0);
 
-        bc_set_pd(bc, pos1, bc->bc_top);
+        bc_set_pd(bc, pos1, bc->bc_top - pos1 - 1);
 
         // e1 == false
         lgx_val_t tmp;
@@ -396,7 +396,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         int pos2 = bc->bc_top;
         bc_jmpi(bc, 0);
 
-        bc_set_pd(bc, pos1, bc->bc_top);
+        bc_set_pd(bc, pos1, bc->bc_top - pos1 - 1);
 
         // e1 == false
         if (bc_expr(bc, node->child[1], &e2)) {
@@ -830,7 +830,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     return 1;
                 }
 
-                bc_set_pd(bc, pos, bc->bc_top);
+                bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
                 bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
                 return 1;
@@ -865,7 +865,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 unsigned pos2 = bc->bc_top; // 跳转指令位置
                 bc_jmpi(bc, 0);
-                bc_set_pd(bc, pos1, bc->bc_top);
+                bc_set_pd(bc, pos1, bc->bc_top - pos1 - 1);
 
                 if (bc_stat(bc, node->child[2])) {
                     return 1;
@@ -932,7 +932,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_jmpi(bc, pos1);
 
             if (pos2) {
-                bc_set_pd(bc, pos2, bc->bc_top);
+                bc_set_pd(bc, pos2, bc->bc_top - pos2 - 1);
             }
 
             jmp_fix(bc, node, pos3, bc->bc_top);
@@ -968,7 +968,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 // 写入无条件跳转
                 bc_jmpi(bc, start);
                 // 更新条件跳转
-                bc_set_pd(bc, pos, bc->bc_top);
+                bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
                 bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
                 return 1;
@@ -1003,7 +1003,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_jmpi(bc, start);
                 reg_free(bc, &e);
 
-                bc_set_pd(bc, pos, bc->bc_top);
+                bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
                 // error
             }
@@ -1095,7 +1095,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 bc_array_get(bc, &tmp, &tmp, &e);
                 bc_load(bc, &undef, const_get(bc, &undef));
                 bc_eq(bc, &result, &tmp, &undef);
-                bc_test(bc, &result, bc->bc_top + 2);
+                bc_test(bc, &result, 1);
 
                 unsigned pos = bc->bc_top;
                 bc_jmpi(bc, 0);
