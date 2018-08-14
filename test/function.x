@@ -14,14 +14,14 @@ function add (auto c, auto d) {
 
 echo add(a, b + 1);*/
 
-function fib(auto n, auto fib) {
+function fib(auto n) {
     if (n < 2) {
         return n;
     }
-    return fib(n-1, fib) + fib(n-2, fib);
+    return fib(n-1) + fib(n-2);
 }
 
-echo fib(30, fib);
+echo fib(30);
 /*
 function test(auto n) {
     return n;

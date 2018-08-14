@@ -769,17 +769,17 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
-            int i;
+            int i, reg_type = node->parent ? R_LOCAL : R_GLOBAL;
             // 为当前作用域的变量分配寄存器
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
                 if (head->k.type != T_UNDEFINED) {
-                    head->v.u.reg.type = R_LOCAL;
+                    head->v.u.reg.type = reg_type;
                     head->v.u.reg.reg = reg_pop(bc);
                 }
                 lgx_hash_node_t *next = head->next;
                 while (next) {
-                    next->v.u.reg.type = R_LOCAL;
+                    next->v.u.reg.type = reg_type;
                     next->v.u.reg.reg = reg_pop(bc);
                     next = next->next;
                 }
@@ -1197,6 +1197,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
             e = lgx_scope_global_val_get(node, &s);
 
+            // TODO 添加为全局变量？
             e->type = T_FUNCTION;
             e->v.fun = lgx_fun_new();
             e->v.fun->addr = bc->bc_top;

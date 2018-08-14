@@ -49,7 +49,10 @@ enum {
     OP_LNOT,  // LNOT R R
 
     // 跳转
+    // TEST 指令限制了单次控制转移距离上限为 64K
+    // TODO 超过限制时应当返回错误，或者新增 TESTI 指令
     OP_TEST,  // TEST R I
+    // TODO JMP 范围为 0 - 16M，超过范围时可以使用常量表
     OP_JMP,   // JMP  R
     OP_JMPI,  // JMPI L
 

@@ -78,7 +78,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_ARRAY_GET:
             case OP_ARRAY_SET:
             case OP_CALL_SET:
-                printf("%4d %4s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
+                printf("%4d %11s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_ADDI:
             case OP_SUBI:
@@ -91,7 +91,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LTI:
             case OP_SHLI:
             case OP_SHRI:
-                printf("%4d %4s R[%d] R[%d] %d\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
+                printf("%4d %11s R[%d] R[%d] %d\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_MOV:
             case OP_NEG:
@@ -99,14 +99,14 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LNOT:
             case OP_ARRAY_ADD:
             case OP_CALL_END:
-                printf("%4d %4s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
+                printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
-                printf("%4d %4s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
+                printf("%4d %11s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_MOVI:
             case OP_TEST:
-                printf("%4d %4s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
+                printf("%4d %11s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_JMP:
             case OP_CALL_NEW:
@@ -114,17 +114,17 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_ECHO:
             case OP_ARRAY_NEW:
             case OP_RET:
-                printf("%4d %4s R[%d]\n", n, op_name[OP(i)], PA(i));
+                printf("%4d %11s R[%d]\n", n, op_name[OP(i)], PA(i));
                 break;
             case OP_JMPI:
-                printf("%4d %4s %d\n", n, op_name[OP(i)], PE(i));
+                printf("%4d %11s %d\n", n, op_name[OP(i)], PE(i));
                 break;
             case OP_NOP:
             case OP_HLT:
-                printf("%4d %4s\n", n, op_name[OP(i)]);
+                printf("%4d %11s\n", n, op_name[OP(i)]);
                 break;
             default:
-                printf("%4d UNKNOWN\n", n);
+                printf("%4d %11s\n", n, "UNKNOWN");
         }
         n ++;
     }

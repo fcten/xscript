@@ -69,7 +69,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->bc = bc;
     
     vm->constant = bc->constant;
-    vm->global = bc->ast->root->u.symbols;
+    //vm->global = bc->ast->root->u.symbols;
 
     vm->pc = 0;
 
