@@ -156,7 +156,6 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '&': return 1;
         case '^': return 1;
         case '|': return 1;
-        case '=': bc_mov(bc, e1, e2); break;
         case TK_INDEX: bc_array_get(bc, e, e1, e2); break;
         case TK_ATTR:
         default:
@@ -518,9 +517,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 return 1;
             }
 
-            if (bc_expr_binary(bc, node, e, &e1, &e2)) {
-                return 1;
-            }
+            bc_mov(bc, &e1, &e2);
         } else if (e1.u.reg.type == R_GLOBAL) {
             // TODO 全局变量赋值
         } else {
@@ -769,7 +766,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
-            int i, reg_type = node->parent ? R_LOCAL : R_GLOBAL;
+            int i, reg_type = node->parent ? R_LOCAL : R_LOCAL/*R_GLOBAL*/;
             // 为当前作用域的变量分配寄存器
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
@@ -1175,6 +1172,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 if (bc_expr_binary_assignment(bc, node, &e)) {
                     return 1;
                 }
+                reg_free(bc, &e);
             }
             break;
         }
@@ -1184,6 +1182,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             if (bc_expr(bc, node->child[0], &e)) {
                 return 1;
             }
+            reg_free(bc, &e);
             break;
         }
         // Declaration
