@@ -40,3 +40,6 @@ echo test1() && test2() && test1();
 // test false
 // false
 echo test2() && test2() && test1();
+
+int i = true;
+echo i && true;

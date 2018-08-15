@@ -849,7 +849,8 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case TK_ECHO:
                 ast_parse_echo_statement(ast, parent);
                 break;
-            case TK_AUTO:
+            case TK_AUTO: case TK_INT: case TK_FLOAT:
+            case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
                 ast_parse_variable_declaration(ast, parent);
                 break;
             case TK_FUNCTION:
@@ -875,7 +876,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* variable_declaration;
 
-    // ast->cur_token == TK_AUTO
+    int var_type = ast->cur_token;
     ast_step(ast);
 
     while (1) {
@@ -892,7 +893,6 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
         
         if (ast->cur_token == '=') {
-            variable_declaration->u.op = ast->cur_token;
             ast_step(ast);
             
             //printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
@@ -908,10 +908,32 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         s.buffer = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
 
-        if (parent->parent && lgx_scope_local_val_get(variable_declaration, &s) == NULL) {
-            lgx_scope_val_add(variable_declaration, &s);
-        } else if (parent->parent == NULL && lgx_scope_global_val_get(variable_declaration, &s) == NULL) {
-            lgx_scope_val_add(variable_declaration, &s);
+        if ((parent->parent && lgx_scope_local_val_get(variable_declaration, &s) == NULL) ||
+            (parent->parent == NULL && lgx_scope_global_val_get(variable_declaration, &s) == NULL)) {
+            lgx_val_t *t = lgx_scope_val_add(variable_declaration, &s);
+            switch (var_type) {
+                case TK_AUTO:
+                    t->type = T_UNDEFINED;
+                    break;
+                case TK_INT:
+                    t->type = T_LONG;
+                    break;
+                case TK_FLOAT:
+                    t->type = T_DOUBLE;
+                    break;
+                case TK_BOOL:
+                    t->type = T_BOOL;
+                    break;
+                case TK_STR:
+                    t->type = T_STRING;
+                    break;
+                case TK_ARR:
+                    t->type = T_ARRAY;
+                    break;
+                case TK_OBJ:
+                    t->type = T_OBJECT;
+                    break;
+            }
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;

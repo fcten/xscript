@@ -7,6 +7,9 @@
 #include "code.h"
 #include "constant.h"
 
+#define check_constant(v, t) ( !is_register((v)) && (v)->type == t )
+#define check_variable(v, t) (  is_register((v)) && ( (v)->type == t || (v)->type == T_UNDEFINED ) )
+
 void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     va_list   args;
 
@@ -286,7 +289,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         return 1;
     }
 
-    if (is_bool(&e1)) {
+    if (check_constant(&e1, T_BOOL)) {
         if (e1.v.l == 0) {
             *e = e1;
             return 0;
@@ -296,14 +299,14 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
             return 1;
         }
 
-        if (is_bool(&e2) || is_register(&e2)) {
+        if (check_constant(&e2, T_BOOL) || check_variable(&e2, T_BOOL)) {
             *e = e2;
             return 0;
         } else {
             bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
             return 1;
         }
-    } else if (is_register(&e1)) {
+    } else if (check_variable(&e1, T_BOOL)) {
         e->u.reg.type = R_TEMP;
         e->u.reg.reg = reg_pop(bc);
 
@@ -316,9 +319,9 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
             return 1;
         }
 
-        if (is_bool(&e2)) {
+        if (check_constant(&e2, T_BOOL)) {
             bc_load(bc, e, const_get(bc, &e2));
-        } else if (is_register(&e2)) {
+        } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
             bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
@@ -514,6 +517,11 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 
         if (e1.u.reg.type == R_LOCAL) {
             if (bc_expr(bc, node->child[1], &e2)) {
+                return 1;
+            }
+
+            if (e1.type != T_UNDEFINED && e2.type != T_UNDEFINED && e1.type != e2.type) {
+                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
                 return 1;
             }
 

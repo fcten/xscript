@@ -9,7 +9,7 @@ static lgx_ast_node_t* find_scope(lgx_ast_node_t *node) {
 }
 
 // 在当前作用域上添加一个变量
-void lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
+lgx_val_t* lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
     lgx_ast_node_t *cur = find_scope(node);
 
     lgx_hash_node_t n;
@@ -18,6 +18,8 @@ void lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
     n.v.type = T_UNDEFINED;
 
     cur->u.symbols = lgx_hash_set(cur->u.symbols, &n);
+
+    return &(lgx_hash_get(cur->u.symbols, &n.k))->v;
 }
 
 // 查找局部变量
