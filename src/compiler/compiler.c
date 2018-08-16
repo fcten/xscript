@@ -259,6 +259,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e);
 
 // TODO 常量优化
 static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    e->type = T_ARRAY;
+
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
 
@@ -322,7 +324,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         }
 
         if (check_constant(&e2, T_BOOL)) {
-            bc_load(bc, e, const_get(bc, &e2));
+            bc_load(bc, e, &e2);
         } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
@@ -339,7 +341,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         lgx_val_t tmp;
         tmp.type = T_BOOL;
         tmp.v.l = 0;
-        bc_load(bc, e, const_get(bc, &tmp));
+        bc_load(bc, e, &tmp);
 
         bc_set_pe(bc, pos2, bc->bc_top);
 
@@ -350,7 +352,6 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
     }
 }
 
-// TODO
 static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     // if (e1 == true) {
     //     e = true;
@@ -395,7 +396,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         lgx_val_t tmp;
         tmp.type = T_BOOL;
         tmp.v.l = 1;
-        bc_load(bc, e, const_get(bc, &tmp));
+        bc_load(bc, e, &tmp);
 
         int pos2 = bc->bc_top;
         bc_jmpi(bc, 0);
@@ -408,7 +409,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         }
 
         if (check_constant(&e2, T_BOOL)) {
-            bc_load(bc, e, const_get(bc, &e2));
+            bc_load(bc, e, &e2);
         } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
@@ -532,6 +533,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             }
 
             if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
+                // TODO 允许从 int 到 float 的隐式转换
                 bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
                 return 1;
             }
@@ -1131,9 +1133,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 result.u.reg.type = R_TEMP;
                 result.u.reg.reg = reg_pop(bc);
 
-                bc_load(bc, &tmp, const_get(bc, &condition));
+                bc_load(bc, &tmp, &condition);
                 bc_array_get(bc, &tmp, &tmp, &e);
-                bc_load(bc, &undef, const_get(bc, &undef));
+                bc_load(bc, &undef, &undef);
                 bc_eq(bc, &result, &tmp, &undef);
                 bc_test(bc, &result, 1);
 
@@ -1272,7 +1274,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
-            bc_load(bc, e, const_get(bc, e));
+            bc_load(bc, e, e);
             
             break;
         }

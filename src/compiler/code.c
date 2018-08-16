@@ -39,18 +39,22 @@ void bc_nop(lgx_bc_t *bc) {
     bc_append(bc, I0(OP_NOP));
 }
 
-void bc_load(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
-    bc_append(bc, I2(OP_LOAD, a->u.reg.reg, c));
+void bc_load(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = b->type;
+
+    bc_append(bc, I2(OP_LOAD, a->u.reg.reg, const_get(bc, b)));
 }
 
-static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, unsigned char c) {
+static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     a->u.reg.type = R_TEMP;
     a->u.reg.reg = reg_pop(bc);
     
-    bc_load(bc, a, c);
+    bc_load(bc, a, b);
 }
 
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = b->type;
+
     // 在前一条指令为 mov、add 等指定指令时，直接复用
     if (b->u.reg.type == R_TEMP) {
         unsigned i = bc->bc[bc->bc_top-1];
@@ -68,7 +72,7 @@ void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
         if (is_instant16(b)) {
             bc_append(bc, I2(OP_MOVI, a->u.reg.reg, b->v.l));
         } else {
-            bc_load(bc, a, const_get(bc, b));
+            bc_load(bc, a, b);
         }
         return;
     }
@@ -77,12 +81,20 @@ void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
 }
 
 void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (is_number(b) && is_number(c)) {
+        if (b->type == T_LONG && c->type == T_LONG) {
+            a->type = T_LONG;
+        } else {
+            a->type = T_DOUBLE;
+        }
+    }
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_ADDI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_ADD, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -94,7 +106,7 @@ void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_ADDI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_ADD, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -105,12 +117,20 @@ void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_sub(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (is_number(b) && is_number(c)) {
+        if (b->type == T_LONG && c->type == T_LONG) {
+            a->type = T_LONG;
+        } else {
+            a->type = T_DOUBLE;
+        }
+    }
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_SUBI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_SUB, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -119,7 +139,7 @@ void bc_sub(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 
     if (!is_register(b)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, b));
+        bc_load_to_reg(bc, &r, b);
         bc_append(bc, I3(OP_SUB, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
         reg_free(bc, &r);
         return;
@@ -129,12 +149,20 @@ void bc_sub(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_mul(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (is_number(b) && is_number(c)) {
+        if (b->type == T_LONG && c->type == T_LONG) {
+            a->type = T_LONG;
+        } else {
+            a->type = T_DOUBLE;
+        }
+    }
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_MULI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_MUL, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -146,7 +174,7 @@ void bc_mul(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_MULI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_MUL, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -157,12 +185,20 @@ void bc_mul(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_div(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (is_number(b) && is_number(c)) {
+        if (b->type == T_LONG && c->type == T_LONG) {
+            a->type = T_LONG;
+        } else {
+            a->type = T_DOUBLE;
+        }
+    }
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_DIVI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_DIV, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -171,7 +207,7 @@ void bc_div(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 
     if (!is_register(b)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, b));
+        bc_load_to_reg(bc, &r, b);
         bc_append(bc, I3(OP_DIV, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
         reg_free(bc, &r);
         return;
@@ -181,21 +217,31 @@ void bc_div(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_neg(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = b->type;
+
     bc_append(bc, I2(OP_NEG, a->u.reg.reg, b->u.reg.reg));
 }
 
 void bc_shl(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_LONG;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_SHLI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
-            // TODO 常量表
+            lgx_val_t r;
+            bc_load_to_reg(bc, &r, c);
+            bc_append(bc, I3(OP_SHL, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
+            reg_free(bc, &r);
         }
         return;
     }
 
     if (!is_register(b)) {
-        // TODO 常量表
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, b);
+        bc_append(bc, I3(OP_SHL, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
+        reg_free(bc, &r);
         return;
     }
 
@@ -203,17 +249,25 @@ void bc_shl(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_shr(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_LONG;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_SHRI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
-            // TODO 常量表
+            lgx_val_t r;
+            bc_load_to_reg(bc, &r, c);
+            bc_append(bc, I3(OP_SHRI, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
+            reg_free(bc, &r);
         }
         return;
     }
 
     if (!is_register(b)) {
-        // TODO 常量表
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, b);
+        bc_append(bc, I3(OP_SHR, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
+        reg_free(bc, &r);
         return;
     }
 
@@ -237,16 +291,20 @@ void bc_not(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
 }
 
 void bc_lnot(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = T_BOOL;
+
     bc_append(bc, I2(OP_LNOT, a->u.reg.reg, b->u.reg.reg));
 }
 
 void bc_eq(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_BOOL;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_EQI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_EQ, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -258,7 +316,7 @@ void bc_eq(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_EQI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_EQ, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -274,12 +332,14 @@ void bc_ne(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_lt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_BOOL;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_LTI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_LT, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -291,7 +351,7 @@ void bc_lt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_GTI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_LT, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -302,12 +362,14 @@ void bc_lt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_BOOL;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_LEI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_LE, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -319,7 +381,7 @@ void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_GEI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_LE, a->u.reg.reg, r.u.reg.reg, c->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -330,12 +392,14 @@ void bc_le(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_BOOL;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_GTI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_LT, a->u.reg.reg, r.u.reg.reg, b->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -347,7 +411,7 @@ void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_LTI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_LT, a->u.reg.reg, c->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -358,12 +422,14 @@ void bc_gt(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_BOOL;
+
     if (!is_register(c)) {
         if (is_instant8(c)) {
             bc_append(bc, I3(OP_GEI, a->u.reg.reg, b->u.reg.reg, c->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, c));
+            bc_load_to_reg(bc, &r, c);
             bc_append(bc, I3(OP_LE, a->u.reg.reg, r.u.reg.reg, b->u.reg.reg));
             reg_free(bc, &r);
         }
@@ -375,7 +441,7 @@ void bc_ge(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
             bc_append(bc, I3(OP_LEI, a->u.reg.reg, c->u.reg.reg, b->v.l));
         } else {
             lgx_val_t r;
-            bc_load_to_reg(bc, &r, const_get(bc, b));
+            bc_load_to_reg(bc, &r, b);
             bc_append(bc, I3(OP_LE, a->u.reg.reg, c->u.reg.reg, r.u.reg.reg));
             reg_free(bc, &r);
         }
@@ -392,7 +458,7 @@ void bc_call_new(lgx_bc_t *bc, lgx_val_t *a) {
 void bc_call_set(lgx_bc_t *bc, lgx_val_t *a, unsigned char i, lgx_val_t *b) {
     if (!is_register(b)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, b));
+        bc_load_to_reg(bc, &r, b);
         bc_append(bc, I3(OP_CALL_SET, a->u.reg.reg, i, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
@@ -411,7 +477,7 @@ void bc_call_end(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
 void bc_ret(lgx_bc_t *bc, lgx_val_t *a) {
     if (!is_register(a)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, a));
+        bc_load_to_reg(bc, &r, a);
         bc_append(bc, I1(OP_RET, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
@@ -434,7 +500,7 @@ void bc_jmpi(lgx_bc_t *bc, unsigned pos) {
 void bc_echo(lgx_bc_t *bc, lgx_val_t *a) {
     if (!is_register(a)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, a));
+        bc_load_to_reg(bc, &r, a);
         bc_append(bc, I1(OP_ECHO, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
@@ -453,7 +519,7 @@ void bc_array_new(lgx_bc_t *bc, lgx_val_t *a) {
 void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     if (!is_register(b)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, b));
+        bc_load_to_reg(bc, &r, b);
         bc_append(bc, I2(OP_ARRAY_ADD, a->u.reg.reg, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
@@ -464,7 +530,7 @@ void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
 void bc_array_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     if (!is_register(c)) {
         lgx_val_t r;
-        bc_load_to_reg(bc, &r, const_get(bc, c));
+        bc_load_to_reg(bc, &r, c);
         bc_append(bc, I3(OP_ARRAY_GET, a->u.reg.reg, b->u.reg.reg, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
@@ -480,12 +546,12 @@ void bc_array_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     rc = *c;
 
     if (!is_register(b)) {
-        bc_load_to_reg(bc, &rb, const_get(bc, b));
+        bc_load_to_reg(bc, &rb, b);
         fb = 1;
     }
 
     if (!is_register(c)) {
-        bc_load_to_reg(bc, &rc, const_get(bc, c));
+        bc_load_to_reg(bc, &rc, c);
         fc = 1;
     }
 

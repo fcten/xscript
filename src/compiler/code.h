@@ -17,7 +17,7 @@
 
 void bc_nop(lgx_bc_t *bc);
 
-void bc_load(lgx_bc_t *bc, lgx_val_t *a, unsigned char c);
+void bc_load(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 
 void bc_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
