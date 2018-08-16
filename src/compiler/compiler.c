@@ -9,6 +9,8 @@
 
 #define check_constant(v, t) ( !is_register((v)) && (v)->type == t )
 #define check_variable(v, t) (  is_register((v)) && ( (v)->type == t || (v)->type == T_UNDEFINED ) )
+#define check_type(v, t)     ( check_constant(v, t) || check_variable(v, t) )
+#define is_auto(v)           (  is_register((v)) && (v)->type == T_UNDEFINED )
 
 void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     va_list   args;
@@ -364,7 +366,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         return 1;
     }
 
-    if (is_bool(&e1)) {
+    if (check_constant(&e1, T_BOOL)) {
         if (e1.v.l) {
             *e = e1;
             return 0;
@@ -374,14 +376,14 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
             return 1;
         }
 
-        if (is_bool(&e2) || is_register(&e2)) {
+        if (check_constant(&e2, T_BOOL) || check_variable(&e2, T_BOOL)) {
             *e = e2;
             return 0;
         } else {
             bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
             return 1;
         }
-    } else if (is_register(&e1)) {
+    } else if (check_variable(&e1, T_BOOL)) {
         e->u.reg.type = R_TEMP;
         e->u.reg.reg = reg_pop(bc);
 
@@ -405,9 +407,9 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
             return 1;
         }
 
-        if (is_bool(&e2)) {
+        if (check_constant(&e2, T_BOOL)) {
             bc_load(bc, e, const_get(bc, &e2));
-        } else if (is_register(&e2)) {
+        } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
             bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
@@ -432,7 +434,9 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if (node->u.op != TK_EQ && !is_register(&e1) && !is_number(&e1)) {
+    if (node->u.op != TK_EQ &&
+        !check_type(&e1, T_LONG) &&
+        !check_type(&e1, T_DOUBLE)) {
         bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -441,9 +445,16 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if (node->u.op != TK_EQ && !is_register(&e2) && !is_number(&e2) ) {
-        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
-        return 1;
+    if (node->u.op != TK_EQ) {
+        if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
+            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            return 1;
+        }
+    } else {
+        if (!is_auto(&e1) && !check_type(&e2, e1.type)) {
+            bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+            return 1;
+        }
     }
 
     if ( !is_register(&e1) && !is_register(&e2) ) {
@@ -475,7 +486,7 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
         return 1;
     }
 
-    if ( !is_register(&e1) && e1.type != T_LONG ) {
+    if (!check_type(&e1, T_LONG)) {
         bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -484,12 +495,12 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
         return 1;
     }
 
-    if ( !is_register(&e2) && e2.type != T_LONG ) {
+    if (!check_type(&e2, T_LONG)) {
         bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
         return 1;
     }
 
-    if ( e1.type == T_LONG && e2.type == T_LONG ) {
+    if ( !is_register(&e1) && !is_register(&e2) ) {
         if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
             return 1;
         }
@@ -520,7 +531,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 return 1;
             }
 
-            if (e1.type != T_UNDEFINED && e2.type != T_UNDEFINED && e1.type != e2.type) {
+            if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
                 bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
                 return 1;
             }
@@ -547,8 +558,8 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             return 1;
         }
 
-        if ( !is_register(&e1) ) {
-            bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
+        if (!check_type(&e1, T_ARRAY)) {
+            bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
             return 1;
         }
 
@@ -557,7 +568,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 return 1;
             }
 
-            if ( !is_register(&e2) && e2.type != T_LONG && e2.type != T_STRING ) {
+            if (!check_type(&e2, T_LONG) && !check_type(&e2, T_STRING)) {
                 bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
                 return 1;
             }
@@ -598,7 +609,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if ( !is_register(&e1) && e1.type != T_FUNCTION ) {
+    if (!check_type(&e1, T_FUNCTION)) {
         bc_error(bc, "[Error] [Line:%d] makes function from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -636,7 +647,7 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
         return 1;
     }
 
-    if ( !is_register(&e1) && e1.type != T_ARRAY ) {
+    if (!check_type(&e1, T_ARRAY)) {
         bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -650,12 +661,12 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
         return 1;
     }
 
-    if ( !is_register(&e2) && e2.type != T_LONG && e2.type != T_STRING ) {
+    if (!check_type(&e2, T_LONG) && !!check_type(&e1, T_STRING)) {
         bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
         return 1;
     }
 
-    if ( e1.type == T_ARRAY && (e2.type == T_LONG || e2.type == T_STRING) ) {
+    if (!is_register(&e1) && !is_register(&e2)) {
         if (lgx_op_binary(node->u.op, e, &e1, &e2)) {
             return 1;
         }
@@ -749,7 +760,30 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                 return 1;
             }
 
-            if (e1.type == T_LONG || e1.type == T_DOUBLE || e1.type == T_BOOL) {
+            switch (node->u.op) {
+                case '!':
+                    if (!check_type(&e1, T_BOOL)) {
+                        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                        return 1;
+                    }
+                    break;
+                case '~':
+                    if (!check_type(&e1, T_LONG)) {
+                        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                        return 1;
+                    }
+                    break;
+                case '-':
+                    if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
+                        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                        return 1;
+                    }
+                    break;
+                default:
+                    return 1;
+            }
+
+            if (!is_register(&e1)) {
                 if (lgx_op_unary(node->u.op, e, &e1)) {
                     return 1;
                 }
@@ -818,7 +852,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (e.type == T_BOOL) {
+            if (check_constant(&e, T_BOOL)) {
                 if (e.v.l == 0) {
                     break;
                 } else {
@@ -826,7 +860,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                 }
-            } else if (is_register(&e)) {
+            } else if (check_variable(&e, T_BOOL)) {
                 unsigned pos = bc->bc_top; // 跳出指令位置
                 bc_test(bc, &e, 0);
                 reg_free(bc, &e);
@@ -849,7 +883,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (e.type == T_BOOL) {
+            if (check_constant(&e, T_BOOL)) {
                 if (e.v.l == 0) {
                     if( bc_stat(bc, node->child[2])) {
                         return 1;
@@ -859,7 +893,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         return 1;
                     }
                 }
-            } else if (is_register(&e)) {
+            } else if (check_variable(&e, T_BOOL)) {
                 unsigned pos1 = bc->bc_top; // 跳转指令位置
                 bc_test(bc, &e, 0);
                 reg_free(bc, &e);
@@ -904,11 +938,11 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     return 1;
                 }
 
-                if (e.type == T_BOOL) {
+                if (check_constant(&e, T_BOOL)) {
                     if (e.v.l == 0) {
                         break;
                     }
-                } else if (is_register(&e)) {
+                } else if (check_variable(&e, T_BOOL)) {
                     pos2 = bc->bc_top; 
                     bc_test(bc, &e, 0);
                     reg_free(bc, &e);
@@ -952,7 +986,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (e.type == T_BOOL) {
+            if (check_constant(&e, T_BOOL)) {
                 if (e.v.l == 0) {
                     break;
                 } else {
@@ -962,7 +996,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     // 写入无条件跳转
                     bc_jmpi(bc, start);
                 }
-            } else if (is_register(&e)) {
+            } else if (check_variable(&e, T_BOOL)) {
                 unsigned pos = bc->bc_top; // 循环跳出指令位置
                 bc_test(bc, &e, 0);
                 reg_free(bc, &e);
@@ -995,14 +1029,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (e.type == T_BOOL) {
+            if (check_constant(&e, T_BOOL)) {
                 if (e.v.l == 0) {
                     break;
                 } else {
                     // 写入无条件跳转
                     bc_jmpi(bc, start);
                 }
-            } else if (is_register(&e)) {
+            } else if (check_variable(&e, T_BOOL)) {
                 unsigned pos = bc->bc_top;
                 bc_test(bc, &e, 0);
                 bc_jmpi(bc, start);
@@ -1010,7 +1044,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
-                // error
+                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                return 1;
             }
 
             jmp_fix(bc, node, start, bc->bc_top);
@@ -1042,7 +1077,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 return 1;
             }
 
-            if (!is_register(&e) && e.type != T_LONG && e.type != T_STRING) {
+            if (!check_type(&e, T_LONG) && check_type(&e, T_STRING)) {
                 bc_error(bc, "[Error] [Line:%d] makes integer or string from %s without a cast\n", node->line, lgx_val_typeof(&e));
                 return 1;
             }
@@ -1066,7 +1101,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                             return 1;
                         }
 
-                        if (case_node.k.type != T_LONG && case_node.k.type != T_STRING) {
+                        if (!check_constant(&case_node.k, T_LONG) && check_constant(&case_node.k, T_STRING)) {
                             bc_error(bc, "[Error] [Line:%d] only constant expression allowed in case label", child->line);
                             return 1;
                         }
