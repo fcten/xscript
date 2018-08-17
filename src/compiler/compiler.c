@@ -634,15 +634,13 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         lgx_val_t expr;
         lgx_val_init(&expr);
         bc_expr(bc, node->child[1]->child[i], &expr);
-        bc_call_set(bc, &e1, i+4, &expr);
+        bc_call_set(bc, i+4, &expr);
         reg_free(bc, &expr);
     }
 
-    bc_call(bc, &e1);
-
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
-    bc_call_end(bc, &e1, e);
+    bc_call(bc, &e1, e);
 
     reg_free(bc, &e1);
 

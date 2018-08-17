@@ -568,12 +568,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_SET:{
-                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
-                    R(R(0).v.fun->stack_size + PB(i)) = R(PC(i));
-                } else {
-                    // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
-                }
+                R(R(0).v.fun->stack_size + PA(i)) = R(PB(i));
                 break;
             }
             case OP_CALL:{
@@ -584,8 +579,9 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     // 写入函数信息
                     R(base + 0) = R(PA(i));
 
-                    // 初始化返回值
-                    R(base + 1).type = T_UNDEFINED;
+                    // 写入返回值地址
+                    R(base + 1).type = T_LONG;
+                    R(base + 1).v.l = PB(i);
 
                     // 写入返回地址
                     R(base + 2).type = T_LONG;
@@ -607,33 +603,16 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 }
                 break;
             }
-            case OP_CALL_END:{
-                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
-                    lgx_gc_ref_del(&R(PB(i)));
-
-                    // 读取返回值
-                    unsigned int base = R(0).v.fun->stack_size;
-                    if (R(base + 1).type == T_LONG) {
-                        R(PB(i)) = R(base + R(base + 1).v.l);
-                    } else {
-                        R(PB(i)).type = T_UNDEFINED;
-                    }
-
-                    // TODO 释放所有局部变量和临时变量？
-                } else {
-                    // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
-                }
-                break;
-            }
             case OP_RET:{
                 // 跳转到调用点
                 vm->pc = R(2).v.l;
 
-                // 写入返回值
-                if (PA(i)) {
-                    R(1).type = T_LONG;
-                    R(1).v.l = PA(i);
+                // 判断返回值
+                int ret_idx = R(1).v.l;
+                int has_ret = PA(i);
+                lgx_val_t ret_val;
+                if (has_ret) {
+                    ret_val = R(PA(i));
                 }
 
                 // TODO 释放所有局部变量和临时变量？
@@ -641,6 +620,15 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 // 切换执行堆栈
                 vm->stack.base = R(3).v.l;
                 vm->regs = vm->stack.buf + vm->stack.base;
+
+                // 写入返回值
+                lgx_gc_ref_del(&R(ret_idx));
+                if (has_ret) {
+                    R(ret_idx) = ret_val;
+                    lgx_gc_ref_add(&R(ret_idx));
+                } else {
+                    R(ret_idx).type = T_UNDEFINED;
+                }
                 break;
             }
             case OP_ARRAY_SET:{

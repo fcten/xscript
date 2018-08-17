@@ -41,7 +41,6 @@ const char* op_name[] = {
     "CALL_NEW",
     "CALL_SET",
     "CALL",
-    "CALL_END",
     "RET",
     "ARRAY_NEW",
     "ARRAY_ADD",
@@ -77,7 +76,6 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_XOR:
             case OP_ARRAY_GET:
             case OP_ARRAY_SET:
-            case OP_CALL_SET:
                 printf("%4d %11s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
                 break;
             case OP_ADDI:
@@ -98,7 +96,8 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_NOT:
             case OP_LNOT:
             case OP_ARRAY_ADD:
-            case OP_CALL_END:
+            case OP_CALL_NEW:
+            case OP_CALL_SET:
                 printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:
@@ -109,7 +108,6 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
                 printf("%4d %11s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
                 break;
             case OP_JMP:
-            case OP_CALL_NEW:
             case OP_CALL:
             case OP_ECHO:
             case OP_ARRAY_NEW:

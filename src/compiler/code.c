@@ -455,23 +455,19 @@ void bc_call_new(lgx_bc_t *bc, lgx_val_t *a) {
     bc_append(bc, I1(OP_CALL_NEW, a->u.reg.reg));
 }
 
-void bc_call_set(lgx_bc_t *bc, lgx_val_t *a, unsigned char i, lgx_val_t *b) {
+void bc_call_set(lgx_bc_t *bc, unsigned char i, lgx_val_t *b) {
     if (!is_register(b)) {
         lgx_val_t r;
         bc_load_to_reg(bc, &r, b);
-        bc_append(bc, I3(OP_CALL_SET, a->u.reg.reg, i, r.u.reg.reg));
+        bc_append(bc, I2(OP_CALL_SET, i, r.u.reg.reg));
         reg_free(bc, &r);
     } else {
-        bc_append(bc, I3(OP_CALL_SET, a->u.reg.reg, i, b->u.reg.reg));
+        bc_append(bc, I2(OP_CALL_SET, i, b->u.reg.reg));
     }
 }
 
-void bc_call(lgx_bc_t *bc, lgx_val_t *a) {
-    bc_append(bc, I1(OP_CALL, a->u.reg.reg));
-}
-
-void bc_call_end(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
-    bc_append(bc, I2(OP_CALL_END, a->u.reg.reg, b->u.reg.reg));
+void bc_call(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    bc_append(bc, I2(OP_CALL, a->u.reg.reg, b->u.reg.reg));
 }
 
 void bc_ret(lgx_bc_t *bc, lgx_val_t *a) {

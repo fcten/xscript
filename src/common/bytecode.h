@@ -51,18 +51,17 @@ enum {
 
     // 跳转
     // TEST 指令限制了单次控制转移距离上限为 64K
-    // TODO 超过限制时应当返回错误，或者新增 TESTI 指令
+    // TODO 超过限制时应当使用 TEST JMPI 组合指令
     OP_TEST,  // TEST R I
     // TODO JMP 范围为 0 - 16M，超过范围时可以使用常量表
     OP_JMP,   // JMP  R
     OP_JMPI,  // JMPI L
 
     // 函数调用
-    OP_CALL_NEW, // CALL_NEW R
-    OP_CALL_SET, // CALL_SET R R R
-    OP_CALL,     // CALL     R
-    OP_CALL_END, // CALL_END R R
-    OP_RET,      // RET      R
+    OP_CALL_NEW,  // CALL_NEW F         确保足够的栈空间
+    OP_CALL_SET,  // CALL_SET R R       设置参数
+    OP_CALL,      // CALL     F R       执行调用，返回值写入到 R 中
+    OP_RET,       // RET      R
 
     // 数组
     OP_ARRAY_NEW, // ARRAY_NEW R
