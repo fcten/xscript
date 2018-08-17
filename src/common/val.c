@@ -34,11 +34,11 @@ void lgx_val_print(lgx_val_t *v) {
             printf("<%s>", lgx_val_typeof(v));
             break;
         case T_LONG:
-            //printf("<%s> %lld\n", lgx_val_typeof(v), v->v.l);
+            //printf("<%s> %lld", lgx_val_typeof(v), v->v.l);
             printf("%lld", v->v.l);
             break;
         case T_DOUBLE:
-            //printf("<%s> %f\n", lgx_val_typeof(v), v->v.d);
+            //printf("<%s> %lg", lgx_val_typeof(v), v->v.d);
             printf("%lg", v->v.d);
             break;
         case T_BOOL:

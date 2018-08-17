@@ -112,6 +112,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].v)
+#define G(r)  (vm->global->table[r].v)
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {

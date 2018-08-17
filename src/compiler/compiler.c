@@ -1,6 +1,7 @@
 #include "../common/common.h"
 #include "../parser/scope.h"
 #include "../common/val.h"
+#include "../common/cast.h"
 #include "../common/operator.h"
 #include "register.h"
 #include "compiler.h"
@@ -533,9 +534,17 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             }
 
             if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
-                // TODO 允许从 int 到 float 的隐式转换
-                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
-                return 1;
+                // 允许从 int 到 float 的隐式转换
+                if (e1.type == T_DOUBLE && check_constant(&e2, T_LONG)) {
+                    // 常量类型转换
+                    lgx_val_t tmp = e2;
+                    lgx_cast_double(&tmp, &e2);
+                    e2 = tmp;
+                    // TODO 变量类型转换
+                } else {
+                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+                    return 1;
+                }
             }
 
             bc_mov(bc, &e1, &e2);
