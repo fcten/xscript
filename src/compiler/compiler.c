@@ -629,17 +629,19 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     int f = const_get(bc, &e1);
     reg_free(bc, &e1);
 
-    bc_call_new(bc, f);
-
     // 写入参数
     // TODO 检查参数数量是否匹配
     int i;
+    lgx_val_t *expr = xcalloc(node->child[1]->children, sizeof(lgx_val_t));
     for(i = 0; i < node->child[1]->children; i++) {
-        lgx_val_t expr;
-        lgx_val_init(&expr);
-        bc_expr(bc, node->child[1]->child[i], &expr);
-        bc_call_set(bc, i+4, &expr);
-        reg_free(bc, &expr);
+        bc_expr(bc, node->child[1]->child[i], &expr[i]);
+    }
+
+    bc_call_new(bc, f);
+
+    for(i = 0; i < node->child[1]->children; i++) {
+        bc_call_set(bc, i+4, &expr[i]);
+        reg_free(bc, &expr[i]);
     }
 
     e->u.reg.type = R_TEMP;
@@ -1249,10 +1251,6 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
             e = lgx_scope_global_val_get(node, &s);
-
-            // TODO 添加为全局变量？
-            e->type = T_FUNCTION;
-            e->v.fun = lgx_fun_new();
             e->v.fun->addr = bc->bc_top;
             // TODO 计算该函数所需的堆栈空间
             e->v.fun->stack_size = 256;

@@ -970,7 +970,9 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     s.length = n->tk_length;
 
     if (parent->parent == NULL && lgx_scope_global_val_get(function_declaration, &s) == NULL) {
-        lgx_scope_val_add(function_declaration, &s);
+        lgx_val_t *f = lgx_scope_val_add(function_declaration, &s);
+        f->type = T_FUNCTION;
+        f->v.fun = lgx_fun_new();
     } else {
         ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
         return;

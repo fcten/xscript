@@ -563,7 +563,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PA(i))));
                 }
                 break;
             }
@@ -599,7 +599,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     vm->pc = fun->addr;
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PA(i))));
                 }
                 break;
             }
