@@ -555,9 +555,9 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_NEW:{
-                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
+                if (EXPECTED(C(PA(i)).type == T_FUNCTION)) {
                     // 确保空余堆栈空间足够容纳本次函数调用
-                    if (UNEXPECTED(lgx_vm_checkstack(vm, R(PA(i)).v.fun->stack_size) != 0)) {
+                    if (UNEXPECTED(lgx_vm_checkstack(vm, C(PA(i)).v.fun->stack_size) != 0)) {
                         // runtime error
                         throw_exception(vm, "check stack failed");
                     }
@@ -572,12 +572,12 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL:{
-                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
-                    lgx_fun_t *fun = R(PA(i)).v.fun;
+                if (EXPECTED(C(PA(i)).type == T_FUNCTION)) {
+                    lgx_fun_t *fun = C(PA(i)).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
                     // 写入函数信息
-                    R(base + 0) = R(PA(i));
+                    R(base + 0) = C(PA(i));
 
                     // 写入返回值地址
                     R(base + 1).type = T_LONG;

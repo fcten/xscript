@@ -117,6 +117,7 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
+    // TODO 内存泄露
     expr->v.str = lgx_str_new(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.reg.type = 0;
@@ -625,7 +626,10 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    bc_call_new(bc, &e1);
+    int f = const_get(bc, &e1);
+    reg_free(bc, &e1);
+
+    bc_call_new(bc, f);
 
     // 写入参数
     // TODO 检查参数数量是否匹配
@@ -640,9 +644,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
-    bc_call(bc, &e1, e);
-
-    reg_free(bc, &e1);
+    bc_call(bc, f, e);
 
     return 0;
 }
@@ -1281,7 +1283,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             bc_set_pe(bc, start, bc->bc_top);
 
             // 执行一次赋值操作
-            bc_load(bc, e, e);
+            //bc_load(bc, e, e);
             
             break;
         }
@@ -1325,7 +1327,8 @@ int lgx_bc_cleanup(lgx_bc_t *bc) {
     xfree(bc->regs);
     xfree(bc->bc);
     xfree(bc->err_info);
-    lgx_hash_delete(bc->constant);
+    // TODO 需要处理内存泄漏和重复释放问题
+    //lgx_hash_delete(bc->constant);
 
     lgx_ast_cleanup(bc->ast);
 
