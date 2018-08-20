@@ -360,9 +360,11 @@ echo a; // output [1,2,3,4]
 
 # 函数 (function)
 
-## 函数声明
+函数不需要声明，可以先使用再定义。
 
 ```
+echo add(1, add(2, 3));
+
 function add(auto a, auto b) {
     return a + b;
 }
