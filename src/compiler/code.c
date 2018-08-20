@@ -466,8 +466,8 @@ void bc_call_set(lgx_bc_t *bc, unsigned char i, lgx_val_t *b) {
     }
 }
 
-void bc_call(lgx_bc_t *bc, unsigned char i, lgx_val_t *b) {
-    bc_append(bc, I2(OP_CALL, i, b->u.reg.reg));
+void bc_call(lgx_bc_t *bc, lgx_val_t *a, unsigned char i) {
+    bc_append(bc, I2(OP_CALL, a->u.reg.reg, i));
 }
 
 void bc_ret(lgx_bc_t *bc, lgx_val_t *a) {

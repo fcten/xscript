@@ -646,7 +646,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     e->u.reg.type = R_TEMP;
     e->u.reg.reg = reg_pop(bc);
-    bc_call(bc, f, e);
+    bc_call(bc, e, f);
 
     return 0;
 }

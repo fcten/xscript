@@ -572,16 +572,16 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL:{
-                if (EXPECTED(C(PA(i)).type == T_FUNCTION)) {
-                    lgx_fun_t *fun = C(PA(i)).v.fun;
+                if (EXPECTED(C(PD(i)).type == T_FUNCTION)) {
+                    lgx_fun_t *fun = C(PD(i)).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
                     // 写入函数信息
-                    R(base + 0) = C(PA(i));
+                    R(base + 0) = C(PD(i));
 
                     // 写入返回值地址
                     R(base + 1).type = T_LONG;
-                    R(base + 1).v.l = PB(i);
+                    R(base + 1).v.l = PA(i);
 
                     // 写入返回地址
                     R(base + 2).type = T_LONG;
@@ -599,7 +599,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     vm->pc = fun->addr;
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PD(i))));
                 }
                 break;
             }
