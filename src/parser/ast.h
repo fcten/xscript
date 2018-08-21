@@ -59,7 +59,6 @@ typedef struct lgx_ast_node_s {
         lgx_hash_t *symbols;
 
         // 当节点类型为 EXPRESSION 时，用于保存 EXPRESSION 的类型
-        // 当节点类型为 DECLARATION 时，值为 '='
         unsigned short op;
 
         // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
@@ -69,6 +68,10 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 BREAK_STATEMENT、CONTINUE_STATEMENT、RETURN_STATEMENT 时，用于保存语句在字节码中对于的位置
         unsigned pos;
+
+        // 当节点类型为 VARIABLE_DECLARATION 时，保存变量类型
+        // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
+        unsigned type;
     } u;
 
     int children;          // 子节点数量

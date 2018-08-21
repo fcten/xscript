@@ -17,9 +17,13 @@ lgx_val_t* lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
     n.k.v.str = lgx_str_new(s->buffer, s->length);
     n.v.type = T_UNDEFINED;
 
-    cur->u.symbols = lgx_hash_set(cur->u.symbols, &n);
-
-    return &(lgx_hash_get(cur->u.symbols, &n.k))->v;
+    if (lgx_hash_get(cur->u.symbols, &n.k)) {
+        // 已经存在同名变量
+        return NULL;
+    } else {
+        cur->u.symbols = lgx_hash_set(cur->u.symbols, &n);
+        return &(lgx_hash_get(cur->u.symbols, &n.k))->v;
+    }
 }
 
 // 查找局部变量

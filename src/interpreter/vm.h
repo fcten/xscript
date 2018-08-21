@@ -43,9 +43,6 @@ typedef struct {
     // 常量表
     lgx_hash_t *constant;
 
-    // 全局变量
-    lgx_hash_t *global;
-
     // 程序计数
     unsigned pc;
 

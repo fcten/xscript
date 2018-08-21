@@ -70,8 +70,8 @@ enum {
     OP_ARRAY_SET, // ARRAY_SET R R R    R1[R2] = R3
 
     // 全局变量
-    OP_GLOBAL_GET,// GLOBAL_GET R R
-    OP_GLOBAL_SET,// GLOBAL_SET R R
+    OP_GLOBAL_GET,// GLOBAL_GET R G     R = G
+    OP_GLOBAL_SET,// GLOBAL_SET R G     G = R
 
     // 类与对象
     OP_OBJECT_NEW,

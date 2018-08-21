@@ -1194,13 +1194,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case RETURN_STATEMENT:{
             lgx_val_t r;
             lgx_val_init(&r);
-            r.u.reg.type = R_LOCAL;
 
             // 计算返回值
             if (node->child[0]) {
                 if (bc_expr(bc, node->child[0], &r)) {
                     return 1;
                 }
+            } else {
+                r.u.reg.type = R_LOCAL;
             }
 
             // 写入返回指令

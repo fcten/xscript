@@ -61,6 +61,32 @@ int lgx_ast_init(lgx_ast_t* ast) {
     return 0;
 }
 
+void ast_set_variable_type(lgx_val_t *t, unsigned type) {
+    switch (type) {
+        case TK_INT:
+            t->type = T_LONG;
+            break;
+        case TK_FLOAT:
+            t->type = T_DOUBLE;
+            break;
+        case TK_BOOL:
+            t->type = T_BOOL;
+            break;
+        case TK_STR:
+            t->type = T_STRING;
+            break;
+        case TK_ARR:
+            t->type = T_ARRAY;
+            break;
+        case TK_OBJ:
+            t->type = T_OBJECT;
+            break;
+        case TK_AUTO:
+        default:
+            t->type = T_UNDEFINED;
+    }
+}
+
 void ast_node_cleanup(lgx_ast_node_t* node) {
     int i;
     switch (node->type) {
@@ -169,9 +195,14 @@ void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         variable_declaration->type = VARIABLE_DECLARATION;
         ast_node_append_child(param_list, variable_declaration);
 
-        if (ast->cur_token != TK_AUTO) {
-            ast_error(ast, "[Error] [Line:%d] type declaration expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-            return;
+        switch (ast->cur_token) {
+            case TK_AUTO: case TK_INT: case TK_FLOAT:
+            case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
+                variable_declaration->u.type = ast->cur_token;
+                break;
+            default:
+                ast_error(ast, "[Error] [Line:%d] type declaration expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
         }
         ast_step(ast);
 
@@ -525,7 +556,13 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             s.buffer = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_start;
             s.length = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_length;
 
-            lgx_scope_val_add(parent->child[2], &s);
+            lgx_val_t *t;
+            if ((t = lgx_scope_val_add(parent->child[2], &s))) {
+                ast_set_variable_type(t, parent->child[1]->child[i]->u.type);
+            } else {
+                ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
+                return;
+            }
         }
     }
     
@@ -882,6 +919,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while (1) {
         variable_declaration = ast_node_new(ast, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
+        variable_declaration->u.type = var_type;
         ast_node_append_child(parent, variable_declaration);
 
         if (ast->cur_token != TK_ID) {
@@ -908,32 +946,9 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         s.buffer = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
 
-        if ((parent->parent && lgx_scope_local_val_get(variable_declaration, &s) == NULL) ||
-            (parent->parent == NULL && lgx_scope_global_val_get(variable_declaration, &s) == NULL)) {
-            lgx_val_t *t = lgx_scope_val_add(variable_declaration, &s);
-            switch (var_type) {
-                case TK_AUTO:
-                    t->type = T_UNDEFINED;
-                    break;
-                case TK_INT:
-                    t->type = T_LONG;
-                    break;
-                case TK_FLOAT:
-                    t->type = T_DOUBLE;
-                    break;
-                case TK_BOOL:
-                    t->type = T_BOOL;
-                    break;
-                case TK_STR:
-                    t->type = T_STRING;
-                    break;
-                case TK_ARR:
-                    t->type = T_ARRAY;
-                    break;
-                case TK_OBJ:
-                    t->type = T_OBJECT;
-                    break;
-            }
+        lgx_val_t *t;
+        if ((t = lgx_scope_val_add(variable_declaration, &s))) {
+            ast_set_variable_type(t, var_type);
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;
@@ -969,8 +984,8 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     s.buffer = n->tk_start;
     s.length = n->tk_length;
 
-    if (parent->parent == NULL && lgx_scope_global_val_get(function_declaration, &s) == NULL) {
-        lgx_val_t *f = lgx_scope_val_add(function_declaration, &s);
+    lgx_val_t *f;
+    if ((f = lgx_scope_val_add(function_declaration, &s))) {
         f->type = T_FUNCTION;
         f->v.fun = lgx_fun_new();
     } else {

@@ -69,7 +69,6 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->bc = bc;
     
     vm->constant = bc->constant;
-    //vm->global = bc->ast->root->u.symbols;
 
     vm->pc = 0;
 
@@ -112,7 +111,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].v)
-#define G(r)  (vm->global->table[r].v)
+#define G(r)  (vm->stack.buf[r])
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
@@ -707,9 +706,15 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_GLOBAL_GET:{
+                lgx_gc_ref_del(&R(PA(i)));
+                lgx_gc_ref_add(&G(PD(i)));
+                R(PA(i)) = G(PD(i));
                 break;
             }
             case OP_GLOBAL_SET:{
+                lgx_gc_ref_del(&G(PA(i)));
+                lgx_gc_ref_add(&R(PD(i)));
+                G(PD(i)) = R(PA(i));
                 break;
             }
             case OP_NOP: break;
