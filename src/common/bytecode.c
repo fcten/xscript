@@ -35,6 +35,7 @@ const char* op_name[] = {
     "GTI",
     "LTI",
     "LNOT",
+    "TYPEOF",
     "TEST",
     "JMP",
     "JMPI",
@@ -97,6 +98,7 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_LNOT:
             case OP_ARRAY_ADD:
             case OP_CALL_SET:
+            case OP_TYPEOF:
                 printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
             case OP_LOAD:

@@ -467,6 +467,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         case '!': // 逻辑非运算符
         case '~': // 按位取反运算符
         case '-': // 负号运算符
+        case TK_TYPEOF: // typeof 运算符
             // 单目运算符
             unary_expression = ast_node_new(ast, 1);
             unary_expression->type = UNARY_EXPRESSION;

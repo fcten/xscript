@@ -134,6 +134,7 @@ static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_v
         case '!': bc_lnot(bc, e, e1); break;
         case '~': bc_not(bc, e, e1); break;
         case '-': bc_neg(bc, e, e1); break;
+        case TK_TYPEOF: bc_typeof(bc, e, e1); break;
         default:
             bc_error(bc, "[Error] [Line:%d] unknown unary operation\n", node->line);
             return 1;
@@ -791,6 +792,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                         bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
                         return 1;
                     }
+                    break;
+                case TK_TYPEOF:
                     break;
                 default:
                     return 1;

@@ -23,6 +23,26 @@ lgx_str_t* lgx_str_new(char *str, unsigned len) {
     return ret;
 }
 
+lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
+    unsigned size = sizeof(lgx_str_t);
+
+    lgx_str_t* ret = xmalloc(size);
+    if (!ret) {
+        return NULL;
+    }
+
+    ret->buffer = str;
+    
+    ret->gc.ref_cnt = 0;
+    ret->gc.size = size;
+    ret->gc.type = T_STRING;
+
+    ret->size = len;
+    ret->length = len;
+    
+    return ret;
+}
+
 void lgx_str_delete(lgx_str_t *str) {
     xfree(str);
 }

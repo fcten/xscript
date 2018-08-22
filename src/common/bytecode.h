@@ -49,6 +49,9 @@ enum {
     OP_LTI,   // LTI  R R I
     OP_LNOT,  // LNOT R R
 
+    // 类型运算
+    OP_TYPEOF, // TYPEOF R R
+
     // 跳转
     // TEST 指令限制了单次控制转移距离上限为 64K
     // TODO 超过限制时应当使用 TEST JMPI 组合指令

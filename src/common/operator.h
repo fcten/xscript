@@ -32,6 +32,8 @@ int lgx_op_lnot(lgx_val_t *ret, lgx_val_t *right);
 int lgx_op_not(lgx_val_t *ret, lgx_val_t *right);
 int lgx_op_neg(lgx_val_t *ret, lgx_val_t *right);
 
+int lgx_op_typeof(lgx_val_t *ret, lgx_val_t *right);
+
 int lgx_op_index(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right);
 
 int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right);

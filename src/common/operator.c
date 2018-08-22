@@ -319,6 +319,12 @@ int lgx_op_neg(lgx_val_t *ret, lgx_val_t *right) {
     return 0;
 }
 
+int lgx_op_typeof(lgx_val_t *ret, lgx_val_t *right) {
+    ret->type = T_LONG;
+    ret->v.l = right->type;
+    return 0;
+}
+
 int lgx_op_index(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_ARRAY && right->type == T_LONG) {
         lgx_hash_node_t *n = lgx_hash_get(left->v.arr, right);
@@ -368,6 +374,7 @@ int lgx_op_unary(int op, lgx_val_t *ret, lgx_val_t *right) {
         case '!': return lgx_op_lnot(ret, right);
         case '~': return lgx_op_not(ret, right);
         case '-': return lgx_op_neg(ret, right);
+        case TK_TYPEOF: return lgx_op_typeof(ret, right);
         default:
             // error
             return E_OP_UNKNOWN;

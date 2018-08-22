@@ -275,18 +275,26 @@ void bc_shr(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
 }
 
 void bc_and(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_LONG;
+
     bc_append(bc, I3(OP_AND, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
 }
 
 void bc_or(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_LONG;
+
     bc_append(bc, I3(OP_OR, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
 }
 
 void bc_xor(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    a->type = T_LONG;
+
     bc_append(bc, I3(OP_XOR, a->u.reg.reg, b->u.reg.reg, c->u.reg.reg));
 }
 
 void bc_not(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = T_LONG;
+
     bc_append(bc, I2(OP_NOT, a->u.reg.reg, b->u.reg.reg));
 }
 
@@ -560,4 +568,10 @@ void bc_array_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
     if (fc) {
         reg_free(bc, &rc);
     }
+}
+
+void bc_typeof(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = T_LONG;
+
+    bc_append(bc, I2(OP_TYPEOF, a->u.reg.reg, b->u.reg.reg));
 }

@@ -724,6 +724,11 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 printf("\n");
                 break;
             }
+            case OP_TYPEOF:{
+                lgx_gc_ref_del(&R(PA(i)));
+                lgx_op_typeof(&R(PA(i)), &R(PB(i)));
+                break;
+            }
             default:
                 printf("unknown op %d @ %d\n", OP(i), vm->pc);
                 return 1;
