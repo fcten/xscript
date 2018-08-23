@@ -101,6 +101,10 @@ int lgx_bc_print(unsigned *bc, unsigned bc_size) {
             case OP_TYPEOF:
                 printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
                 break;
+            case OP_GLOBAL_GET:
+            case OP_GLOBAL_SET:
+                printf("%4d %11s R[%d] G[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
+                break;
             case OP_LOAD:
             case OP_CALL:
                 printf("%4d %11s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));

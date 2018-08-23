@@ -712,8 +712,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_GLOBAL_SET:{
-                lgx_gc_ref_del(&G(PA(i)));
-                lgx_gc_ref_add(&R(PD(i)));
+                lgx_gc_ref_del(&G(PD(i)));
+                lgx_gc_ref_add(&R(PA(i)));
                 G(PD(i)) = R(PA(i));
                 break;
             }

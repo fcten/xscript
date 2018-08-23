@@ -27,7 +27,7 @@ void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     bc->errno = 1;
 }
 
-static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
+static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, int global) {
     lgx_val_t *v;
     lgx_str_t s;
 
@@ -43,7 +43,13 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
-        *expr = *v;
+        if (global || v->type == T_FUNCTION) {
+            *expr = *v;
+        } else {
+            expr->u.reg.type = R_TEMP;
+            expr->u.reg.reg = reg_pop(bc);
+            bc_global_get(bc, expr, v);
+        }
 
         return 0;
     }
@@ -526,35 +532,32 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         lgx_val_init(&e1);
         lgx_val_init(&e2);
 
-        if (bc_expr(bc, node->child[0], &e1)) {
+        if (bc_identifier(bc, node->child[0], &e1, 1)) {
             return 1;
         }
 
-        if (e1.u.reg.type == R_LOCAL) {
-            if (bc_expr(bc, node->child[1], &e2)) {
+        if (bc_expr(bc, node->child[1], &e2)) {
+            return 1;
+        }
+
+        if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
+            // 允许从 int 到 float 的隐式转换
+            if (e1.type == T_DOUBLE && check_constant(&e2, T_LONG)) {
+                // 常量类型转换
+                lgx_val_t tmp = e2;
+                lgx_cast_double(&tmp, &e2);
+                e2 = tmp;
+                // TODO 变量类型转换
+            } else {
+                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
                 return 1;
             }
+        }
 
-            if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
-                // 允许从 int 到 float 的隐式转换
-                if (e1.type == T_DOUBLE && check_constant(&e2, T_LONG)) {
-                    // 常量类型转换
-                    lgx_val_t tmp = e2;
-                    lgx_cast_double(&tmp, &e2);
-                    e2 = tmp;
-                    // TODO 变量类型转换
-                } else {
-                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
-                    return 1;
-                }
-            }
-
+        if (e1.u.reg.type == R_LOCAL) {
             bc_mov(bc, &e1, &e2);
-        } else if (e1.u.reg.type == R_GLOBAL) {
-            // TODO 全局变量赋值
         } else {
-            bc_error(bc, "[Error] [Line:%d] variable expected\n", node->line);
-            return 1;
+            bc_global_set(bc, &e1, &e2);
         }
 
         // 写入表达式的值
@@ -705,7 +708,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         case DOUBLE_TOKEN:
             return bc_double(bc, node, e);
         case IDENTIFIER_TOKEN:
-            return bc_identifier(bc, node, e);
+            return bc_identifier(bc, node, e, 0);
         case TRUE_TOKEN:
             return bc_true(bc, node, e);
         case FALSE_TOKEN:
@@ -824,7 +827,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
     switch(node->type) {
         // Statement
         case BLOCK_STATEMENT:{
-            int i, reg_type = node->parent ? R_LOCAL : R_LOCAL/*R_GLOBAL*/;
+            int i, reg_type = node->parent ? R_LOCAL : R_GLOBAL;
             // 为当前作用域的变量分配寄存器
             for(i = 0; i < node->u.symbols->size; i++) {
                 lgx_hash_node_t *head = &node->u.symbols->table[i];
@@ -1117,7 +1120,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                             return 1;
                         }
 
-                        if (!check_constant(&case_node.k, T_LONG) && check_constant(&case_node.k, T_STRING)) {
+                        if (!check_constant(&case_node.k, T_LONG) && !check_constant(&case_node.k, T_STRING)) {
                             bc_error(bc, "[Error] [Line:%d] only constant expression allowed in case label", child->line);
                             return 1;
                         }

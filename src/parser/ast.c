@@ -101,6 +101,20 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
             return;
         case BLOCK_STATEMENT:
             if (node->u.symbols) {
+                // value 会被标识类型，但只有 function 类型会真正分配空间
+                for(i = 0; i < node->u.symbols->size; i++) {
+                    lgx_hash_node_t *head = &node->u.symbols->table[i];
+                    if (head->v.type != T_FUNCTION) {
+                        head->v.type = T_UNDEFINED;
+                    }
+                    lgx_hash_node_t *next = head->next;
+                    while (next) {
+                        if (next->v.type != T_FUNCTION) {
+                            next->v.type = T_UNDEFINED;
+                        }
+                        next = next->next;
+                    }
+                }
                 lgx_hash_delete(node->u.symbols);
             }
             break;

@@ -48,7 +48,7 @@ void bc_load(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
 static void bc_load_to_reg(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     a->u.reg.type = R_TEMP;
     a->u.reg.reg = reg_pop(bc);
-    
+
     bc_load(bc, a, b);
 }
 
@@ -574,4 +574,23 @@ void bc_typeof(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     a->type = T_LONG;
 
     bc_append(bc, I2(OP_TYPEOF, a->u.reg.reg, b->u.reg.reg));
+}
+
+void bc_global_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = b->type;
+
+    bc_append(bc, I2(OP_GLOBAL_GET, a->u.reg.reg, b->u.reg.reg));
+}
+
+void bc_global_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    a->type = b->type;
+
+    if (!is_register(b)) {
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, b);
+        bc_append(bc, I2(OP_GLOBAL_SET, r.u.reg.reg, a->u.reg.reg));
+        reg_free(bc, &r);
+    } else {
+        bc_append(bc, I2(OP_GLOBAL_SET, b->u.reg.reg, a->u.reg.reg));
+    }
 }
