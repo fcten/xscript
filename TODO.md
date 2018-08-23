@@ -5,8 +5,6 @@ xscript 的目标：
 3 鲁棒性
 4 性能
 
-
-全局变量
 多文件
 热更新
 
@@ -28,3 +26,6 @@ GC 算法结合自行实现的内存管理算法
 禁止使用未初始化的变量
 
 尾递归优化
+
+BUG: array resize 会导致其它指向该 array 的变量失效
+TODO: 只有在函数作用域中才需要使用 GLOBAL_GET 与 GLOBAL_SET
