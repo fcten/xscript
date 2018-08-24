@@ -21,7 +21,7 @@ lgx_val_t* lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
         // 已经存在同名变量
         return NULL;
     } else {
-        cur->u.symbols = lgx_hash_set(cur->u.symbols, &n);
+        lgx_hash_set(cur->u.symbols, &n);
         return &(lgx_hash_get(cur->u.symbols, &n.k))->v;
     }
 }

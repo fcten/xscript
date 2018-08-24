@@ -1133,7 +1133,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         case_node.v.type = T_LONG;
                         case_node.v.v.l = 0;
 
-                        condition.v.arr = lgx_hash_set(condition.v.arr, &case_node);
+                        lgx_hash_set(condition.v.arr, &case_node);
                     } else {
                         has_default = 1;
                     }

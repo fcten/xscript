@@ -33,7 +33,7 @@ typedef struct lgx_hash_s {
     unsigned char flag_non_compact_elements;
 
     // 存储数据的结构
-    lgx_hash_node_t table[];
+    lgx_hash_node_t* table;
 } lgx_hash_t;
 
 #define LGX_HASH_MIN_SIZE 8
@@ -57,8 +57,8 @@ lgx_hash_t* _lgx_hash_new(unsigned size);
 lgx_hash_t* _lgx_hash_new_const();
 int lgx_hash_delete(lgx_hash_t *hash);
 
-lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node);
-lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v);
+int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node);
+int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v);
 lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *k);
 lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v);
 

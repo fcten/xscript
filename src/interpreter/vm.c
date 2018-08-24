@@ -636,11 +636,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                         lgx_hash_node_t n;
                         n.k = R(PB(i));
                         n.v = R(PC(i));
-                        lgx_hash_t *hash = lgx_hash_set(R(PA(i)).v.arr, &n);
-                        if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
-                            R(PA(i)).v.arr = hash;
-                            lgx_gc_trace(vm, &R(PA(i)));
-                        }
+                        lgx_hash_set(R(PA(i)).v.arr, &n);
+                        lgx_gc_ref_add(&R(PB(i)));
                         lgx_gc_ref_add(&R(PC(i)));
                     } else {
                         // runtime warning
@@ -654,11 +651,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_ARRAY_ADD:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
-                    lgx_hash_t *hash = lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
-                    if (UNEXPECTED(R(PA(i)).v.arr != hash)) {
-                        R(PA(i)).v.arr = hash;
-                        lgx_gc_trace(vm, &R(PA(i)));
-                    }
+                    lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
                     lgx_gc_ref_add(&R(PB(i)));
                 } else {
                     // runtime error

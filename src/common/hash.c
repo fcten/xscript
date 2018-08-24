@@ -6,16 +6,23 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     // 规范化 size 取值
     size = ALIGN(size);
 
-    unsigned mem_size = sizeof(lgx_hash_t) + size * sizeof(lgx_hash_node_t);
+    unsigned head_size = sizeof(lgx_hash_t);
+    unsigned data_size = size * sizeof(lgx_hash_node_t);
 
-    lgx_hash_t *hash = xcalloc(1, mem_size);
+    lgx_hash_t *hash = xcalloc(1, head_size);
     if (UNEXPECTED(!hash)) {
+        return NULL;
+    }
+
+    hash->table = xcalloc(1, data_size);
+    if (UNEXPECTED(!hash->table)) {
+        xfree(hash);
         return NULL;
     }
 
     hash->size = size;
 
-    hash->gc.size = mem_size;
+    hash->gc.size = head_size + data_size;
     hash->gc.type = T_ARRAY;
 
     return hash;
@@ -44,6 +51,8 @@ int lgx_hash_delete(lgx_hash_t *hash) {
         }
     }
 
+    xfree(hash->table);
+
     xfree(hash);
 
     return 0;
@@ -65,25 +74,21 @@ static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
 }
 
 // 将 hash table 扩容一倍
-// TODO 引用计数
-static lgx_hash_t* hash_resize(lgx_hash_t *hash) {
+static int hash_resize(lgx_hash_t *hash) {
     lgx_hash_t *resize = lgx_hash_new(hash->size * 2);
     if (UNEXPECTED(!resize)) {
-        return NULL;
+        return 1;
     }
 
     hash_copy(hash, resize);
 
-    // 更新 GC 信息
+    xfree(hash->table);
+    hash->table = resize->table;
+    hash->size = resize->size;
     hash->gc.size = resize->gc.size;
-    resize->gc = hash->gc;
+    xfree(resize);
 
-    resize->gc.head.prev->next = &resize->gc.head;
-    resize->gc.head.next->prev = &resize->gc.head;
-
-    lgx_hash_delete(hash);
-
-    return resize;
+    return 0;
 }
 
 static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
@@ -121,7 +126,7 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
 }
 
 // TODO 正确处理循环引用
-lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
+int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     unsigned k = hash_bkdr(hash, &node->k);
 
     if (k > hash->length) {
@@ -147,7 +152,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
                 lgx_gc_ref_del(&next->v);
                 lgx_gc_ref_add(&node->v);
                 next->v = node->v;
-                return hash;
+                return 0;
             }
             next = next->next;
         }
@@ -155,7 +160,7 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         // 没有找到，新插入一个元素
         next = xmalloc(sizeof(lgx_hash_node_t));
         if (UNEXPECTED(!next)) {
-            return NULL;
+            return 1;
         }
         lgx_gc_ref_add(&node->k);
         lgx_gc_ref_add(&node->v);
@@ -168,13 +173,13 @@ lgx_hash_t* lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     hash->length ++;
 
     if (EXPECTED(hash->size > hash->length)) {
-        return hash;
+        return 0;
     } else {
         return hash_resize(hash);
     }
 }
 
-lgx_hash_t* lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
+int lgx_hash_add(lgx_hash_t *hash, lgx_val_t *v) {
     lgx_hash_node_t node;
 
     node.v = *v;
