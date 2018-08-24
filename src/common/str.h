@@ -11,10 +11,10 @@ typedef struct {
     unsigned size;
     // 已使用的缓冲区长度（字符串长度）
     unsigned length;
+    // 是否为引用
+    unsigned is_ref;
     // 指针
     char *buffer;
-    // 缓冲区
-    char str[];
 } lgx_str_t;
 
 lgx_str_t* lgx_str_new(char *str, unsigned len);

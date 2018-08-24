@@ -3,19 +3,25 @@
 #include "val.h"
 
 lgx_str_t* lgx_str_new(char *str, unsigned len) {
-    unsigned size = sizeof(lgx_str_t) + len * sizeof(char);
+    unsigned head_size = sizeof(lgx_str_t);
+    unsigned data_size = len * sizeof(char);
 
-    lgx_str_t* ret = xmalloc(size);
+    lgx_str_t* ret = xmalloc(head_size);
     if (!ret) {
         return NULL;
     }
 
-    ret->buffer = ret->str;
-    
+    ret->buffer = xmalloc(data_size);
+    if (!ret->buffer) {
+        xfree(ret);
+        return NULL;
+    }
+
     ret->gc.ref_cnt = 0;
-    ret->gc.size = size;
+    ret->gc.size = head_size + data_size;
     ret->gc.type = T_STRING;
 
+    ret->is_ref = 0;
     ret->size = len;
     ret->length = len;
     memcpy(ret->buffer, str, len);
@@ -37,6 +43,7 @@ lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
     ret->gc.size = size;
     ret->gc.type = T_STRING;
 
+    ret->is_ref = 1;
     ret->size = len;
     ret->length = len;
     
@@ -44,6 +51,9 @@ lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
 }
 
 void lgx_str_delete(lgx_str_t *str) {
+    if (str->is_ref) {
+        xfree(str->buffer);
+    }
     xfree(str);
 }
 
