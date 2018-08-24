@@ -36,6 +36,7 @@ lgx_val_t* lgx_scope_local_val_get(lgx_ast_node_t *node, lgx_str_t *s) {
     while (cur->parent) {
         lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
         if (n) {
+            n->v.u.reg.type = R_LOCAL;
             return &n->v;
         } else {
             cur = find_scope(cur->parent);
@@ -51,13 +52,19 @@ lgx_val_t* lgx_scope_global_val_get(lgx_ast_node_t *node, lgx_str_t *s) {
     v.type = T_STRING;
     v.v.str = s;
 
+    int is_global = 0;
     lgx_ast_node_t *cur = find_scope(node);
     while (cur->parent) {
-        cur = find_scope(cur->parent);
+        cur = cur->parent;
+        if (cur->type == FUNCTION_DECLARATION) {
+            // 在函数作用域中访问全局变量，则将变量标识为 global
+            is_global = 1;
+        }
     }
 
     lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
     if (n) {
+        n->v.u.reg.type = is_global ? R_GLOBAL : R_LOCAL;
         return &n->v;
     } else {
         return NULL;
