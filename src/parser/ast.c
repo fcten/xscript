@@ -831,6 +831,55 @@ void ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 }
 
+void ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* try_statement = ast_node_new(ast, 128);
+    try_statement->type = TRY_STATEMENT;
+    ast_node_append_child(parent, try_statement);
+
+    // ast->cur_token == TK_TRY
+    ast_step(ast);
+
+    ast_parse_block_statement_with_braces(ast, try_statement);
+
+    while (ast->cur_token == TK_CATCH) {
+        ast_step(ast);
+
+        lgx_ast_node_t* catch_statement = ast_node_new(ast, 2);
+        catch_statement->type = CATCH_STATEMENT;
+        ast_node_append_child(try_statement, catch_statement);
+
+        if (ast->cur_token != '(') {
+            ast_error(ast, "[Error] [Line:%d] '(' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
+        ast_step(ast);
+
+        ast_parse_decl_parameter(ast, catch_statement);
+        if (catch_statement->child[0]->children != 1) {
+            ast_error(ast, "[Error] [Line:%d] there must be one and only one parameter in catch statements\n", ast->cur_line);
+            return;
+        }
+
+        if (ast->cur_token != ')') {
+            ast_error(ast, "[Error] [Line:%d] ')' expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
+        ast_step(ast);
+
+        ast_parse_block_statement_with_braces(ast, catch_statement);
+    }
+
+    if (ast->cur_token == TK_FINALLY) {
+        ast_step(ast);
+
+        lgx_ast_node_t* finally_statement = ast_node_new(ast, 1);
+        finally_statement->type = FINALLY_STATEMENT;
+        ast_node_append_child(try_statement, finally_statement);
+
+        ast_parse_block_statement_with_braces(ast, finally_statement);
+    }
+}
+
 void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* return_statement = ast_node_new(ast, 1);
     return_statement->type = RETURN_STATEMENT;;
@@ -901,6 +950,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case TK_ECHO:
                 ast_parse_echo_statement(ast, parent);
                 break;
+            case TK_TRY:
+                ast_parse_try_statement(ast, parent);
+                continue;
             case TK_AUTO: case TK_INT: case TK_FLOAT:
             case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
                 ast_parse_variable_declaration(ast, parent);
@@ -1089,6 +1141,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case SWITCH_STATEMENT:
             printf("%*s%s\n", indent, "", "SWITCH_STATEMENT");
+            break;
+        case TRY_STATEMENT:
+            printf("%*s%s\n", indent, "", "TRY_STATEMENT");
             break;
         case RETURN_STATEMENT:
             printf("%*s%s\n", indent, "", "RETURN_STATEMENT");

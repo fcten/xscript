@@ -1197,6 +1197,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             jmp_fix(bc, node, 0, bc->bc_top);
             break;
         }
+        case TRY_STATEMENT:{
+            break;
+        }
         case RETURN_STATEMENT:{
             lgx_val_t r;
             lgx_val_init(&r);
