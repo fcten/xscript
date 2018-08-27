@@ -1200,6 +1200,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
         case TRY_STATEMENT:{
             break;
         }
+        case THROW_STATEMENT:{
+            break;
+        }
         case RETURN_STATEMENT:{
             lgx_val_t r;
             lgx_val_init(&r);

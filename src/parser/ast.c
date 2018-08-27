@@ -880,6 +880,21 @@ void ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+void ast_parse_throw_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* throw_statement = ast_node_new(ast, 1);
+    throw_statement->type = THROW_STATEMENT;
+    ast_node_append_child(parent, throw_statement);
+
+    // ast->cur_token == TK_THROW
+    ast_step(ast);
+
+    ast_parse_expression(ast, throw_statement);
+    if (throw_statement->children == 0) {
+        ast_error(ast, "[Error] [Line:%d] expression expected near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
+}
+
 void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* return_statement = ast_node_new(ast, 1);
     return_statement->type = RETURN_STATEMENT;;
@@ -953,6 +968,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case TK_TRY:
                 ast_parse_try_statement(ast, parent);
                 continue;
+            case TK_THROW:
+                ast_parse_throw_statement(ast, parent);
+                break;
             case TK_AUTO: case TK_INT: case TK_FLOAT:
             case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
                 ast_parse_variable_declaration(ast, parent);
@@ -1144,6 +1162,10 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case TRY_STATEMENT:
             printf("%*s%s\n", indent, "", "TRY_STATEMENT");
+            break;
+        case THROW_STATEMENT:
+            printf("%*s%s\n", indent, "", "THROW_STATEMENT");
+            lgx_ast_print(node->child[0], indent+2);
             break;
         case RETURN_STATEMENT:
             printf("%*s%s\n", indent, "", "RETURN_STATEMENT");
