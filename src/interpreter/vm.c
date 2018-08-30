@@ -8,7 +8,7 @@
 int lgx_vm_backtrace(lgx_vm_t *vm) {
     unsigned int base = vm->stack.base;
     while (1) {
-        printf("  <function:%d>\n", vm->stack.buf[base].v.fun->addr);
+        printf("  <function:%d> %d\n", vm->stack.buf[base].v.fun->addr, base);
 
         if (vm->stack.buf[base+3].type == T_LONG) {
             base = vm->stack.buf[base+3].v.l;
@@ -112,6 +112,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].v)
 #define G(r)  (vm->stack.buf[r])
+#define LGX_MAX_STACK_SIZE (256 << 8)
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
@@ -122,6 +123,10 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
     unsigned int size = vm->stack.size;
     while (vm->stack.base + R(0).v.fun->stack_size + stack_size >= size) {
         size *= 2;
+    }
+
+    if (size > LGX_MAX_STACK_SIZE) {
+        return 1;
     }
 
     lgx_val_t *s = xrealloc(vm->stack.buf, size * sizeof(lgx_val_t));
@@ -558,7 +563,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     // 确保空余堆栈空间足够容纳本次函数调用
                     if (UNEXPECTED(lgx_vm_checkstack(vm, C(PA(i)).v.fun->stack_size) != 0)) {
                         // runtime error
-                        throw_exception(vm, "check stack failed");
+                        throw_exception(vm, "maximum call stack size exceeded");
                     }
                 } else {
                     // runtime error
