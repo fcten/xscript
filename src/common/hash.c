@@ -231,31 +231,20 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
 }
 
 int lgx_hash_print(lgx_hash_t *hash) {
-    int i, length, count = 0;
-
-    if (hash->flag_non_compact_elements) {
-        length = hash->size;
-    } else {
-        length = hash->length;
-    }
-
     printf("[");
 
-    for (i = 0 ; i < length ; i ++) {
-        lgx_hash_node_t *next = &hash->table[i];
-        while (next) {
-            if (next->k.type != T_UNDEFINED) {
-                if (hash->flag_non_compact_elements) {
-                    lgx_val_print(&next->k);
-                    printf(":");
-                }
-                lgx_val_print(&next->v);
-                if (++count < hash->length) {
-                    printf(",");
-                }
-            }
-            next = next->next;
+    lgx_hash_node_t *next = hash->head;
+    int count = 0;
+    while (next) {
+        if (hash->flag_non_compact_elements) {
+            lgx_val_print(&next->k);
+            printf(":");
         }
+        lgx_val_print(&next->v);
+        if (++count < hash->length) {
+            printf(",");
+        }
+        next = next->order;
     }
 
     printf("]");
