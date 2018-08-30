@@ -6,10 +6,15 @@
 #include "../parser/ast.h"
 
 typedef struct {
+    unsigned char top;
+    unsigned char max;
+    unsigned char regs[256];
+} lgx_reg_alloc_t;
+
+typedef struct {
     lgx_ast_t *ast;
 
-    unsigned char *regs;
-    unsigned char reg_top;
+    lgx_reg_alloc_t *reg;
     
     // 字节码
     unsigned *bc;

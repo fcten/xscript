@@ -5,4 +5,4 @@ function tail(int n) {
     return tail(n - 1);
 }
 
-echo tail(1000);
+echo tail(100000);

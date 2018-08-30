@@ -76,7 +76,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->regs[0].type = T_FUNCTION;
     vm->regs[0].v.fun = lgx_fun_new();
     vm->regs[0].v.fun->addr = 0;
-    vm->regs[0].v.fun->stack_size = 256;
+    vm->regs[0].v.fun->stack_size = bc->reg->max + 1;
 
     return 0;
 }

@@ -1253,25 +1253,20 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
             e = lgx_scope_global_val_get(node, &s);
             e->v.fun->addr = bc->bc_top;
-            // TODO 计算该函数所需的堆栈空间
-            e->v.fun->stack_size = 256;
 
             // 重置寄存器分配
-            unsigned char *regs = bc->regs;
-            unsigned char reg_top = bc->reg_top;
-
-            bc->regs = xcalloc(256, sizeof(unsigned char));
-            bc->reg_top = 0;
-            for(int i = 255; i >= 4; i--) {
-                reg_push(bc, i);
-            }
+            lgx_reg_alloc_t *reg = bc->reg;
+            bc->reg = reg_allocator_new();
 
             // 编译函数体
             bc_stat(bc, node->child[2]);
 
+            // 保存该函数所需的堆栈空间
+            e->v.fun->stack_size = bc->reg->max + 1;
+
             // 恢复寄存器分配
-            bc->reg_top = reg_top;
-            bc->regs = regs;
+            reg_allocator_delete(bc->reg);
+            bc->reg = reg;
 
             // 始终写入一条返回语句，确保函数调用正常返回
             lgx_val_t r;
@@ -1297,11 +1292,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     bc->ast = ast;
 
-    bc->regs = xcalloc(256, sizeof(unsigned char));
-    bc->reg_top = 0;
-    for(int i = 255; i >= 4; i--) {
-        reg_push(bc, i);
-    }
+    bc->reg = reg_allocator_new();
     
     bc->bc_size = 1024;
     bc->bc_top = 0;
@@ -1323,7 +1314,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
 }
 
 int lgx_bc_cleanup(lgx_bc_t *bc) {
-    xfree(bc->regs);
+    reg_allocator_delete(bc->reg);
     xfree(bc->bc);
     xfree(bc->err_info);
     // TODO 需要处理内存泄漏和重复释放问题
