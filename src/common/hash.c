@@ -61,15 +61,10 @@ int lgx_hash_delete(lgx_hash_t *hash) {
 // 把 src 的元素复制到 dst 中，忽略 undefined 类型的 key
 // dst->size 应当大于等于 src->size
 static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
-    int i;
-    for (i = 0; i < src->size; i++) {
-        lgx_hash_node_t *next = &src->table[i];
-        while (next) {
-            if (next->k.type != T_UNDEFINED) {
-                lgx_hash_set(dst, next);
-            }
-            next = next->next;
-        }
+    lgx_hash_node_t *next = src->head;
+    while (next) {
+        lgx_hash_set(dst, next);
+        next = next->order;
     }
 }
 
@@ -223,22 +218,13 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *key) {
 }
 
 lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
-    int i, length;
+    lgx_hash_node_t *next = hash->head;
 
-    if (hash->flag_non_compact_elements) {
-        length = hash->size;
-    } else {
-        length = hash->length;
-    }
-
-    for (i = 0; i < length; i++) {
-        lgx_hash_node_t *next = &hash->table[i];
-        while (next) {
-            if (lgx_val_cmp(&next->v, v)) {
-                return next;
-            }
-            next = next->next;
+    while (next) {
+        if (lgx_val_cmp(&next->v, v)) {
+            return next;
         }
+        next = next->order;
     }
 
     return NULL;
