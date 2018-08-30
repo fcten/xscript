@@ -6,6 +6,7 @@
 
 typedef struct lgx_hash_node_s {
     struct lgx_hash_node_s *next;
+    struct lgx_hash_node_s *order;
     lgx_val_t k;
     lgx_val_t v;
 } lgx_hash_node_t;
@@ -31,6 +32,10 @@ typedef struct lgx_hash_s {
 
     // 是否包含非连续元素
     unsigned char flag_non_compact_elements;
+
+    // 按插入顺序保存
+    lgx_hash_node_t* head;
+    lgx_hash_node_t* tail;
 
     // 存储数据的结构
     lgx_hash_node_t* table;

@@ -125,6 +125,15 @@ static unsigned hash_bkdr(lgx_hash_t *hash, lgx_val_t *k) {
     return ret;
 }
 
+void lgx_hash_update_list(lgx_hash_t *hash, lgx_hash_node_t *node) {
+    if (hash->head) {
+        hash->tail->order = node;
+        hash->tail = node;
+    } else {
+        hash->head = hash->tail = node;
+    }
+}
+
 // TODO 正确处理循环引用
 int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     unsigned k = hash_bkdr(hash, &node->k);
@@ -143,6 +152,8 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         lgx_gc_ref_add(&node->v);
         hash->table[k].k = node->k;
         hash->table[k].v = node->v;
+
+        lgx_hash_update_list(hash, &hash->table[k]);
     } else {
         // 插入位置已经有元素了，遍历寻找
         lgx_hash_node_t *next = &hash->table[k];
@@ -168,6 +179,8 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         next->v = node->v;
         next->next = hash->table[k].next;
         hash->table[k].next = next;
+
+        lgx_hash_update_list(hash, next);
     }
     
     hash->length ++;
