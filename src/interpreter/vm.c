@@ -596,14 +596,6 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(base + 3).type = T_LONG;
                     R(base + 3).v.l = vm->stack.base;
 
-                    // 写入默认参数
-                    int i;
-                    for (i = 0; i < fun->args_num; i++) {
-                        if (R(base + 4 + i).type == T_UNDEFINED && fun->args[i].u.c.init) {
-                            R(base + 4 + i) = fun->args[i];
-                        }
-                    }
-
                     // 切换执行堆栈
                     vm->stack.base += R(0).v.fun->stack_size;
                     vm->regs = vm->stack.buf + vm->stack.base;
