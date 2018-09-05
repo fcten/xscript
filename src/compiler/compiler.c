@@ -27,29 +27,6 @@ void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     bc->errno = 1;
 }
 
-static int bc_identifier_initialized(lgx_bc_t *bc, lgx_ast_node_t *node) {
-    lgx_val_t *v;
-    lgx_str_t s;
-
-    s.buffer = ((lgx_ast_node_token_t *)node)->tk_start;
-    s.length = ((lgx_ast_node_token_t *)node)->tk_length;
-
-    v = lgx_scope_local_val_get(node, &s);
-    if (v) {
-        v->u.c.init = 1;
-        return 0;
-    }
-
-    v = lgx_scope_global_val_get(node, &s);
-    if (v) {
-        v->u.c.init = 1;
-        return 0;
-    }
-
-    bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
-    return 1;
-}
-
 static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, int global) {
     lgx_val_t *v;
     lgx_str_t s;
@@ -59,10 +36,7 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
 
     v = lgx_scope_local_val_get(node, &s);
     if (v) {
-        if (!v->u.c.init) {
-            bc_error(bc, "[Error] [Line:%d] `%.*s` used before initialized\n", node->line, s.length, s.buffer);
-            return 1;
-        }
+        v->u.c.used = 1;
 
         *expr = *v;
 
@@ -71,42 +45,8 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
 
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
-        if (!v->u.c.init) {
-            bc_error(bc, "[Error] [Line:%d] `%.*s` used before initialized\n", node->line, s.length, s.buffer);
-            return 1;
-        }
+        v->u.c.used = 1;
 
-        if (global || v->type == T_FUNCTION || v->u.c.type == R_LOCAL) {
-            *expr = *v;
-        } else {
-            expr->u.c.type = R_TEMP;
-            expr->u.c.reg = reg_pop(bc);
-            bc_global_get(bc, expr, v);
-        }
-
-        return 0;
-    }
-
-    bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
-    return 1;
-}
-
-static int bc_identifier_without_check(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, int global) {
-    lgx_val_t *v;
-    lgx_str_t s;
-
-    s.buffer = ((lgx_ast_node_token_t *)node)->tk_start;
-    s.length = ((lgx_ast_node_token_t *)node)->tk_length;
-
-    v = lgx_scope_local_val_get(node, &s);
-    if (v) {
-        *expr = *v;
-
-        return 0;
-    }
-
-    v = lgx_scope_global_val_get(node, &s);
-    if (v) {
         if (global || v->type == T_FUNCTION || v->u.c.type == R_LOCAL) {
             *expr = *v;
         } else {
@@ -596,7 +536,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         lgx_val_init(&e1);
         lgx_val_init(&e2);
 
-        if (bc_identifier_without_check(bc, node->child[0], &e1, 1)) {
+        if (bc_identifier(bc, node->child[0], &e1, 1)) {
             return 1;
         }
 
@@ -623,8 +563,6 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         } else {
             bc_global_set(bc, &e1, &e2);
         }
-
-        bc_identifier_initialized(bc, node->child[0]);
 
         // 写入表达式的值
         *e = e2;
@@ -963,7 +901,6 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         s.length = ((lgx_ast_node_token_t *)n->child[0])->tk_length;
 
                         v = lgx_scope_local_val_get(node, &s);
-                        v->u.c.init = 1;
 
                         bc_load(bc, &undef, &undef);
                         bc_eq(bc, &ret, v, &undef);

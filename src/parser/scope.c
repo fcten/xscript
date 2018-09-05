@@ -16,7 +16,7 @@ lgx_val_t* lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
     n.k.type = T_STRING;
     n.k.v.str = lgx_str_new(s->buffer, s->length);
     n.v.type = T_UNDEFINED;
-    n.v.u.c.init = 0;
+    n.v.u.c.used = 0;
 
     if (lgx_hash_get(cur->u.symbols, &n.k)) {
         // 已经存在同名变量

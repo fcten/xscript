@@ -24,7 +24,9 @@ typedef struct {
             unsigned char type;
             // 寄存器编号
             unsigned char reg;
-            // 是否初始化
+            // 是否使用过
+            unsigned char used;
+            // 是否有默认值(作为函数参数)
             unsigned char init;
         } c;
         // 调试信息，运行时使用
