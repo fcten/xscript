@@ -1,5 +1,7 @@
 #include "common.h"
 #include "val.h"
+#include "str.h"
+#include "fun.h"
 #include "hash.h"
 
 struct type {

@@ -10,10 +10,10 @@
 #define is_number(e)    ((e)->type == T_LONG || (e)->type == T_DOUBLE)
 #define is_bool(e)      ((e)->type == T_BOOL)
 
-#define is_register(e)  ((e)->u.reg.type)
-#define is_global(e)    ((e)->u.reg.type == R_GLOBAL)
-#define is_local(e)     ((e)->u.reg.type == R_LOCAL)
-#define is_temp(e)      ((e)->u.reg.type == R_TEMP)
+#define is_register(e)  ((e)->u.c.type)
+#define is_global(e)    ((e)->u.c.type == R_GLOBAL)
+#define is_local(e)     ((e)->u.c.type == R_LOCAL)
+#define is_temp(e)      ((e)->u.c.type == R_TEMP)
 
 void bc_nop(lgx_bc_t *bc);
 

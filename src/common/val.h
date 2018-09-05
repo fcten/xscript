@@ -1,12 +1,7 @@
 #ifndef LGX_VAL_H
 #define LGX_VAL_H
 
-#include "list.h"
-#include "str.h"
-#include "fun.h"
-
-typedef void lgx_obj_t;
-typedef void lgx_res_t;
+#include "typedef.h"
 
 #define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
 #define IS_GC_VALUE(x) ((x)->type > T_BOOL)
@@ -33,37 +28,6 @@ enum {
     R_LOCAL,    // 局部变量
     R_GLOBAL    // 全局变量
 };
-
-typedef struct {
-    union {
-        long long         l; // 64 位有符号整数
-        double            d; // 64 位有符号浮点数
-        lgx_str_t         *str;
-        struct lgx_hash_s *arr;
-        lgx_obj_t         *obj;
-        lgx_res_t         *res;
-        struct lgx_ref_s  *ref;
-        lgx_fun_t         *fun;
-        lgx_gc_t          *gc; // 方便访问任意高级类型的 gc 字段，gc 字段必须在高级类型结构体的头部
-    } v;
-    unsigned char type;
-    // 这个 union 结构有 7 个字节可用
-    union {
-        // 变量所使用的寄存器，仅在编译时使用
-        struct {
-            // 寄存器类型
-            unsigned char type;
-            // 寄存器编号
-            unsigned char reg;
-        } reg;
-        // 调试信息，运行时使用
-    } u;
-} lgx_val_t;
-
-typedef struct {
-    lgx_list_t head;
-    lgx_val_t *v;
-} lgx_val_list_t;
 
 const char *lgx_val_typeof(lgx_val_t *v);
 

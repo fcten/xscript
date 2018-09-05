@@ -536,23 +536,23 @@ TODO: 引用计数机制可以单独关闭，只使用标记清除完成垃圾�
 
 xscript 标准库是以包的形式提供的。
 
-std.io.*
-std.time.*
-std.math.*
-std.string.*
-std.array.*
-std.coroutine.*
+- std.io.*
+- std.time.*
+- std.math.*
+- std.string.*
+- std.array.*
+- std.coroutine.*
 
 ## 扩展库
 
-os.thread.*
-os.process.*
+- os.thread.*
+- os.process.*
 
-redis.*
-mysql.*
-net.http.*
-encoding.json.*
-compress.*
-crypto.*
-image.*
-regexp.*
+- redis.*
+- mysql.*
+- net.http.*
+- encoding.json.*
+- compress.*
+- crypto.*
+- image.*
+- regexp.*

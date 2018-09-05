@@ -2,15 +2,18 @@
 #include "../interpreter/vm.h"
 #include "fun.h"
 
-lgx_fun_t* lgx_fun_new() {
-    lgx_fun_t *fun =  xmalloc(sizeof(lgx_fun_t));
+lgx_fun_t* lgx_fun_new(unsigned args_num) {
+    unsigned size = sizeof(lgx_fun_t) + args_num * sizeof(lgx_val_t);
+
+    lgx_fun_t *fun =  xcalloc(1, size);
     if (UNEXPECTED(!fun)) {
         return NULL;
     }
 
-    fun->gc.ref_cnt = 0;
-    fun->gc.size = sizeof(lgx_fun_t);
+    fun->gc.size = size;
     fun->gc.type = T_FUNCTION;
+
+    fun->args_num = args_num;
 
     return fun;
 }

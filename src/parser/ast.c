@@ -1,5 +1,6 @@
 #include "../common/common.h"
 #include "../common/val.h"
+#include "../common/fun.h"
 #include "scope.h"
 #include "ast.h"
 
@@ -1066,7 +1067,6 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_val_t *f;
     if ((f = lgx_scope_val_add(function_declaration, &s))) {
         f->type = T_FUNCTION;
-        f->v.fun = lgx_fun_new();
     } else {
         ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
         return;
@@ -1085,7 +1085,20 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         return;
     }
     ast_step(ast);
-    
+
+    // 根据参数数量创建函数
+    f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
+    int i;
+    for (i = 0; i < function_declaration->child[1]->children; i++) {
+        lgx_ast_node_t *n = function_declaration->child[1]->child[i];
+        // 设置参数类型
+        ast_set_variable_type(&f->v.fun->args[i], n->u.type);
+        // 参数是否有默认值
+        if (n->child[1]) {
+            f->v.fun->args[i].u.c.init = 1;
+        }
+    }
+
     ast_parse_block_statement_with_braces(ast, function_declaration);
 }
 

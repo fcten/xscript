@@ -1,6 +1,7 @@
 #include "../common/common.h"
 #include "../common/bytecode.h"
 #include "../common/operator.h"
+#include "../common/fun.h"
 #include "vm.h"
 #include "gc.h"
 
@@ -74,7 +75,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 
     // 初始化 main 函数
     vm->regs[0].type = T_FUNCTION;
-    vm->regs[0].v.fun = lgx_fun_new();
+    vm->regs[0].v.fun = lgx_fun_new(0);
     vm->regs[0].v.fun->addr = 0;
     vm->regs[0].v.fun->stack_size = bc->reg->max + 1;
 
@@ -478,7 +479,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d >= PC(i);
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -492,7 +493,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d <= PC(i);
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -506,7 +507,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d > PC(i);
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -594,6 +595,14 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     // 写入堆栈地址
                     R(base + 3).type = T_LONG;
                     R(base + 3).v.l = vm->stack.base;
+
+                    // 写入默认参数
+                    int i;
+                    for (i = 0; i < fun->args_num; i++) {
+                        if (R(base + 4 + i).type == T_UNDEFINED && fun->args[i].u.c.init) {
+                            R(base + 4 + i) = fun->args[i];
+                        }
+                    }
 
                     // 切换执行堆栈
                     vm->stack.base += R(0).v.fun->stack_size;
