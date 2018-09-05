@@ -923,6 +923,11 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // TODO 寄存器释放顺序？
             next = node->u.symbols->head;
             while (next) {
+                // 检查未使用的变量
+                if (!next->v.u.c.used) {
+                    bc_error(bc, "[Error] [Line:%d] unused variable `%.*s`\n", node->line, next->k.v.str->length, next->k.v.str->buffer);
+                    return 1;
+                }
                 reg_push(bc, next->v.u.c.reg);
                 next = next->order;
             }
