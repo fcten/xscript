@@ -651,6 +651,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     for(i = 0; i < e1.v.fun->args_num; i++) {
         if (i < node->child[1]->children) {
             if (e1.v.fun->args[i].type != T_UNDEFINED &&
+                expr[i].type != T_UNDEFINED &&
                 e1.v.fun->args[i].type != expr[i].type) {
                 bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->child[1]->line, lgx_val_typeof(&e1.v.fun->args[i]), lgx_val_typeof(&expr[i]));
                 return 1;
@@ -663,8 +664,6 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
                 bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line, lgx_val_typeof(&e1));
                 return 1;
             }
-            // else
-            // 默认参数在执行时动态写入
         }
     }
 
@@ -858,6 +857,57 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 next = next->order;
             }
 
+            // 处理函数参数
+            if (node->parent && node->parent->type == FUNCTION_DECLARATION) {
+                lgx_val_t *e;
+                lgx_str_t s;
+                s.buffer = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_start;
+                s.length = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_length;
+                e = lgx_scope_global_val_get(node, &s);
+
+                int i;
+                for (i = 0; i < node->parent->child[1]->children; i++) {
+                    lgx_ast_node_t *n = node->parent->child[1]->child[i];
+                    // 参数是否有默认值
+                    if (n->child[1]) {
+                        lgx_val_t expr;
+                        bc_expr(bc, n->child[1], &expr);
+                        if (is_register(&expr)) {
+                            bc_error(bc, "[Error] [Line:%d] only constant expression allowed in parameter declaration", n->line);
+                            return 1;
+                        }
+                        if (e->v.fun->args[i].type != T_UNDEFINED &&
+                            expr.type != T_UNDEFINED &&
+                            e->v.fun->args[i].type != expr.type) {
+                            bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", n->line, lgx_val_typeof(&e->v.fun->args[i]), lgx_val_typeof(&expr));
+                            return 1;
+                        }
+                        
+                        // 如果参数值为 undefined，则赋值为初始值
+                        lgx_val_t undef, ret, *v;
+                        undef.type = T_UNDEFINED;
+                        undef.u.c.type = R_TEMP;
+                        undef.u.c.reg = reg_pop(bc);
+                        ret.u.c.type = R_TEMP;
+                        ret.u.c.reg = reg_pop(bc);
+
+                        lgx_str_t s;
+                        s.buffer = ((lgx_ast_node_token_t *)n->child[0])->tk_start;
+                        s.length = ((lgx_ast_node_token_t *)n->child[0])->tk_length;
+
+                        v = lgx_scope_local_val_get(node, &s);
+
+                        bc_load(bc, &undef, &undef);
+                        bc_eq(bc, &ret, v, &undef);
+                        bc_test(bc, &ret, 1);
+                        bc_mov(bc, v, &expr);
+
+                        reg_free(bc, &ret);
+                        reg_free(bc, &undef);
+                    }
+                }
+            }
+
             for(i = 0; i < node->children; i++) {
                 if (bc_stat(bc, node->child[i])) {
                     return 1;
@@ -867,7 +917,6 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 释放局部变量的寄存器
             // TODO 寄存器释放顺序？
             next = node->u.symbols->head;
-            // 为当前作用域的变量分配寄存器
             while (next) {
                 reg_push(bc, next->v.u.c.reg);
                 next = next->order;
@@ -1275,27 +1324,6 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
             e = lgx_scope_global_val_get(node, &s);
             e->v.fun->addr = bc->bc_top;
-
-            // 计算参数默认值
-            int i;
-            for (i = 0; i < node->child[1]->children; i++) {
-                lgx_ast_node_t *n = node->child[1]->child[i];
-                // 参数是否有默认值
-                if (n->child[1]) {
-                    lgx_val_t expr;
-                    bc_expr(bc, n->child[1], &expr);
-                    if (is_register(&expr)) {
-                        bc_error(bc, "[Error] [Line:%d] only constant expression allowed in parameter declaration", n->line);
-                        return 1;
-                    }
-                    if (e->v.fun->args[i].type != T_UNDEFINED &&
-                        e->v.fun->args[i].type != expr.type) {
-                        bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", n->line, lgx_val_typeof(&e->v.fun->args[i]), lgx_val_typeof(&expr));
-                        return 1;
-                    }
-                    e->v.fun->args[i].v = expr.v;
-                }
-            }
 
             // 重置寄存器分配
             lgx_reg_alloc_t *reg = bc->reg;
