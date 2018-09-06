@@ -54,7 +54,7 @@ void lgx_val_print(lgx_val_t *v) {
             break;
         case T_STRING:
             //printf("<%s(%u)> \"%.*s\"\n", lgx_val_typeof(v), v->v.str->length, v->v.str->length, v->v.str->buffer);
-            printf("\"%.*s\"", v->v.str->length, v->v.str->buffer);
+            printf("%.*s", v->v.str->length, v->v.str->buffer);
             break;
         case T_ARRAY:
             //printf("<%s>\n", lgx_val_typeof(v));

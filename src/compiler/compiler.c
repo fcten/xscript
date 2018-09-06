@@ -127,8 +127,7 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
-    // TODO 内存泄露
-    expr->v.str = lgx_str_new(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
+    expr->v.str = lgx_str_new_ref(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.c.type = 0;
     expr->u.c.reg = 0;
@@ -448,25 +447,35 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if (node->u.op != TK_EQ &&
-        !check_type(&e1, T_LONG) &&
-        !check_type(&e1, T_DOUBLE)) {
-        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
-        return 1;
-    }
-
     if (bc_expr(bc, node->child[1], &e2)) {
         return 1;
     }
 
-    if (node->u.op != TK_EQ) {
-        if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
-            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
-            return 1;
-        }
-    } else {
+    if (node->u.op == TK_EQ) {
         if (!is_auto(&e1) && !check_type(&e2, e1.type)) {
             bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+            return 1;
+        }
+    } else if (node->u.op == '+') {
+        if (check_type(&e1, T_STRING) || check_type(&e2, T_STRING)) {
+            // OK
+        } else {
+            if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
+                bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                return 1;
+            }
+            if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
+                bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+                return 1;
+            }
+        }
+    } else {
+        if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
+            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            return 1;
+        }
+        if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
+            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
             return 1;
         }
     }

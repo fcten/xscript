@@ -14,7 +14,7 @@ lgx_val_t* lgx_scope_val_add(lgx_ast_node_t *node, lgx_str_t *s) {
 
     lgx_hash_node_t n;
     n.k.type = T_STRING;
-    n.k.v.str = lgx_str_new(s->buffer, s->length);
+    n.k.v.str = lgx_str_new_ref(s->buffer, s->length);
     n.v.type = T_UNDEFINED;
     n.v.u.c.used = 0;
 

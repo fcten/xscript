@@ -3,9 +3,16 @@
 #include "operator.h"
 #include "cast.h"
 #include "hash.h"
+#include "str.h"
 
 int lgx_op_add(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
-    if (left->type == T_LONG && right->type == T_LONG) {
+    if (left->type == T_STRING && right->type == T_STRING) {
+        ret->type = T_STRING;
+        ret->v.str = lgx_str_copy(left->v.str);
+        if (lgx_str_concat(ret->v.str, right->v.str)) {
+            return 1;
+        }
+    } else if (left->type == T_LONG && right->type == T_LONG) {
         ret->type = T_LONG;
         ret->v.l = left->v.l + right->v.l;
     } else {
