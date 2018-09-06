@@ -12,6 +12,7 @@ lgx_fun_t* lgx_fun_new(unsigned args_num) {
 
     fun->gc.size = size;
     fun->gc.type = T_FUNCTION;
+    lgx_list_init(&fun->gc.head);
 
     fun->args_num = args_num;
 
@@ -19,5 +20,9 @@ lgx_fun_t* lgx_fun_new(unsigned args_num) {
 }
 
 void lgx_fun_delete(lgx_fun_t *fun) {
+    if (!lgx_list_empty(&fun->gc.head)) {
+        lgx_list_del(&fun->gc.head);
+    }
+
     xfree(fun);
 }

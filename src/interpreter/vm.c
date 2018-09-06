@@ -51,10 +51,6 @@ int lgx_vm_stack_init(lgx_vm_stack_t *stack, unsigned size) {
     return 0;
 }
 
-void lgx_vm_stack_cleanup(lgx_vm_stack_t *stack) {
-    xfree(stack->buf);
-}
-
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     // 初始化栈内存
     if (lgx_vm_stack_init(&vm->stack, 256)) {
@@ -87,9 +83,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     lgx_fun_delete(vm->regs[0].v.fun);
 
     // 释放栈
-
-    // TODO 解除所有引用
-    lgx_vm_stack_cleanup(&vm->stack);
+    xfree(vm->stack.buf);
 
     // 清理所有变量
     lgx_list_t *list = vm->heap.young.next;
@@ -181,6 +175,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     if (lgx_op_add(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
                         throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "+", lgx_val_typeof(&R(PC(i))));
                     }
+                    lgx_gc_trace(vm, &R(PA(i)));
+                    lgx_gc_ref_add(&R(PA(i)));
                 }
                 break;
             }
@@ -618,9 +614,15 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 lgx_val_t ret_val;
                 if (has_ret) {
                     ret_val = R(PA(i));
+                    lgx_gc_ref_add(&ret_val);
                 }
 
-                // TODO 释放所有局部变量和临时变量？
+                // 释放所有局部变量和临时变量
+                int n;
+                for (n = 4; n < R(0).v.fun->stack_size; n ++) {
+                    lgx_gc_ref_del(&R(n));
+                    R(n).type = T_UNDEFINED;
+                }
 
                 // 切换执行堆栈
                 vm->stack.base = R(3).v.l;
@@ -630,7 +632,6 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 lgx_gc_ref_del(&R(ret_idx));
                 if (has_ret) {
                     R(ret_idx) = ret_val;
-                    lgx_gc_ref_add(&R(ret_idx));
                 } else {
                     R(ret_idx).type = T_UNDEFINED;
                 }
@@ -717,7 +718,15 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 break;
             }
             case OP_NOP: break;
-            case OP_HLT: return 0;
+            case OP_HLT: {
+                // 释放所有局部变量和临时变量
+                int n;
+                for (n = 4; n < R(0).v.fun->stack_size; n ++) {
+                    lgx_gc_ref_del(&R(n));
+                    R(n).type = T_UNDEFINED;
+                }
+                return 0;
+            }
             case OP_ECHO:{
                 lgx_val_print(&R(PA(i)));
                 break;

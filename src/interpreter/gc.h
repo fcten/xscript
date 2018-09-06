@@ -42,6 +42,9 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
 #define lgx_gc_ref_del(p) do {\
     if ((p)->type > T_BOOL) {\
         (p)->v.gc->ref_cnt --;\
+        if ((p)->v.gc->ref_cnt == 0) {\
+            lgx_val_free(p);\
+        }\
     }\
 } while(0)
 

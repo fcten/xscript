@@ -24,12 +24,17 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
 
     hash->gc.size = head_size + data_size;
     hash->gc.type = T_ARRAY;
+    lgx_list_init(&hash->gc.head);
 
     return hash;
 }
 
 // 删除哈希表，并删除有所引用计数小于等于 1 的子元素
 int lgx_hash_delete(lgx_hash_t *hash) {
+    if (!lgx_list_empty(&hash->gc.head)) {
+        lgx_list_del(&hash->gc.head);
+    }
+
     if (hash->flag_non_basic_elements) {
         int i, length;
         if (hash->flag_non_compact_elements) {
@@ -38,14 +43,14 @@ int lgx_hash_delete(lgx_hash_t *hash) {
             length = hash->length;
         }
         for (i = 0; i < length; i ++) {
-            lgx_val_free(&hash->table[i].k);
-            lgx_val_free(&hash->table[i].v);
+            lgx_gc_ref_del(&hash->table[i].k);
+            lgx_gc_ref_del(&hash->table[i].v);
             lgx_hash_node_t *cur, *next = hash->table[i].next;
             while (next) {
                 cur = next;
                 next = cur->next;
-                lgx_val_free(&cur->k);
-                lgx_val_free(&cur->v);
+                lgx_gc_ref_del(&cur->k);
+                lgx_gc_ref_del(&cur->v);
                 xfree(cur);
             }
         }

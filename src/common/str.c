@@ -20,6 +20,7 @@ lgx_str_t* lgx_str_new(char *str, unsigned len) {
     ret->gc.ref_cnt = 0;
     ret->gc.size = head_size + data_size;
     ret->gc.type = T_STRING;
+    lgx_list_init(&ret->gc.head);
 
     ret->is_ref = 0;
     ret->size = len;
@@ -42,6 +43,7 @@ lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
     ret->gc.ref_cnt = 0;
     ret->gc.size = size;
     ret->gc.type = T_STRING;
+    lgx_list_init(&ret->gc.head);
 
     ret->is_ref = 1;
     ret->size = len;
@@ -51,9 +53,14 @@ lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
 }
 
 void lgx_str_delete(lgx_str_t *str) {
+    if (!lgx_list_empty(&str->gc.head)) {
+        lgx_list_del(&str->gc.head);
+    }
+
     if (!str->is_ref) {
         xfree(str->buffer);
     }
+
     xfree(str);
 }
 
