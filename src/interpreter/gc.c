@@ -33,12 +33,10 @@ static int minor_gc(lgx_vm_t *vm) {
         switch (((lgx_gc_t*)list)->type) {
             case T_STRING: {
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
-                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     xfree(list);
                 } else {
                     lgx_list_add_tail(list, &vm->heap.old);
 
-                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     vm->heap.old_size += ((lgx_gc_t*)list)->size;
 
                     cnt ++;
@@ -47,12 +45,10 @@ static int minor_gc(lgx_vm_t *vm) {
             }
             case T_ARRAY: {
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
-                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     lgx_hash_delete((lgx_hash_t *)list);
                 } else {
                     lgx_list_add_tail(list, &vm->heap.old);
 
-                    vm->heap.young_size -= ((lgx_gc_t*)list)->size;
                     vm->heap.old_size += ((lgx_gc_t*)list)->size;
 
                     cnt ++;
@@ -63,6 +59,8 @@ static int minor_gc(lgx_vm_t *vm) {
 
         list = next;
     }
+
+    vm->heap.young_size = 0;
 
     // TODO
     //printf("[minor gc] %d remain\n", cnt);
@@ -83,9 +81,7 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
         return 0;
     }
 
-    lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
-    vm->heap.young_size += v->v.gc->size;
-
+    // 每分配 4M 空间就尝试执行一次 GC
     if (vm->heap.young_size >= 4 * 1024 * 1024) {
         if (minor_gc(vm)) {
             // Out Of Memory
@@ -93,6 +89,9 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
         }
 
     }
+
+    lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
+    vm->heap.young_size += v->v.gc->size;
 
     return 0;
 }
