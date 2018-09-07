@@ -370,6 +370,15 @@ int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
         case TK_OR: return lgx_op_lor(ret, left, right);
         case TK_INDEX: return lgx_op_index(ret, left, right);
         case TK_ATTR:
+        case TK_ASSIGN_ADD:
+        case TK_ASSIGN_SUB:
+        case TK_ASSIGN_MUL:
+        case TK_ASSIGN_DIV:
+        case TK_ASSIGN_AND:
+        case TK_ASSIGN_OR:
+        case TK_ASSIGN_SHL:
+        case TK_ASSIGN_SHR:
+            return 0;
         default:
             // error
             return E_OP_UNKNOWN;

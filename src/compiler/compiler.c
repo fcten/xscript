@@ -175,6 +175,15 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
         case '|': return 1;
         case TK_INDEX: bc_array_get(bc, e, e1, e2); break;
         case TK_ATTR:
+        case TK_ASSIGN_ADD:
+        case TK_ASSIGN_SUB:
+        case TK_ASSIGN_MUL:
+        case TK_ASSIGN_DIV:
+        case TK_ASSIGN_AND:
+        case TK_ASSIGN_OR:
+        case TK_ASSIGN_SHL:
+        case TK_ASSIGN_SHR:
+            break;
         default:
             // error
             bc_error(bc, "[Error] [Line:%d] unknown binary operation\n", node->line);
@@ -796,6 +805,14 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 case TK_ATTR:
+                case TK_ASSIGN_ADD:
+                case TK_ASSIGN_SUB:
+                case TK_ASSIGN_MUL:
+                case TK_ASSIGN_DIV:
+                case TK_ASSIGN_AND:
+                case TK_ASSIGN_OR:
+                case TK_ASSIGN_SHL:
+                case TK_ASSIGN_SHR:
                     // TODO
                     break;
                 default:

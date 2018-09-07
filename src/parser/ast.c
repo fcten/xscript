@@ -463,6 +463,14 @@ int ast_operator_precedence(int token) {
         case '?':
             return 13;
         case '=':
+        case TK_ASSIGN_ADD:
+        case TK_ASSIGN_SUB:
+        case TK_ASSIGN_MUL:
+        case TK_ASSIGN_DIV:
+        case TK_ASSIGN_AND:
+        case TK_ASSIGN_OR:
+        case TK_ASSIGN_SHL:
+        case TK_ASSIGN_SHR:
             return 14;
         default:
             return -1;
@@ -499,6 +507,14 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         } else {
             switch (ast->cur_token) {
                 case TK_AND: case TK_OR: case '=':
+                case TK_ASSIGN_ADD:
+                case TK_ASSIGN_SUB:
+                case TK_ASSIGN_MUL:
+                case TK_ASSIGN_DIV:
+                case TK_ASSIGN_AND:
+                case TK_ASSIGN_OR:
+                case TK_ASSIGN_SHL:
+                case TK_ASSIGN_SHR:
                     // 右结合操作符
                     if (p > precedence) {
                         return;
