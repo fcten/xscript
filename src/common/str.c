@@ -2,7 +2,7 @@
 #include "str.h"
 #include "val.h"
 
-lgx_str_t* lgx_str_new(char *str, unsigned len) {
+static lgx_str_t* _lgx_str_new(char *str, unsigned len, int decode) {
     unsigned head_size = sizeof(lgx_str_t);
     unsigned data_size = len * sizeof(char);
 
@@ -24,10 +24,44 @@ lgx_str_t* lgx_str_new(char *str, unsigned len) {
 
     ret->is_ref = 0;
     ret->size = len;
-    ret->length = len;
-    memcpy(ret->buffer, str, len);
+
+    if (decode) {
+        // decode escape characters
+        int i = 0, j = 0;
+        for (i = 0; i < len; i ++) {
+            // \r \n \t \\ \" \0
+            if (str[i] == '\\') {
+                i ++;
+                switch (str[i]) {
+                    case 'r':  ret->buffer[j++] = '\r'; break;
+                    case 'n':  ret->buffer[j++] = '\n'; break;
+                    case 't':  ret->buffer[j++] = '\t'; break;
+                    case '\\': ret->buffer[j++] = '\\'; break;
+                    case '"':  ret->buffer[j++] = '\"'; break;
+                    case '0':  ret->buffer[j++] = '\0'; break;
+                    default:
+                        ret->buffer[j++] = '\\';
+                        ret->buffer[j++] = str[i];
+                }
+            } else {
+                ret->buffer[j++] = str[i];
+            }
+        }
+        ret->length = j;
+    } else {
+        memcpy(ret->buffer, str, len);
+        ret->length = len;
+    }
     
     return ret;
+}
+
+lgx_str_t* lgx_str_new_with_esc(char *str, unsigned len) {
+    return _lgx_str_new(str, len, 1);
+}
+
+lgx_str_t* lgx_str_new(char *str, unsigned len) {
+    return _lgx_str_new(str, len, 0);
 }
 
 lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {

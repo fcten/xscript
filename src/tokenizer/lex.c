@@ -36,7 +36,24 @@ static void step_to_eol(lgx_lex_t* ctx) {
 
 static void step_to_eos(lgx_lex_t* ctx) {
     while (ctx->offset < ctx->length) {
-        if (is_next(ctx, '"')) {
+        // 处理转义字符 \r \n \t \\ \" \0
+        if (is_next(ctx, '\\')) {
+            if (is_next(ctx, 'r')) {
+                // '\r'
+            } else if (is_next(ctx, 'n')) {
+                // '\n'
+            } else if (is_next(ctx, 't')) {
+                // '\t'
+            } else if (is_next(ctx, '\\')) {
+                // '\\'
+            } else if (is_next(ctx, '\"')) {
+                // '\"'
+            } else if (is_next(ctx, '0')) {
+                // '\0'
+            } else {
+                // 不构成转义字符
+            }
+        } else if (is_next(ctx, '"')) {
             break;
         } else {
             ctx->offset++;

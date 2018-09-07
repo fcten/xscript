@@ -127,7 +127,7 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
-    expr->v.str = lgx_str_new_ref(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
+    expr->v.str = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.c.type = 0;
     expr->u.c.reg = 0;
