@@ -262,15 +262,25 @@ int lgx_lex(lgx_lex_t* ctx) {
             step_to_eot(ctx);
             return TK_SPACE;
         case '+':
-            return n;
+            if (is_next(ctx, '=')) {
+                return TK_ASSIGN_ADD;
+            } else {
+                return n;
+            }
         case '-':
             if (is_next(ctx, '>')) {
                 return TK_PTR;
+            } else if (is_next(ctx, '=')) {
+                return TK_ASSIGN_SUB;
             } else {
                 return n;
             }
         case '*':
-            return n;
+            if (is_next(ctx, '=')) {
+                return TK_ASSIGN_MUL;
+            } else {
+                return n;
+            }
         case '/':
             if (is_next(ctx, '/')) {
                 step_to_eol(ctx);
@@ -278,6 +288,8 @@ int lgx_lex(lgx_lex_t* ctx) {
             } else if (is_next(ctx, '*')) {
                 step_to_eoc(ctx);
                 return TK_COMMENT;
+            } else if (is_next(ctx, '=')) {
+                return TK_ASSIGN_DIV;
             } else {
                 return n;
             }
@@ -285,7 +297,11 @@ int lgx_lex(lgx_lex_t* ctx) {
             if (is_next(ctx, '=')) {
                 return TK_GE;
             } else if (is_next(ctx, '>')) {
-                return TK_SHR;
+                if (is_next(ctx, '=')) {
+                    return TK_ASSIGN_SHR;
+                } else {
+                    return TK_SHR;
+                }
             } else {
                 return n;
             }
@@ -293,7 +309,11 @@ int lgx_lex(lgx_lex_t* ctx) {
             if (is_next(ctx, '=')) {
                 return TK_LE;
             } else if (is_next(ctx, '<')) {
-                return TK_SHL;
+                if (is_next(ctx, '=')) {
+                    return TK_ASSIGN_SHL;
+                } else {
+                    return TK_SHL;
+                }
             } else {
                 return n;
             }
@@ -312,12 +332,16 @@ int lgx_lex(lgx_lex_t* ctx) {
         case '&':
             if (is_next(ctx, '&')) {
                 return TK_AND;
+            } else if (is_next(ctx, '=')) {
+                return TK_ASSIGN_AND;
             } else {
                 return n;
             }
         case '|':
             if (is_next(ctx, '|')) {
                 return TK_OR;
+            } else if (is_next(ctx, '=')) {
+                return TK_ASSIGN_OR;
             } else {
                 return n;
             }

@@ -24,6 +24,14 @@ enum {
     TK_ARRAY,   // 数组常量
     TK_OBJECT,  // 对象常量
     TK_PTR,     // -> 指针运算符
+    TK_ASSIGN_ADD, // +=
+    TK_ASSIGN_SUB, // -=
+    TK_ASSIGN_MUL, // *=
+    TK_ASSIGN_DIV, // /=
+    TK_ASSIGN_AND, // &=
+    TK_ASSIGN_OR,  // |=
+    TK_ASSIGN_SHL, // <<=
+    TK_ASSIGN_SHR, // >>=
     // 以下为关键字 & 保留字
     TK_AUTO,
     TK_INT,
