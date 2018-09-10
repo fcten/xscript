@@ -701,7 +701,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 lgx_gc_ref_del(&R(PA(i)));
-                //lgx_gc_ref_add(&C(PD(i)));
+                lgx_gc_ref_add(&C(PD(i)));
                 R(PA(i)) = C(PD(i));
                 break;
             }

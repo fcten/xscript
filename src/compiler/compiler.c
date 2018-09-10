@@ -583,7 +583,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         }
 
         // 写入表达式的值
-        *e = e2;
+        *e = e1;
 
         reg_free(bc, &e1);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_INDEX) {
