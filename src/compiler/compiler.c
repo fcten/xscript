@@ -691,6 +691,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     xfree(expr);
 
+    e->type = e1.v.fun->ret.type;
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
     bc_call(bc, e, f);
@@ -1302,13 +1303,44 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_val_t r;
             lgx_val_init(&r);
 
+            // 获取返回值类型
+            lgx_ast_node_t *n = node->parent;
+            while (n && n->type != FUNCTION_DECLARATION) {
+                if (n->parent) {
+                    n = n->parent;
+                } else {
+                    n = NULL;
+                }
+            }
+
+            lgx_val_t ret;
+            if (n) {
+                lgx_str_t s;
+                s.buffer = ((lgx_ast_node_token_t *)(n->child[0]))->tk_start;
+                s.length = ((lgx_ast_node_token_t *)(n->child[0]))->tk_length;
+                lgx_val_t *f = lgx_scope_global_val_get(n, &s);
+                ret.type = f->v.fun->ret.type;
+            } else {
+                ret.type = T_UNDEFINED;
+            }
+
             // 计算返回值
             if (node->child[0]) {
                 if (bc_expr(bc, node->child[0], &r)) {
                     return 1;
                 }
+
+                if (!is_auto(&ret) && !is_auto(&r) && ret.type != r.type) {
+                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&ret), lgx_val_typeof(&r));
+                    return 1;
+                }
             } else {
-                r.u.c.type = R_LOCAL;
+                if (ret.type == T_UNDEFINED) {
+                    r.u.c.type = R_LOCAL;
+                } else {
+                    bc_error(bc, "[Error] [Line:%d] makes %s from undefined without a cast\n", node->line, lgx_val_typeof(&ret));
+                    return 1;
+                }
             }
 
             // 写入返回指令

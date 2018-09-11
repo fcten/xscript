@@ -1115,6 +1115,18 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
     }
 
+    // 解析返回值
+    switch (ast->cur_token) {
+        case TK_AUTO: case TK_INT: case TK_FLOAT:
+        case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ: {
+            ast_set_variable_type(&f->v.fun->ret, ast->cur_token);
+            ast_step(ast);
+            break;
+        }
+        default:
+            f->v.fun->ret.type = T_UNDEFINED;
+    }
+
     ast_parse_block_statement_with_braces(ast, function_declaration);
 }
 

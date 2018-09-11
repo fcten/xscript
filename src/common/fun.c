@@ -16,6 +16,9 @@ lgx_fun_t* lgx_fun_new(unsigned args_num) {
 
     fun->args_num = args_num;
 
+    // 不含任何局部变量和临时变量情况下所需要的最小栈长度
+    fun->stack_size = 4 + args_num;
+
     return fun;
 }
 
