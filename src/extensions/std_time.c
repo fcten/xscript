@@ -1,10 +1,22 @@
+#include <time.h>
+
 #include "../common/str.h"
 #include "../common/fun.h"
 #include "std_time.h"
 
 int std_time(void *p) {
-    //lgx_vm_t *vm = p;
-    printf("123\n");
+    lgx_vm_t *vm = p;
+
+    // 参数起始地址
+    int base = vm->regs[0].v.fun->stack_size;
+
+    // 返回值地址
+    int ret = vm->regs[base + 1].v.l;
+
+    // 写入返回值
+    vm->regs[ret].type = T_LONG;
+    vm->regs[ret].v.l = time(NULL);
+
     return 0;
 }
 
