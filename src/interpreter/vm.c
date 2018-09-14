@@ -592,12 +592,16 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     R(base + 3).type = T_LONG;
                     R(base + 3).v.l = vm->stack.base;
 
-                    // 切换执行堆栈
-                    vm->stack.base += R(0).v.fun->stack_size;
-                    vm->regs = vm->stack.buf + vm->stack.base;
+                    if (fun->buildin) {
+                        fun->buildin(vm);
+                    } else {
+                        // 切换执行堆栈
+                        vm->stack.base += R(0).v.fun->stack_size;
+                        vm->regs = vm->stack.buf + vm->stack.base;
 
-                    // 跳转到函数入口
-                    vm->pc = fun->addr;
+                        // 跳转到函数入口
+                        vm->pc = fun->addr;
+                    }
                 } else {
                     // runtime error
                     throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PD(i))));

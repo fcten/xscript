@@ -64,8 +64,8 @@ typedef struct lgx_fun_s {
     unsigned stack_size;
     // 入口地址
     unsigned addr;
-    // 是否为内建函数
-    unsigned is_buildin;
+    // 内建函数指针
+    int (*buildin)(void *vm);
     // 返回值
     lgx_val_t ret;
     // 参数列表

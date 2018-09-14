@@ -1,6 +1,7 @@
 #include "../common/common.h"
 #include "../common/val.h"
 #include "../common/fun.h"
+#include "../extensions/ext.h"
 #include "scope.h"
 #include "ast.h"
 
@@ -1136,6 +1137,9 @@ int lgx_ast_parser(lgx_ast_t* ast) {
 
     // 全局作用域
     ast->root->u.symbols = lgx_hash_new(32);
+
+    // 扩展接口
+    lgx_ext_load_symbols(ast->root->u.symbols);
 
     ast_step(ast);
 
