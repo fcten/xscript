@@ -5,19 +5,11 @@
 #include "std_time.h"
 
 int std_time(void *p) {
-    lgx_vm_t *vm = p;
+    lgx_val_t ret;
+    ret.type = T_LONG;
+    ret.v.l = time(NULL);
 
-    // 参数起始地址
-    int base = vm->regs[0].v.fun->stack_size;
-
-    // 返回值地址
-    int ret = vm->regs[base + 1].v.l;
-
-    // 写入返回值
-    vm->regs[ret].type = T_LONG;
-    vm->regs[ret].v.l = time(NULL);
-
-    return 0;
+    return lgx_ext_return(p, &ret);
 }
 
 int std_time_load_symbols(lgx_hash_t *hash) {

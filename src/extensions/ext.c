@@ -44,3 +44,17 @@ int lgx_ext_load_symbols(lgx_hash_t *hash) {
 
     return 0;
 }
+
+int lgx_ext_return(lgx_vm_t *vm, lgx_val_t *v) {
+    // 参数起始地址
+    int base = vm->regs[0].v.fun->stack_size;
+
+    // 返回值地址
+    int ret = vm->regs[base + 1].v.l;
+
+    // 写入返回值
+    lgx_gc_ref_del(&vm->regs[ret]);
+    vm->regs[ret] = *v;
+
+    return 0;
+}
