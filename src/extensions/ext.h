@@ -18,5 +18,7 @@ int lgx_ext_load_symbols(lgx_hash_t *hash);
 int lgx_ext_add_symbol(lgx_hash_t *hash, char *symbol, lgx_val_t *v);
 
 int lgx_ext_return(lgx_vm_t *vm, lgx_val_t *v);
+int lgx_ext_return_long(lgx_vm_t *vm, long long v);
+int lgx_ext_return_double(lgx_vm_t *vm, double v);
 
 #endif // LGX_EXT_H

@@ -66,7 +66,12 @@ int main(int argc, char* argv[]) {
     lgx_vm_t vm;
     lgx_vm_init(&vm, &bc);
 //    lgx_vm_init(&vm, opcode, sizeof(opcode)/sizeof(unsigned));
+
     lgx_vm_start(&vm);
+    printf("\nprogram exit with return value: ");
+    lgx_val_print(&vm.regs[1]);
+    printf("\n");
+
     lgx_vm_cleanup(&vm);
 
     return 0;

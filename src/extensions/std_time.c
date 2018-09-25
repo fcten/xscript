@@ -5,11 +5,7 @@
 #include "std_time.h"
 
 int std_time(void *p) {
-    lgx_val_t ret;
-    ret.type = T_LONG;
-    ret.v.l = time(NULL);
-
-    return lgx_ext_return(p, &ret);
+    return lgx_ext_return_long(p, time(NULL));
 }
 
 int std_time_load_symbols(lgx_hash_t *hash) {

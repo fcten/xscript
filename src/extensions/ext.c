@@ -58,3 +58,19 @@ int lgx_ext_return(lgx_vm_t *vm, lgx_val_t *v) {
 
     return 0;
 }
+
+int lgx_ext_return_long(lgx_vm_t *vm, long long v) {
+    lgx_val_t ret;
+    ret.type = T_LONG;
+    ret.v.l = v;
+
+    return lgx_ext_return(vm, &ret);
+}
+
+int lgx_ext_return_double(lgx_vm_t *vm, double v) {
+    lgx_val_t ret;
+    ret.type = T_DOUBLE;
+    ret.v.d = v;
+
+    return lgx_ext_return(vm, &ret);
+}

@@ -101,5 +101,6 @@ enum {
 #define PE(i) (   (i) >>  8         )
 
 int lgx_bc_print(unsigned *bc, unsigned bc_size);
+void lgx_bc_echo(unsigned n, unsigned i);
 
 #endif // LGX_BYTECODE_H

@@ -5,6 +5,11 @@
 #include "vm.h"
 #include "gc.h"
 
+#define R(r)  (vm->regs[r])
+#define C(r)  (vm->constant->table[r].v)
+#define G(r)  (vm->stack.buf[r])
+#define LGX_MAX_STACK_SIZE (256 << 8)
+
 // 输出当前的调用栈
 int lgx_vm_backtrace(lgx_vm_t *vm) {
     unsigned int base = vm->stack.base;
@@ -70,10 +75,19 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->pc = 0;
 
     // 初始化 main 函数
-    vm->regs[0].type = T_FUNCTION;
-    vm->regs[0].v.fun = lgx_fun_new(0);
-    vm->regs[0].v.fun->addr = 0;
-    vm->regs[0].v.fun->stack_size = bc->reg->max + 1;
+    R(0).type = T_FUNCTION;
+    R(0).v.fun = lgx_fun_new(0);
+    R(0).v.fun->addr = 0;
+    R(0).v.fun->stack_size = bc->reg->max + 1;
+    // 写入返回值地址
+    R(1).type = T_LONG;
+    R(1).v.l = 1;
+    // 写入返回地址
+    R(2).type = T_LONG;
+    R(2).v.l = -1;
+    // 写入堆栈地址
+    R(3).type = T_LONG;
+    R(3).v.l = 0;
 
     return 0;
 }
@@ -103,11 +117,6 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
     return 0;
 }
-
-#define R(r)  (vm->regs[r])
-#define C(r)  (vm->constant->table[r].v)
-#define G(r)  (vm->stack.buf[r])
-#define LGX_MAX_STACK_SIZE (256 << 8)
 
 // 确保堆栈上有足够的剩余空间
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
@@ -144,6 +153,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
 
     for(;;) {
         i = bc[vm->pc++];
+
+        // 单步执行
+        //lgx_bc_echo(vm->pc-1, i);
+        //getchar();
 
         switch(OP(i)) {
             case OP_MOV:{
@@ -610,7 +623,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
             }
             case OP_RET:{
                 // 跳转到调用点
-                vm->pc = R(2).v.l;
+                long long pc = R(2).v.l;
 
                 // 判断返回值
                 int ret_idx = R(1).v.l;
@@ -639,6 +652,15 @@ int lgx_vm_start(lgx_vm_t *vm) {
                 } else {
                     R(ret_idx).type = T_UNDEFINED;
                 }
+
+                if (UNEXPECTED(pc < 0)) {
+                    // 如果在顶层作用域 return，则终止运行
+                    // 此时，寄存器 1 中保存着返回值
+                    return 0;
+                } else {
+                    vm->pc = pc;
+                }
+
                 break;
             }
             case OP_ARRAY_SET:{
@@ -729,6 +751,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
                     lgx_gc_ref_del(&R(n));
                     R(n).type = T_UNDEFINED;
                 }
+
+                // 写入返回值
+                R(1).type = T_UNDEFINED;
+
                 return 0;
             }
             case OP_ECHO:{
