@@ -3,9 +3,11 @@
 #include "ext.h"
 
 #include "std_time.h"
+#include "std_coroutine.h"
 
 lgx_buildin_ext_t *buildin_exts[] = {
-    &ext_std_time_ctx
+    &ext_std_time_ctx,
+    &ext_std_coroutine_ctx
 };
 
 int lgx_ext_init(lgx_vm_t *vm) {

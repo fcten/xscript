@@ -547,7 +547,6 @@ xscript 标准库是以包的形式提供的。
 
 - os.thread.*
 - os.process.*
-
 - redis.*
 - mysql.*
 - net.http.*
