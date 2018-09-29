@@ -3,6 +3,12 @@
 #include "std_coroutine.h"
 
 int std_co_create(void *p) {
+    lgx_vm_t *vm = p;
+
+    lgx_fun_t *fun = vm->regs[4].v.fun;
+    // TODO 切换协程导致无法 return
+    lgx_co_create(p, fun);
+
     return lgx_ext_return_long(p, 0);
 }
 

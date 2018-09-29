@@ -5,23 +5,42 @@
 #include "../common/val.h"
 #include "../compiler/compiler.h"
 
+typedef enum {
+    CO_READY,
+    CO_RUNNING,
+    CO_SUSPEND,
+    CO_DIED
+} lgx_co_status;
+
 typedef struct {
-    lgx_list_t head;
     // 栈内存
     lgx_val_t *buf;
     // 栈总长度
     unsigned int size;
     // 可用栈起始地址
     unsigned int base;
-} lgx_vm_stack_t;
+} lgx_co_stack_t;
+
+typedef struct lgx_co_s {
+    lgx_list_t head;
+    // 协程状态
+    lgx_co_status status;
+    // 协程栈
+    lgx_co_stack_t stack;
+} lgx_co_t;
 
 typedef struct {
     // 字节码
     lgx_bc_t *bc;
 
-    // 栈内存
-    lgx_vm_stack_t stack;
-    // 寄存器组 (指向栈)
+    // 协程
+    lgx_co_t *co_running;
+    lgx_co_t *co_main;
+    lgx_list_t co_ready;
+    lgx_list_t co_suspend;
+    lgx_list_t co_died;
+
+    // 寄存器组 (指向当前协程栈)
     lgx_val_t *regs;
 
     // 堆内存
