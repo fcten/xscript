@@ -21,7 +21,7 @@ int lgx_ext_add_symbol(lgx_hash_t *hash, char *symbol, lgx_val_t *v) {
     n.k.type = T_STRING;
     n.k.v.str = lgx_str_new_ref(symbol, strlen(symbol));
     n.v = *v;
-    n.v.u.c.used = 0;
+    n.v.u.c.used = 1;
 
     if (lgx_hash_get(hash, &n.k)) {
         // 符号已存在
