@@ -16,7 +16,9 @@ function co_2() {
     }
 }
 
-echo "main\n";
+echo "main start\n";
 
 co_create(co_1);
 co_create(co_2);
+
+echo "main end\n";

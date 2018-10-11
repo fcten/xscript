@@ -8,9 +8,14 @@ int std_co_create(void *p) {
     unsigned base = vm->regs[0].v.fun->stack_size;
     lgx_fun_t *fun = vm->regs[base+4].v.fun;
 
-    lgx_co_create(p, fun);
+    lgx_co_t *co = lgx_co_create(p, fun);
 
-    return lgx_ext_return_long(p, 0);
+    // 在协程切换前写入返回值
+    lgx_ext_return_long(p, 0);
+
+    lgx_co_resume(vm, co);
+
+    return 0;
 }
 
 int std_co_resume(void *p) {
