@@ -27,6 +27,8 @@ typedef struct lgx_co_s {
     lgx_co_status status;
     // 协程栈
     lgx_co_stack_t stack;
+    // 程序计数
+    unsigned pc;
 } lgx_co_t;
 
 typedef struct {
@@ -61,9 +63,6 @@ typedef struct {
 
     // 常量表
     lgx_hash_t *constant;
-
-    // 程序计数
-    unsigned pc;
 
     // GC 开关
     unsigned gc_enable;

@@ -94,6 +94,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_ARRAY_ADD:
         case OP_CALL_SET:
         case OP_TYPEOF:
+        case OP_CALL:
             printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
             break;
         case OP_GLOBAL_GET:
@@ -101,20 +102,17 @@ void lgx_bc_echo(unsigned n, unsigned i) {
             printf("%4d %11s R[%d] G[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
             break;
         case OP_LOAD:
-        case OP_CALL:
             printf("%4d %11s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
             break;
         case OP_MOVI:
         case OP_TEST:
             printf("%4d %11s R[%d] %d\n", n, op_name[OP(i)], PA(i), PD(i));
             break;
-        case OP_CALL_NEW:
-            printf("%4d %11s C[%d]\n", n, op_name[OP(i)], PE(i));
-            break;
         case OP_JMP:
         case OP_ECHO:
         case OP_ARRAY_NEW:
         case OP_RET:
+        case OP_CALL_NEW:
             printf("%4d %11s R[%d]\n", n, op_name[OP(i)], PA(i));
             break;
         case OP_JMPI:

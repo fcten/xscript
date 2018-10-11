@@ -21,15 +21,10 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
         return NULL;
     }
 
-    lgx_list_init(&co->head);
+    co->pc = fun->addr;
 
-    if (vm->co_running) {
-        vm->co_running->status = CO_READY;
-        lgx_list_add_tail(&vm->co_running->head, &vm->co_ready);
-    }
-
-    co->status = CO_RUNNING;
-    vm->co_running = co;
+    co->status = CO_READY;
+    lgx_list_add_tail(&co->head, &vm->co_ready);
 
     lgx_val_t *R = co->stack.buf;
 
@@ -46,11 +41,34 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     R[3].type = T_LONG;
     R[3].v.l = 0;
 
-    vm->regs = co->stack.buf + co->stack.base;
-
     return co;
 }
 
 int lgx_co_yield(lgx_vm_t *vm) {
+    if (lgx_list_empty(&vm->co_ready)) {
+        return 1;
+    }
+
+    lgx_co_t *co = lgx_list_first_entry(&vm->co_ready, lgx_co_t, head);
+
+    return lgx_co_resume(vm, co);
+}
+
+int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
+    if (vm->co_running) {
+        vm->co_running->status = CO_READY;
+        lgx_list_add_tail(&vm->co_running->head, &vm->co_ready);
+    }
+
+    if (!lgx_list_empty(&co->head)) {
+        lgx_list_del(&co->head);
+    }
+    lgx_list_init(&co->head);
+
+    co->status = CO_RUNNING;
+    vm->co_running = co;
+
+    vm->regs = co->stack.buf + co->stack.base;
+
     return 0;
 }

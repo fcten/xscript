@@ -29,7 +29,7 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
 
 // TODO 使用真正的异常处理机制
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
-    printf("[runtime error: %d] ", vm->pc-1);
+    printf("[runtime error: %d] ", vm->co_running->pc-1);
 
     static char buf[128];
 
@@ -69,14 +69,12 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     
     vm->constant = bc->constant;
 
-    vm->pc = 0;
-
     return 0;
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
     // 释放 main 函数
-    lgx_fun_delete(vm->regs[0].v.fun);
+    //lgx_fun_delete(vm->regs[0].v.fun);
 
     // TODO 释放协程
     //xfree(vm->stack.buf);
@@ -136,10 +134,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
     unsigned *bc = vm->bc->bc;
 
     for(;;) {
-        i = bc[vm->pc++];
+        i = bc[vm->co_running->pc++];
 
         // 单步执行
-        //lgx_bc_echo(vm->pc-1, i);
+        //lgx_bc_echo(vm->co_running->pc-1, i);
         //getchar();
 
         switch(OP(i)) {
@@ -533,7 +531,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_TEST:{
                 if (EXPECTED(R(PA(i)).type == T_BOOL)) {
                     if (!R(PA(i)).v.l) {
-                        vm->pc += PD(i);
+                        vm->co_running->pc += PD(i);
                     }
                 } else {
                     throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
@@ -542,26 +540,26 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_JMP:{                
                 if (R(PA(i)).type == T_LONG) {
-                    vm->pc = R(PA(i)).v.l;
+                    vm->co_running->pc = R(PA(i)).v.l;
                 } else {
                     throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
             case OP_JMPI:{
-                vm->pc = PE(i);
+                vm->co_running->pc = PE(i);
                 break;
             }
             case OP_CALL_NEW:{
-                if (EXPECTED(C(PA(i)).type == T_FUNCTION)) {
+                if (EXPECTED(R(PA(i)).type == T_FUNCTION)) {
                     // 确保空余堆栈空间足够容纳本次函数调用
-                    if (UNEXPECTED(lgx_vm_checkstack(vm, C(PA(i)).v.fun->stack_size) != 0)) {
+                    if (UNEXPECTED(lgx_vm_checkstack(vm, R(PA(i)).v.fun->stack_size) != 0)) {
                         // runtime error
                         throw_exception(vm, "maximum call stack size exceeded");
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PA(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -570,12 +568,12 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL:{
-                if (EXPECTED(C(PD(i)).type == T_FUNCTION)) {
-                    lgx_fun_t *fun = C(PD(i)).v.fun;
+                if (EXPECTED(R(PD(i)).type == T_FUNCTION)) {
+                    lgx_fun_t *fun = R(PD(i)).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
                     // 写入函数信息
-                    R(base + 0) = C(PD(i));
+                    R(base + 0) = R(PD(i));
 
                     // 写入返回值地址
                     R(base + 1).type = T_LONG;
@@ -583,7 +581,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     // 写入返回地址
                     R(base + 2).type = T_LONG;
-                    R(base + 2).v.l = vm->pc;
+                    R(base + 2).v.l = vm->co_running->pc;
 
                     // 写入堆栈地址
                     R(base + 3).type = T_LONG;
@@ -597,11 +595,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
 
                         // 跳转到函数入口
-                        vm->pc = fun->addr;
+                        vm->co_running->pc = fun->addr;
                     }
                 } else {
                     // runtime error
-                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&C(PD(i))));
+                    throw_exception(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(PD(i))));
                 }
                 break;
             }
@@ -640,9 +638,12 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (UNEXPECTED(pc < 0)) {
                     // 如果在顶层作用域 return，则终止运行
                     // 此时，寄存器 1 中保存着返回值
+                    vm->co_running->status = CO_DIED;
+                    lgx_list_add_tail(&vm->co_running->head, &vm->co_died);
+                    vm->co_running = NULL;
                     return 0;
                 } else {
-                    vm->pc = pc;
+                    vm->co_running->pc = pc;
                 }
 
                 break;
@@ -751,12 +752,20 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             default:
-                printf("unknown op %d @ %d\n", OP(i), vm->pc);
+                printf("unknown op %d @ %d\n", OP(i), vm->co_running->pc);
                 return 1;
         }
     }
 }
 
 int lgx_vm_start(lgx_vm_t *vm) {
-    return lgx_vm_execute(vm);
+    lgx_co_resume(vm, vm->co_main);
+    
+    while(lgx_vm_execute(vm) == 0) {
+        if (lgx_co_yield(vm)) {
+            break;
+        }
+    }
+
+    return 0;
 }

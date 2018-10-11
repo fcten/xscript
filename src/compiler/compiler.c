@@ -34,6 +34,7 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     s.buffer = ((lgx_ast_node_token_t *)node)->tk_start;
     s.length = ((lgx_ast_node_token_t *)node)->tk_length;
 
+    // 局部变量
     v = lgx_scope_local_val_get(node, &s);
     if (v) {
         v->u.c.used = 1;
@@ -43,12 +44,19 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
         return 0;
     }
 
+    // 全局变量
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
         v->u.c.used = 1;
 
-        if (global || v->type == T_FUNCTION || v->u.c.type == R_LOCAL) {
-            *expr = *v;
+        *expr = *v;
+
+        if (v->type == T_FUNCTION) {
+            expr->u.c.type = R_TEMP;
+            expr->u.c.reg = reg_pop(bc);
+            bc_load(bc, expr, v);
+        } else if (global || v->u.c.type == R_LOCAL) {
+            //*expr = *v;
         } else {
             expr->u.c.type = R_TEMP;
             expr->u.c.reg = reg_pop(bc);
@@ -652,11 +660,10 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    int f = const_get(bc, &e1);
-    reg_free(bc, &e1);
+    lgx_fun_t *fun = e1.v.fun;
 
     // 实参数量必须小于等于形参
-    if (node->child[1]->children > e1.v.fun->args_num) {
+    if (node->child[1]->children > fun->args_num) {
         bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -668,22 +675,22 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         bc_expr(bc, node->child[1]->child[i], &expr[i]);
     }
 
-    bc_call_new(bc, f);
+    bc_call_new(bc, e1.u.c.reg);
 
-    for(i = 0; i < e1.v.fun->args_num; i++) {
+    for(i = 0; i < fun->args_num; i++) {
         if (i < node->child[1]->children) {
-            if (e1.v.fun->args[i].type != T_UNDEFINED &&
+            if (fun->args[i].type != T_UNDEFINED &&
                 expr[i].type != T_UNDEFINED &&
-                e1.v.fun->args[i].type != expr[i].type) {
-                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->child[1]->line, lgx_val_typeof(&e1.v.fun->args[i]), lgx_val_typeof(&expr[i]));
+                fun->args[i].type != expr[i].type) {
+                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->child[1]->line, lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
                 return 1;
             }
 
             bc_call_set(bc, i+4, &expr[i]);
             reg_free(bc, &expr[i]);
         } else {
-            if (!e1.v.fun->args[i].u.c.init) {
-                bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line, lgx_val_typeof(&e1));
+            if (!fun->args[i].u.c.init) {
+                bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line);
                 return 1;
             }
         }
@@ -691,10 +698,12 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     xfree(expr);
 
-    e->type = e1.v.fun->ret.type;
+    e->type = fun->ret.type;
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
-    bc_call(bc, e, f);
+    bc_call(bc, e, e1.u.c.reg);
+
+    reg_free(bc, &e1);
 
     return 0;
 }
@@ -883,8 +892,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_hash_node_t* next = node->u.symbols->head;
             // 为当前作用域的变量分配寄存器
             while (next) {
-                next->v.u.c.type = R_LOCAL;
-                next->v.u.c.reg = reg_pop(bc);
+                if (next->v.type != T_FUNCTION) {
+                    next->v.u.c.reg = reg_pop(bc);
+                }
                 next = next->order;
             }
 
@@ -955,7 +965,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     bc_error(bc, "[Error] [Line:%d] unused variable `%.*s`\n", node->line, next->k.v.str->length, next->k.v.str->buffer);
                     return 1;
                 }
-                reg_push(bc, next->v.u.c.reg);
+                if (next->v.type != T_FUNCTION) {
+                    reg_push(bc, next->v.u.c.reg);
+                }
                 next = next->order;
             }
             break;
@@ -1448,7 +1460,11 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
         return 1;
     }
 
-    bc_hlt(bc);    
+    lgx_val_t ret;
+    lgx_val_init(&ret);
+    ret.type = T_UNDEFINED;
+    ret.u.c.type = R_LOCAL;
+    bc_ret(bc, &ret);
     return 0;
 }
 
