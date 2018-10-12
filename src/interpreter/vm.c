@@ -17,7 +17,7 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
     while (1) {
         printf("  <function:%d> %d\n", vm->co_running->stack.buf[base].v.fun->addr, base);
 
-        if (vm->co_running->stack.buf[base+3].type == T_LONG) {
+        if (base != 0) {
             base = vm->co_running->stack.buf[base+3].v.l;
         } else {
             break;
@@ -617,10 +617,14 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 }
 
                 // 释放所有局部变量和临时变量
-                int n;
-                for (n = 4; n < R(0).v.fun->stack_size; n ++) {
-                    lgx_gc_ref_del(&R(n));
-                    R(n).type = T_UNDEFINED;
+                if (UNEXPECTED(pc < 0 && vm->co_running == vm->co_main)) {
+                    // 主协程退出时保留堆栈，以保证全局变量可以访问
+                } else {
+                    int n;
+                    for (n = 4; n < R(0).v.fun->stack_size; n ++) {
+                        lgx_gc_ref_del(&R(n));
+                        R(n).type = T_UNDEFINED;
+                    }
                 }
 
                 // 切换执行堆栈

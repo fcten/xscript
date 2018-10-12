@@ -29,6 +29,9 @@ typedef struct lgx_co_s {
     lgx_co_stack_t stack;
     // 程序计数
     unsigned pc;
+    // todo 回调函数
+    // on_yield
+    // data
 } lgx_co_t;
 
 typedef struct {
