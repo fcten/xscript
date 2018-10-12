@@ -18,10 +18,6 @@ int std_co_create(void *p) {
     return 0;
 }
 
-int std_co_resume(void *p) {
-    return lgx_ext_return_long(p, 0);
-}
-
 int std_co_yield(void *p) {
     lgx_vm_t *vm = p;
 

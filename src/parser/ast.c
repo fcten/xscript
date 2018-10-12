@@ -500,6 +500,10 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
             ast_parse_bsc_expression(ast, parent);
     }
 
+    if (parent->children == 0) {
+        return;
+    }
+
     int p = ast_operator_precedence(ast->cur_token);
     lgx_ast_node_t* binary_expression;
     while (1) {

@@ -72,3 +72,13 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
 
     return 0;
 }
+
+int lgx_co_suspend(lgx_vm_t *vm) {
+    if (vm->co_running) {
+        vm->co_running->status = CO_SUSPEND;
+        lgx_list_add_tail(&vm->co_running->head, &vm->co_suspend);
+        vm->co_running = NULL;
+    }
+
+    return 0;
+}
