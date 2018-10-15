@@ -55,7 +55,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     lgx_fun_t *fun = lgx_fun_new(0);
     fun->addr = 0;
     fun->stack_size = bc->reg->max + 1;
-    vm->co_main = lgx_co_create(vm, fun);
+    vm->co_main = lgx_co_create(vm, fun, NULL);
     if (!vm->co_main) {
         return 1;
     }
@@ -766,7 +766,7 @@ int lgx_vm_start(lgx_vm_t *vm) {
     lgx_co_resume(vm, vm->co_main);
     
     while(lgx_vm_execute(vm) == 0) {
-        if (lgx_co_yield(vm)) {
+        if (lgx_co_schedule(vm)) {
             break;
         }
     }

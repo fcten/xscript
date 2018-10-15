@@ -21,6 +21,8 @@ typedef struct {
     unsigned int base;
 } lgx_co_stack_t;
 
+typedef struct lgx_vm_s lgx_vm_t;
+
 typedef struct lgx_co_s {
     lgx_list_t head;
     // 协程状态
@@ -29,12 +31,11 @@ typedef struct lgx_co_s {
     lgx_co_stack_t stack;
     // 程序计数
     unsigned pc;
-    // todo 回调函数
-    // on_yield
-    // data
+    // 协程 yield 时触发的回调函数
+    int (*on_yield)(lgx_vm_t *vm);
 } lgx_co_t;
 
-typedef struct {
+struct lgx_vm_s {
     // 字节码
     lgx_bc_t *bc;
 
@@ -69,7 +70,7 @@ typedef struct {
 
     // GC 开关
     unsigned gc_enable;
-} lgx_vm_t;
+};
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);
 int lgx_vm_start(lgx_vm_t *vm);
