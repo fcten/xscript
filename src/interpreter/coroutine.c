@@ -16,7 +16,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun, int (*on_yield)(struct lgx
         return NULL;
     }
 
-    if (lgx_co_stack_init(&co->stack, 256)) {
+    if (lgx_co_stack_init(&co->stack, fun->stack_size)) {
         xfree(co);
         return NULL;
     }
