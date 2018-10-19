@@ -51,15 +51,6 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     lgx_list_init(&vm->co_suspend);
     lgx_list_init(&vm->co_died);
 
-    // 创建主协程
-    lgx_fun_t *fun = lgx_fun_new(0);
-    fun->addr = 0;
-    fun->stack_size = bc->reg->max + 1;
-    vm->co_main = lgx_co_create(vm, fun, NULL);
-    if (!vm->co_main) {
-        return 1;
-    }
-
     lgx_list_init(&vm->heap.young);
     lgx_list_init(&vm->heap.old);
     vm->heap.young_size = 0;
@@ -68,6 +59,21 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->bc = bc;
     
     vm->constant = bc->constant;
+
+    // 创建消息队列
+    vm->queue = lgx_rb_create(256);
+    if (!vm->queue) {
+        return 1;
+    }
+
+    // 创建主协程
+    lgx_fun_t *fun = lgx_fun_new(0);
+    fun->addr = 0;
+    fun->stack_size = bc->reg->max + 1;
+    vm->co_main = lgx_co_create(vm, fun, NULL);
+    if (!vm->co_main) {
+        return 1;
+    }
 
     return 0;
 }
@@ -78,6 +84,8 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
     // TODO 释放协程
     //xfree(vm->stack.buf);
+
+    // TODO 释放消息队列
 
     // 清理所有变量
     lgx_list_t *list = vm->heap.young.next;

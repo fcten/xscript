@@ -3,6 +3,7 @@
 
 #include "../common/list.h"
 #include "../common/val.h"
+#include "../common/ringbuffer.h"
 #include "../compiler/compiler.h"
 
 typedef enum {
@@ -70,6 +71,9 @@ struct lgx_vm_s {
 
     // GC 开关
     unsigned gc_enable;
+
+    // 消息队列
+    lgx_rb_t *queue;
 };
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);
