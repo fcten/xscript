@@ -11,4 +11,7 @@ int lgx_co_yield(lgx_vm_t *vm);
 int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_suspend(lgx_vm_t *vm);
 
+int lgx_co_has_task(lgx_vm_t *vm);
+int lgx_co_has_ready_task(lgx_vm_t *vm);
+
 #endif // LGX_COROUTINE_H

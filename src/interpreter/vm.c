@@ -28,6 +28,7 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
 }
 
 // TODO 使用真正的异常处理机制
+// TODO 未捕获的异常只导致该协程退出，而不是使整个程序退出
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     printf("[runtime error: %d] ", vm->co_running->pc-1);
 
@@ -60,6 +61,12 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     
     vm->constant = bc->constant;
 
+    // 创建事件池
+    vm->events = wbt_event_init();
+    if (!vm->events) {
+        return 1;
+    }
+
     // 创建消息队列
     vm->queue = lgx_rb_create(256);
     if (!vm->queue) {
@@ -67,9 +74,12 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     }
 
     // 创建主协程
+    vm->co_running = NULL;
+
     lgx_fun_t *fun = lgx_fun_new(0);
     fun->addr = 0;
     fun->stack_size = bc->reg->max + 1;
+
     vm->co_main = lgx_co_create(vm, fun, NULL);
     if (!vm->co_main) {
         return 1;
@@ -86,6 +96,8 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     //xfree(vm->stack.buf);
 
     // TODO 释放消息队列
+
+    // TODO 释放事件池
 
     // 清理所有变量
     lgx_list_t *list = vm->heap.young.next;
@@ -138,6 +150,10 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
 }
 
 int lgx_vm_execute(lgx_vm_t *vm) {
+    if (!vm->co_running) {
+        return 0;
+    }
+
     unsigned i;
     unsigned *bc = vm->bc->bc;
 
@@ -597,6 +613,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     if (fun->buildin) {
                         fun->buildin(vm);
+                        // 如果触发了协程切换，则返回
+                        if (vm->co_running == NULL) {
+                            return 0;
+                        }
                     } else {
                         // 切换执行堆栈
                         vm->co_running->stack.base += R(0).v.fun->stack_size;
@@ -764,20 +784,36 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             default:
-                printf("unknown op %d @ %d\n", OP(i), vm->co_running->pc);
-                return 1;
+                throw_exception(vm, "unknown op %d @ %d\n", OP(i), vm->co_running->pc);
         }
     }
+
+    return 0;
 }
 
 int lgx_vm_start(lgx_vm_t *vm) {
+    time_t timeout = 0;
+
     lgx_co_resume(vm, vm->co_main);
-    
-    while(lgx_vm_execute(vm) == 0) {
-        if (lgx_co_schedule(vm)) {
+
+    while (1) {
+        lgx_vm_execute(vm);
+
+        if (!lgx_co_has_task(vm)) {
+            // 全部协程均执行完毕
             break;
         }
+
+        if (lgx_co_has_ready_task(vm)) {
+            lgx_co_schedule(vm);
+        } else {
+            timeout = wbt_timer_process();
+            wbt_event_wait(vm->events, timeout);
+            wbt_time_update();
+            timeout = wbt_timer_process();
+        }
     }
+
 
     return 0;
 }

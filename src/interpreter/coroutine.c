@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "coroutine.h"
 
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
@@ -45,14 +46,41 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun, int (*on_yield)(struct lgx
     return co;
 }
 
-int lgx_co_schedule(lgx_vm_t *vm) {
+int lgx_co_set_on_yield(lgx_co_t *co, int (*on_yield)(struct lgx_vm_s *vm)) {
+    return 0;
+}
+
+int lgx_co_set_on_resume(lgx_co_t *co, int (*on_yield)(struct lgx_vm_s *vm)) {
+    return 0;
+}
+
+int lgx_co_has_ready_task(lgx_vm_t *vm) {
+    if (!lgx_list_empty(&vm->co_ready)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int lgx_co_has_task(lgx_vm_t *vm) {
     if (vm->co_running) {
         return 1;
     }
 
-    if (lgx_list_empty(&vm->co_ready)) {
+    if (!lgx_list_empty(&vm->co_ready)) {
         return 1;
     }
+
+    if (!lgx_list_empty(&vm->co_suspend)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int lgx_co_schedule(lgx_vm_t *vm) {
+    assert(vm->co_running == NULL);
+    assert(lgx_co_has_ready_task(vm));
 
     lgx_co_t *co = lgx_list_first_entry(&vm->co_ready, lgx_co_t, head);
 
@@ -102,6 +130,10 @@ int lgx_co_suspend(lgx_vm_t *vm) {
     }
 
     lgx_co_t *co = vm->co_running;
+
+    if (co->on_yield) {
+        co->on_yield(vm);
+    }
 
     vm->co_running = NULL;
 

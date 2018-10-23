@@ -27,7 +27,7 @@ typedef struct {
     // 全局变量
     lgx_hash_t* global;
 
-    int errno;
+    int err_no;
     char *err_info;
     int err_len;
 } lgx_bc_t;

@@ -5,6 +5,7 @@
 #include "../common/val.h"
 #include "../common/ringbuffer.h"
 #include "../compiler/compiler.h"
+#include "event.h"
 
 typedef enum {
     CO_READY,
@@ -74,6 +75,9 @@ struct lgx_vm_s {
 
     // 消息队列
     lgx_rb_t *queue;
+
+    // 事件池
+    wbt_event_pool_t *events;
 };
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);

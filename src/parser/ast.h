@@ -103,7 +103,7 @@ typedef struct lgx_ast {
     
     lgx_ast_node_t* root;
 
-    int errno;
+    int err_no;
     char *err_info;
     int err_len;
 } lgx_ast_t;

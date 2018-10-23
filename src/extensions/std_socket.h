@@ -2,7 +2,6 @@
 #define LGX_EXT_STD_SOCKET_H
 
 #include "ext.h"
-#include "../interpreter/coroutine.h"
 
 extern lgx_buildin_ext_t ext_std_socket_ctx;
 

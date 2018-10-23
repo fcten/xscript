@@ -149,7 +149,7 @@ int lgx_ast_cleanup(lgx_ast_t* ast) {
 void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
     va_list   args;
 
-    if (ast->errno) {
+    if (ast->err_no) {
         return;
     }
 
@@ -157,7 +157,7 @@ void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
     ast->err_len = vsnprintf(ast->err_info, 256, fmt, args);
     va_end(args);
     
-    ast->errno = 1;
+    ast->err_no = 1;
 }
 
 int ast_next(lgx_ast_t* ast) {

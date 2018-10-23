@@ -4,10 +4,12 @@
 
 #include "std_time.h"
 #include "std_coroutine.h"
+#include "std_socket.h"
 
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
-    &ext_std_coroutine_ctx
+    &ext_std_coroutine_ctx,
+    &ext_std_socket_ctx
 };
 
 int lgx_ext_init(lgx_vm_t *vm) {
@@ -73,6 +75,22 @@ int lgx_ext_return_double(lgx_vm_t *vm, double v) {
     lgx_val_t ret;
     ret.type = T_DOUBLE;
     ret.v.d = v;
+
+    return lgx_ext_return(vm, &ret);
+}
+
+int lgx_ext_return_true(lgx_vm_t *vm) {
+    lgx_val_t ret;
+    ret.type = T_BOOL;
+    ret.v.d = 1;
+
+    return lgx_ext_return(vm, &ret);
+}
+
+int lgx_ext_return_false(lgx_vm_t *vm) {
+    lgx_val_t ret;
+    ret.type = T_BOOL;
+    ret.v.d = 0;
 
     return lgx_ext_return(vm, &ret);
 }

@@ -12,4 +12,6 @@ aux_source_directory(extensions XSCRIPT_SRCS)
 # Target
 add_executable(xscript ${XSCRIPT_SRCS})
 
+target_link_libraries(xscript ${PROJECT_BINARY_DIR}/3rd/webit/build/src/libwebit_static.a)
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})

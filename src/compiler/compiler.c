@@ -16,7 +16,7 @@
 void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     va_list   args;
 
-    if (bc->errno) {
+    if (bc->err_no) {
         return;
     }
 
@@ -24,7 +24,7 @@ void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
     bc->err_len = vsnprintf(bc->err_info, 256, fmt, args);
     va_end(args);
     
-    bc->errno = 1;
+    bc->err_no = 1;
 }
 
 static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, int global) {
@@ -1451,7 +1451,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
 
     bc->err_info = xmalloc(256);
     bc->err_len = 0;
-    bc->errno = 0;
+    bc->err_no = 0;
 
     bc->constant = lgx_hash_new(32);
 
