@@ -791,12 +791,14 @@ int lgx_vm_execute(lgx_vm_t *vm) {
     return 0;
 }
 
+extern wbt_atomic_t wbt_wating_to_exit;
+
 int lgx_vm_start(lgx_vm_t *vm) {
     time_t timeout = 0;
 
     lgx_co_resume(vm, vm->co_main);
 
-    while (1) {
+    while (!wbt_wating_to_exit) {
         lgx_vm_execute(vm);
 
         if (!lgx_co_has_task(vm)) {

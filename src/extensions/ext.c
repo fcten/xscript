@@ -3,11 +3,13 @@
 #include "ext.h"
 
 #include "std_time.h"
+#include "std_math.h"
 #include "std_coroutine.h"
 #include "std_socket.h"
 
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
+    &ext_std_math_ctx,
     &ext_std_coroutine_ctx,
     &ext_std_socket_ctx
 };
