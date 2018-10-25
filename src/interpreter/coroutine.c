@@ -11,7 +11,7 @@ int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     return 0;
 }
 
-lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun, int (*on_yield)(struct lgx_vm_s *vm)) {
+lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     lgx_co_t *co = xcalloc(1, sizeof(lgx_co_t));
     if (!co) {
         return NULL;
@@ -23,7 +23,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun, int (*on_yield)(struct lgx
     }
 
     co->pc = fun->addr;
-    co->on_yield = on_yield;
+    co->on_yield = NULL;
 
     co->status = CO_READY;
     lgx_list_add_tail(&co->head, &vm->co_ready);
@@ -87,25 +87,6 @@ int lgx_co_schedule(lgx_vm_t *vm) {
     return lgx_co_resume(vm, co);
 }
 
-int lgx_co_yield(lgx_vm_t *vm) {
-    if (!vm->co_running) {
-        return 1;
-    }
-
-    lgx_co_t *co = vm->co_running;
-
-    if (co->on_yield) {
-        co->on_yield(vm);
-    }
-
-    vm->co_running = NULL;
-
-    co->status = CO_READY;
-    lgx_list_add_tail(&co->head, &vm->co_ready);
-
-    return 0;
-}
-
 int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     if (vm->co_running) {
         lgx_co_yield(vm);
@@ -124,21 +105,56 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     return 0;
 }
 
-int lgx_co_suspend(lgx_vm_t *vm) {
+int lgx_co_yield(lgx_vm_t *vm) {
     if (!vm->co_running) {
         return 1;
     }
 
     lgx_co_t *co = vm->co_running;
+    co->status = CO_READY;
 
     if (co->on_yield) {
         co->on_yield(vm);
     }
 
     vm->co_running = NULL;
+    lgx_list_add_tail(&co->head, &vm->co_ready);
 
+    return 0;
+}
+
+int lgx_co_suspend(lgx_vm_t *vm) {
+    if (!vm->co_running) {
+        return 1;
+    }
+
+    lgx_co_t *co = vm->co_running;
     co->status = CO_SUSPEND;
+
+    if (co->on_yield) {
+        co->on_yield(vm);
+    }
+
+    vm->co_running = NULL;
     lgx_list_add_tail(&co->head, &vm->co_suspend);
+
+    return 0;
+}
+
+int lgx_co_died(lgx_vm_t *vm) {
+    if (!vm->co_running) {
+        return 1;
+    }
+
+    lgx_co_t *co = vm->co_running;
+    co->status = CO_DIED;
+
+    if (co->on_yield) {
+        co->on_yield(vm);
+    }
+
+    vm->co_running = NULL;
+    lgx_list_add_tail(&co->head, &vm->co_died);
 
     return 0;
 }

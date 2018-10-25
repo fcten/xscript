@@ -35,6 +35,7 @@ typedef struct lgx_co_s {
     unsigned pc;
     // 协程 yield 时触发的回调函数
     int (*on_yield)(lgx_vm_t *vm);
+    void *ctx;
 } lgx_co_t;
 
 struct lgx_vm_s {

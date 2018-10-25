@@ -80,7 +80,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     fun->addr = 0;
     fun->stack_size = bc->reg->max + 1;
 
-    vm->co_main = lgx_co_create(vm, fun, NULL);
+    vm->co_main = lgx_co_create(vm, fun);
     if (!vm->co_main) {
         return 1;
     }
@@ -670,9 +670,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (UNEXPECTED(pc < 0)) {
                     // 如果在顶层作用域 return，则终止运行
                     // 此时，寄存器 1 中保存着返回值
-                    vm->co_running->status = CO_DIED;
-                    lgx_list_add_tail(&vm->co_running->head, &vm->co_died);
-                    vm->co_running = NULL;
+                    lgx_co_died(vm);
                     return 0;
                 } else {
                     vm->co_running->pc = pc;

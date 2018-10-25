@@ -9,7 +9,7 @@ int std_co_create(void *p) {
     lgx_fun_t *fun = vm->regs[base+4].v.fun;
     long long l = vm->regs[base+5].v.l;
 
-    lgx_co_t *co = lgx_co_create(p, fun, NULL);
+    lgx_co_t *co = lgx_co_create(p, fun);
 
     // 写入参数
     co->stack.buf[4].type = T_LONG;
