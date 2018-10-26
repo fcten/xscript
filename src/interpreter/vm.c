@@ -67,12 +67,6 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
         return 1;
     }
 
-    // 创建消息队列
-    vm->queue = lgx_rb_create(256);
-    if (!vm->queue) {
-        return 1;
-    }
-
     // 创建主协程
     vm->co_running = NULL;
 

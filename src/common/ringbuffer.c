@@ -20,6 +20,11 @@ lgx_rb_t* lgx_rb_create(unsigned size) {
     return rb;
 }
 
+int lgx_rb_delete(lgx_rb_t *rb) {
+    xfree(rb);
+    return 0;
+}
+
 lgx_val_t* lgx_rb_read(lgx_rb_t *rb) {
     if (rb->tail < rb->head) {
         return &rb->buf[rb->tail % rb->size];

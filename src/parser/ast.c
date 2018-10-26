@@ -590,6 +590,8 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             lgx_val_t *t;
             if ((t = lgx_scope_val_add(parent->child[2], &s))) {
                 ast_set_variable_type(t, parent->child[1]->child[i]->u.type);
+                // 函数参数不检查是否使用
+                t->u.c.used = 1;
             } else {
                 ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
                 return;

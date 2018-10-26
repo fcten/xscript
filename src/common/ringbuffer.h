@@ -11,6 +11,7 @@ typedef struct {
 } lgx_rb_t;
 
 lgx_rb_t* lgx_rb_create(unsigned size);
+int lgx_rb_delete(lgx_rb_t *rb);
 lgx_val_t* lgx_rb_read(lgx_rb_t *rb);
 int lgx_rb_remove(lgx_rb_t *rb);
 int lgx_rb_write(lgx_rb_t *rb, lgx_val_t *val);
