@@ -1342,7 +1342,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     return 1;
                 }
 
-                if (!is_auto(&ret) && !is_auto(&r) && ret.type != r.type) {
+                if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
                     bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&ret), lgx_val_typeof(&r));
                     return 1;
                 }

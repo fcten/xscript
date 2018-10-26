@@ -5,27 +5,23 @@
 #include "../common/str.h"
 #include "../common/fun.h"
 #include "../interpreter/coroutine.h"
+#include "../interpreter/thread.h"
 #include "std_coroutine.h"
 
 #define WBT_MAX_PROTO_BUF_LEN (64 * 1024)
 
 extern time_t wbt_cur_mtime;
 
-typedef struct {
-    lgx_vm_t *vm;
-    lgx_fun_t *on_message;
-} lgx_std_socket_server_t;
-
 wbt_status std_socket_on_close(wbt_event_t *ev) {
     //wbt_log_debug("connection %d close.",ev->fd);
     
-    lgx_std_socket_server_t *server = ev->ctx;
+    lgx_thread_t *thread = ev->ctx;
 
     //if( wbt_module_on_close(ev) != WBT_OK ) {
         // 似乎并不能做什么
     //}
 
-    wbt_event_del(server->vm->events, ev);
+    wbt_event_del(thread->vm->events, ev);
     
     //wbt_connection_count --;
 
@@ -70,9 +66,9 @@ int std_socket_on_yield(lgx_vm_t *vm) {
 }
 
 wbt_status std_socket_on_recv(wbt_event_t *ev) {
-    //printf("on_recv %d\n", ev->fd);
+    //printf("[%lu] on_recv %d \n", pthread_self(), ev->fd);
 
-    lgx_std_socket_server_t *server = ev->ctx;
+    lgx_thread_t *thread = ev->ctx;
 
     if( ev->buff == NULL ) {
         ev->buff = xmalloc(WBT_MAX_PROTO_BUF_LEN);
@@ -125,7 +121,7 @@ wbt_status std_socket_on_recv(wbt_event_t *ev) {
     ev->buff = NULL;
 
     // 调用 xscript
-    lgx_co_t *co = lgx_co_create(server->vm, server->on_message);
+    lgx_co_t *co = lgx_co_create(thread->vm, thread->fun);
     co->on_yield = std_socket_on_yield;
     co->ctx = ev;
 
@@ -133,8 +129,8 @@ wbt_status std_socket_on_recv(wbt_event_t *ev) {
 }
 
 wbt_status std_socket_on_send(wbt_event_t *ev) {
-    //printf("on_send %d\n", ev->fd);
-    lgx_std_socket_server_t *server = ev->ctx;
+    //printf("[%lu] on_send %d\n", pthread_self(), ev->fd);
+    lgx_thread_t *thread = ev->ctx;
 
     int on = 1;
     /* TODO 发送大文件时，使用 TCP_CORK 关闭 Nagle 算法保证网络利用率 */
@@ -174,7 +170,7 @@ wbt_status std_socket_on_send(wbt_event_t *ev) {
     ev->events = WBT_EV_READ | WBT_EV_ET;
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
 
-    if (wbt_event_mod(server->vm->events, ev) != WBT_OK) {
+    if (wbt_event_mod(thread->vm->events, ev) != WBT_OK) {
         std_socket_on_close(ev);
         return WBT_OK;
     }
@@ -184,13 +180,13 @@ wbt_status std_socket_on_send(wbt_event_t *ev) {
 
 wbt_status std_socket_on_timeout(wbt_timer_t *timer) {
     wbt_event_t *ev = wbt_timer_entry(timer, wbt_event_t, timer);
-    //printf("on_timeout %d\n", ev->fd);
+    //printf("[%lu] on_timeout %d\n", pthread_self(), ev->fd);
 
     return std_socket_on_close(ev);
 }
 
 wbt_status std_socket_on_accept(wbt_event_t *ev) {
-    lgx_std_socket_server_t *server = ev->ctx;
+    lgx_thread_t *thread = ev->ctx;
 
     struct sockaddr_in remote;
     int addrlen = sizeof(remote);
@@ -203,7 +199,10 @@ wbt_status std_socket_on_accept(wbt_event_t *ev) {
 #endif
         /* inet_ntoa 在 linux 下使用静态缓存实现，无需释放 */
         //wbt_log_add("%s\n", inet_ntoa(remote.sin_addr));
-        //printf("on_accept %d\n", conn_sock);
+        //printf("[%lu] on_accept %d\n", pthread_self(),  conn_sock);
+
+        //lgx_thread_t *worker = lgx_thread_get(thread->pool);
+        lgx_thread_t *worker = thread->pool->threads[0];
 
         wbt_event_t *p_ev, tmp_ev;
         tmp_ev.timer.on_timeout = std_socket_on_timeout;
@@ -213,12 +212,14 @@ wbt_status std_socket_on_accept(wbt_event_t *ev) {
         tmp_ev.events  = WBT_EV_READ | WBT_EV_ET;
         tmp_ev.fd      = conn_sock;
 
-        if((p_ev = wbt_event_add(server->vm->events, &tmp_ev)) == NULL) {
+        if((p_ev = wbt_event_add(worker->vm->events, &tmp_ev)) == NULL) {
             wbt_close_socket(conn_sock);
             continue;
         }
 
-        p_ev->ctx = server;
+        p_ev->ctx = worker;
+        
+        //p_ev->ctx= server;
 
         /*
         wbt_connection_count ++;
@@ -255,64 +256,61 @@ int std_socket_server_create(void *p) {
     long long port = vm->regs[base+4].v.l;
     lgx_fun_t *fun = vm->regs[base+5].v.fun;
 
-    // 创建监听端口并加入事件循环
-    wbt_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(fd <= 0) {
-        //wbt_log_add("create socket failed\n");
-        return lgx_ext_return_false(vm);
-    }
-    /* 把监听socket设置为非阻塞方式 */
-    if( wbt_nonblocking(fd) == -1 ) {
-        //wbt_log_add("set nonblocking failed\n");
-        return lgx_ext_return_false(vm);
-    }
+    if (vm->thread->id == 0) {
+        // 创建监听端口并加入事件循环
+        wbt_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
+        if(fd <= 0) {
+            //wbt_log_add("create socket failed\n");
+            return lgx_ext_return_false(vm);
+        }
+        /* 把监听socket设置为非阻塞方式 */
+        if( wbt_nonblocking(fd) == -1 ) {
+            //wbt_log_add("set nonblocking failed\n");
+            return lgx_ext_return_false(vm);
+        }
 
-    /* 在重启程序以及进行热更新时，避免 TIME_WAIT 和 CLOSE_WAIT 状态的连接导致 bind 失败 */
-    int on = 1; 
-    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) != 0) {  
-        //wbt_log_add("set SO_REUSEADDR failed\n");  
-        return lgx_ext_return_false(vm);
-    }
+        /* 在重启程序以及进行热更新时，避免 TIME_WAIT 和 CLOSE_WAIT 状态的连接导致 bind 失败 */
+        int on = 1; 
+        if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) != 0) {  
+            //wbt_log_add("set SO_REUSEADDR failed\n");  
+            return lgx_ext_return_false(vm);
+        }
 
-    /* bind & listen */    
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(port);
+        /* bind & listen */    
+        struct sockaddr_in sin;
+        memset(&sin, 0, sizeof(sin));
+        sin.sin_family = AF_INET;
+        sin.sin_addr.s_addr = INADDR_ANY;
+        sin.sin_port = htons(port);
 
-    if(bind(fd, (const struct sockaddr*)&sin, sizeof(sin)) != 0) {
-        //wbt_log_add("bind failed\n");
-        return lgx_ext_return_false(vm);
-    }
+        if(bind(fd, (const struct sockaddr*)&sin, sizeof(sin)) != 0) {
+            //wbt_log_add("bind failed\n");
+            return lgx_ext_return_false(vm);
+        }
 
-    if(listen(fd, WBT_CONN_BACKLOG) != 0) {
-        //wbt_log_add("listen failed\n");
-        return lgx_ext_return_false(vm);
-    }
+        if(listen(fd, WBT_CONN_BACKLOG) != 0) {
+            //wbt_log_add("listen failed\n");
+            return lgx_ext_return_false(vm);
+        }
 
-    lgx_std_socket_server_t *server = xmalloc(sizeof(lgx_std_socket_server_t));
-    if (!server) {
-        return lgx_ext_return_false(vm);
-    }
-    server->vm = vm;
-    server->on_message = fun;
+        wbt_event_t ev, *p_ev;
+        memset(&ev, 0, sizeof(wbt_event_t));
 
-    wbt_event_t ev, *p_ev;
-    memset(&ev, 0, sizeof(wbt_event_t));
+        ev.on_recv = std_socket_on_accept;
+        ev.on_send = NULL;
+        ev.events = WBT_EV_READ | WBT_EV_ET;
+        ev.fd = fd;
 
-    ev.on_recv = std_socket_on_accept;
-    ev.on_send = NULL;
-    ev.events = WBT_EV_READ | WBT_EV_ET;
-    ev.fd = fd;
+        if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
+            wbt_close_socket(fd);
+            return lgx_ext_return_false(vm);
+        }
 
-    if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
-        xfree(server);
-        wbt_close_socket(fd);
-        return lgx_ext_return_false(vm);
+        p_ev->ctx = vm->thread;
     }
 
-    p_ev->ctx = server;
+    vm->thread->vm = vm;
+    vm->thread->fun = fun;
 
     lgx_ext_return_true(vm);
 

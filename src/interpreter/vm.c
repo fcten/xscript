@@ -801,10 +801,10 @@ int lgx_vm_start(lgx_vm_t *vm) {
         if (lgx_co_has_ready_task(vm)) {
             lgx_co_schedule(vm);
         } else {
-            timeout = wbt_timer_process();
+            timeout = wbt_timer_process(&vm->events->timer);
             wbt_event_wait(vm->events, timeout);
             wbt_time_update();
-            timeout = wbt_timer_process();
+            timeout = wbt_timer_process(&vm->events->timer);
         }
     }
 

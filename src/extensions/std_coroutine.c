@@ -59,7 +59,7 @@ int std_co_sleep(void *p) {
     ctx->vm = vm;
     ctx->co = vm->co_running;
 
-    if (wbt_timer_add(&ctx->timer) != WBT_OK) {
+    if (wbt_timer_add(&vm->events->timer, &ctx->timer) != WBT_OK) {
         xfree(ctx);
         return lgx_ext_return_false(vm);
     }
