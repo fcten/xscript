@@ -324,8 +324,19 @@ int std_socket_server_create(void *p) {
     lgx_vm_t *vm = p;
 
     unsigned base = vm->regs[0].v.fun->stack_size;
-    long long port = vm->regs[base+4].v.l;
-    lgx_fun_t *fun = vm->regs[base+5].v.fun;
+    lgx_hash_t *hash = vm->regs[base+4].v.arr;
+
+    lgx_val_t *port = lgx_hash_get_s(hash, "port");
+    lgx_val_t *fun = lgx_hash_get_s(hash, "on_request");
+    lgx_val_t *worker_num = lgx_hash_get_s(hash, "worker_num");
+
+    if (!fun || fun->type != T_FUNCTION) {
+        return lgx_ext_return_false(vm);
+    }
+
+    if (!port || port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+        return lgx_ext_return_false(vm);
+    }
 
     // 创建监听端口并加入事件循环
     wbt_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -354,7 +365,7 @@ int std_socket_server_create(void *p) {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(port);
+    sin.sin_port = htons(port->v.l);
 
     if(bind(fd, (const struct sockaddr*)&sin, sizeof(sin)) != 0) {
         //wbt_log_add("bind failed\n");
@@ -388,9 +399,13 @@ int std_socket_server_create(void *p) {
     }
 
     server->vm = vm;
-    server->on_request = fun;
-    server->pool = wbt_thread_create_pool(4, worker, server); // TODO 读取参数决定线程数量
-    //server->pool = NULL;
+    server->on_request = fun->v.fun;
+    if (worker_num && worker_num->type == T_LONG &&
+        worker_num->v.l > 0 && worker_num->v.l <= 128) {
+        server->pool = wbt_thread_create_pool(worker_num->v.l, worker, server); // TODO 读取参数决定线程数量
+    } else {
+        server->pool = NULL;
+    }
 
     p_ev->ctx = server;
 
@@ -417,11 +432,10 @@ int std_socket_load_symbols(lgx_hash_t *hash) {
     lgx_val_t symbol;
 
     symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(2);
+    symbol.v.fun = lgx_fun_new(1);
     symbol.v.fun->buildin = std_socket_server_create;
 
-    symbol.v.fun->args[0].type = T_LONG;
-    symbol.v.fun->args[1].type = T_FUNCTION;
+    symbol.v.fun->args[0].type = T_ARRAY;
 
     if (lgx_ext_add_symbol(hash, "server_create", &symbol)) {
         return 1;
