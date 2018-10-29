@@ -23,21 +23,6 @@ typedef struct {
 } lgx_co_stack_t;
 
 typedef struct lgx_vm_s lgx_vm_t;
-typedef struct lgx_thread_pool_s lgx_thread_pool_t;
-
-typedef struct {
-    pthread_t ntid;
-    unsigned id;
-    lgx_vm_t *vm;
-    lgx_fun_t *fun;
-    lgx_thread_pool_t *pool;
-} lgx_thread_t;
-
-struct lgx_thread_pool_s {
-    unsigned size;
-    unsigned long long count;
-    lgx_thread_t *threads[];
-};
 
 typedef struct lgx_co_s {
     lgx_list_t head;
@@ -90,12 +75,10 @@ struct lgx_vm_s {
 
     // 事件池
     wbt_event_pool_t *events;
-
-    // 线程信息
-    lgx_thread_t *thread;
 };
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);
+int lgx_vm_execute(lgx_vm_t *vm);
 int lgx_vm_start(lgx_vm_t *vm);
 int lgx_vm_cleanup(lgx_vm_t *vm);
 
