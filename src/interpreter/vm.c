@@ -67,6 +67,8 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
         return 1;
     }
 
+    vm->co_count = 0;
+
     // 创建主协程
     vm->co_running = NULL;
 

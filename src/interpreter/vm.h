@@ -47,6 +47,8 @@ struct lgx_vm_s {
     lgx_list_t co_ready;
     lgx_list_t co_suspend;
     lgx_list_t co_died;
+    // 协程数量统计
+    unsigned co_count;
 
     // 寄存器组 (指向当前协程栈)
     lgx_val_t *regs;

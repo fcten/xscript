@@ -132,6 +132,11 @@ wbt_status std_socket_on_recv(wbt_event_t *ev) {
 
     // 调用 xscript
     lgx_co_t *co = lgx_co_create(server->vm, server->on_request);
+    if (!co) {
+        std_socket_on_close(ev);
+        return WBT_OK;
+    }
+
     co->on_yield = std_socket_on_yield;
     co->ctx = ev;
 

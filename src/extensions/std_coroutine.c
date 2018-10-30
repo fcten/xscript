@@ -10,13 +10,16 @@ int std_co_create(void *p) {
     long long l = vm->regs[base+5].v.l;
 
     lgx_co_t *co = lgx_co_create(p, fun);
+    if (!co) {
+        return lgx_ext_return_false(vm);
+    }
 
     // 写入参数
     co->stack.buf[4].type = T_LONG;
     co->stack.buf[4].v.l = l;
 
     // 在协程切换前写入返回值
-    lgx_ext_return_long(p, 0);
+    lgx_ext_return_true(vm);
 
     return lgx_co_resume(vm, co);
 }
@@ -25,7 +28,7 @@ int std_co_yield(void *p) {
     lgx_vm_t *vm = p;
 
     // 在协程切换前写入返回值
-    lgx_ext_return_long(p, 0);
+    lgx_ext_return_true(vm);
 
     return lgx_co_yield(vm);
 }

@@ -11,7 +11,20 @@ int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     return 0;
 }
 
+int lgx_co_stack_cleanup(lgx_co_stack_t *stack) {
+    if (stack->buf) {
+        xfree(stack->buf);
+        stack->buf = NULL;
+    }
+
+    return 0;
+}
+
 lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
+    if (vm->co_count > LGX_MAX_CO_LIMIT) {
+        return NULL;
+    }
+
     lgx_co_t *co = xcalloc(1, sizeof(lgx_co_t));
     if (!co) {
         return NULL;
@@ -43,7 +56,18 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     R[3].type = T_LONG;
     R[3].v.l = 0;
 
+    vm->co_count ++;
+
     return co;
+}
+
+int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co) {
+    lgx_co_stack_cleanup(&co->stack);
+    xfree(co);
+
+    vm->co_count --;
+
+    return 0;
 }
 
 int lgx_co_set_on_yield(lgx_co_t *co, int (*on_yield)(struct lgx_vm_s *vm)) {
@@ -154,7 +178,13 @@ int lgx_co_died(lgx_vm_t *vm) {
     }
 
     vm->co_running = NULL;
-    lgx_list_add_tail(&co->head, &vm->co_died);
+
+    if (0) {
+        // 如果协程暂时不能删除
+        lgx_list_add_tail(&co->head, &vm->co_died);
+    } else {
+        lgx_co_delete(vm, co);
+    }
 
     return 0;
 }
