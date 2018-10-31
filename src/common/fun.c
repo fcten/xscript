@@ -5,7 +5,7 @@
 lgx_fun_t* lgx_fun_new(unsigned args_num) {
     unsigned size = sizeof(lgx_fun_t) + args_num * sizeof(lgx_val_t);
 
-    lgx_fun_t *fun =  xcalloc(1, size);
+    lgx_fun_t *fun =  (lgx_fun_t *)xcalloc(1, size);
     if (UNEXPECTED(!fun)) {
         return NULL;
     }

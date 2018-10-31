@@ -2,7 +2,7 @@
 #include "register.h"
 
 lgx_reg_alloc_t* reg_allocator_new() {
-    lgx_reg_alloc_t* a = xmalloc(sizeof(lgx_reg_alloc_t));
+    lgx_reg_alloc_t* a = (lgx_reg_alloc_t*)xmalloc(sizeof(lgx_reg_alloc_t));
     int i;
     a->max = 3;
     a->top = 0;

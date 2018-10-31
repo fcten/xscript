@@ -10,12 +10,12 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     unsigned head_size = sizeof(lgx_hash_t);
     unsigned data_size = size * sizeof(lgx_hash_node_t);
 
-    lgx_hash_t *hash = xcalloc(1, head_size);
+    lgx_hash_t *hash = (lgx_hash_t *)xcalloc(1, head_size);
     if (UNEXPECTED(!hash)) {
         return NULL;
     }
 
-    hash->table = xcalloc(1, data_size);
+    hash->table = (lgx_hash_node_t *)xcalloc(1, data_size);
     if (UNEXPECTED(!hash->table)) {
         xfree(hash);
         return NULL;
@@ -170,7 +170,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         }
 
         // 没有找到，新插入一个元素
-        next = xmalloc(sizeof(lgx_hash_node_t));
+        next = (lgx_hash_node_t *)xmalloc(sizeof(lgx_hash_node_t));
         if (UNEXPECTED(!next)) {
             return 1;
         }

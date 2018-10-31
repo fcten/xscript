@@ -232,7 +232,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
     // 初始化
     if (!loop->u.jmps) {
-        loop->u.jmps = xmalloc(sizeof(lgx_ast_node_list_t));
+        loop->u.jmps = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
         if (loop->u.jmps) {
             lgx_list_init(&loop->u.jmps->head);
             loop->u.jmps->node = NULL;
@@ -242,7 +242,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
         }
     }
 
-    lgx_ast_node_list_t *n = xmalloc(sizeof(lgx_ast_node_list_t));
+    lgx_ast_node_list_t *n = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
     if (n) {
         n->node = node;
         lgx_list_init(&n->head);
@@ -670,7 +670,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     // 计算参数
     int i;
-    lgx_val_t *expr = xcalloc(node->child[1]->children, sizeof(lgx_val_t));
+    lgx_val_t *expr = (lgx_val_t *)xcalloc(node->child[1]->children, sizeof(lgx_val_t));
     for(i = 0; i < node->child[1]->children; i++) {
         bc_expr(bc, node->child[1]->child[i], &expr[i]);
     }
@@ -1447,9 +1447,9 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     
     bc->bc_size = 1024;
     bc->bc_top = 0;
-    bc->bc = xmalloc(bc->bc_size);
+    bc->bc = (unsigned *)xmalloc(bc->bc_size * sizeof(unsigned));
 
-    bc->err_info = xmalloc(256);
+    bc->err_info = (char *)xmalloc(256);
     bc->err_len = 0;
     bc->err_no = 0;
 

@@ -6,7 +6,7 @@
 #include "std_math.h"
 
 int std_rand(void *p) {
-    return lgx_ext_return_long(p, rand());
+    return lgx_ext_return_long((lgx_vm_t *)p, rand());
 }
 
 int std_math_load_symbols(lgx_hash_t *hash) {

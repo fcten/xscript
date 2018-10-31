@@ -6,12 +6,12 @@ static lgx_str_t* _lgx_str_new(char *str, unsigned len, int decode) {
     unsigned head_size = sizeof(lgx_str_t);
     unsigned data_size = len * sizeof(char);
 
-    lgx_str_t* ret = xmalloc(head_size);
+    lgx_str_t* ret = (lgx_str_t *)xmalloc(head_size);
     if (!ret) {
         return NULL;
     }
 
-    ret->buffer = xmalloc(data_size);
+    ret->buffer = (char *)xmalloc(data_size);
     if (!ret->buffer) {
         xfree(ret);
         return NULL;
@@ -67,7 +67,7 @@ lgx_str_t* lgx_str_new(char *str, unsigned len) {
 lgx_str_t* lgx_str_new_ref(char *str, unsigned len) {
     unsigned size = sizeof(lgx_str_t);
 
-    lgx_str_t* ret = xmalloc(size);
+    lgx_str_t* ret = (lgx_str_t *)xmalloc(size);
     if (!ret) {
         return NULL;
     }
@@ -124,7 +124,7 @@ lgx_str_t* lgx_str_copy(lgx_str_t *str){
 int lgx_str_concat(lgx_str_t *str1, lgx_str_t *str2) {
     // 引用类型转换为非引用类型
     if (str1->is_ref) {
-        char *new_buf = xmalloc(str1->length + str2->length);
+        char *new_buf = (char *)xmalloc(str1->length + str2->length);
         if (!new_buf) {
             return 1;
         }
@@ -136,7 +136,7 @@ int lgx_str_concat(lgx_str_t *str1, lgx_str_t *str2) {
 
     // 如果空间不足，则扩容
     if (str1->size < str1->length + str2->length) {
-        char *new_buf = xrealloc(str1->buffer, str1->size * 2);
+        char *new_buf = (char *)xrealloc(str1->buffer, str1->size * 2);
         if (!new_buf) {
             return 1;
         }

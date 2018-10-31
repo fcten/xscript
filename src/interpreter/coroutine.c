@@ -4,7 +4,7 @@
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     stack->size = size;
     stack->base = 0;
-    stack->buf = xcalloc(stack->size, sizeof(lgx_val_t));
+    stack->buf = (lgx_val_t *)xcalloc(stack->size, sizeof(lgx_val_t));
     if (!stack->buf) {
         return 1;
     }
@@ -25,7 +25,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
         return NULL;
     }
 
-    lgx_co_t *co = xcalloc(1, sizeof(lgx_co_t));
+    lgx_co_t *co = (lgx_co_t *)xcalloc(1, sizeof(lgx_co_t));
     if (!co) {
         return NULL;
     }

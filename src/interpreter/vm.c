@@ -133,7 +133,7 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
         return 1;
     }
 
-    lgx_val_t *s = xrealloc(stack->buf, size * sizeof(lgx_val_t));
+    lgx_val_t *s = (lgx_val_t *)xrealloc(stack->buf, size * sizeof(lgx_val_t));
     if (!s) {
         return 1;
     }

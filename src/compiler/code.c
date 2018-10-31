@@ -7,7 +7,7 @@
 static int bc_append(lgx_bc_t *bc, unsigned i) {
     if (bc->bc_top >= bc->bc_size) {
         bc->bc_size *= 2;
-        bc->bc = xrealloc(bc->bc, bc->bc_size);
+        bc->bc = (unsigned *)xrealloc(bc->bc, bc->bc_size * sizeof(unsigned));
     }
 
     bc->bc[bc->bc_top] = i;

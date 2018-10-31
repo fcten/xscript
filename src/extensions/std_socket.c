@@ -25,7 +25,7 @@ typedef struct {
 wbt_status std_socket_on_close(wbt_event_t *ev) {
     //wbt_log_debug("connection %d close.",ev->fd);
     
-    lgx_server_t *server = ev->ctx;
+    lgx_server_t *server = (lgx_server_t *)ev->ctx;
 
     //if( wbt_module_on_close(ev) != WBT_OK ) {
         // 似乎并不能做什么
@@ -40,7 +40,7 @@ wbt_status std_socket_on_close(wbt_event_t *ev) {
 
 int std_socket_on_yield(lgx_vm_t *vm) {
     lgx_co_t *co = vm->co_running;
-    wbt_event_t *ev = co->ctx;
+    wbt_event_t *ev = (wbt_event_t *)co->ctx;
 
     if (co->status != CO_DIED) {
         return 0;
@@ -78,7 +78,7 @@ int std_socket_on_yield(lgx_vm_t *vm) {
 wbt_status std_socket_on_recv(wbt_event_t *ev) {
     //printf("[%lu] on_recv %d \n", pthread_self(), ev->fd);
 
-    lgx_server_t *server = ev->ctx;
+    lgx_server_t *server = (lgx_server_t *)ev->ctx;
 
     if (ev->buff == NULL) {
         ev->buff = xmalloc(WBT_MAX_PROTO_BUF_LEN);
@@ -145,7 +145,7 @@ wbt_status std_socket_on_recv(wbt_event_t *ev) {
 
 wbt_status std_socket_on_send(wbt_event_t *ev) {
     //printf("[%lu] on_send %d\n", pthread_self(), ev->fd);
-    lgx_server_t *server = ev->ctx;
+    lgx_server_t *server = (lgx_server_t *)ev->ctx;
 
     int on = 1;
     /* TODO 发送大文件时，使用 TCP_CORK 关闭 Nagle 算法保证网络利用率 */
@@ -201,7 +201,7 @@ wbt_status std_socket_on_timeout(wbt_timer_t *timer) {
 }
 
 wbt_status std_socket_on_accept(wbt_event_t *ev) {
-    lgx_server_t *server = ev->ctx;
+    lgx_server_t *server = (lgx_server_t *)ev->ctx;
 
     struct sockaddr_in remote;
     int addrlen = sizeof(remote);
@@ -272,8 +272,8 @@ wbt_status std_socket_on_accept(wbt_event_t *ev) {
 extern wbt_atomic_t wbt_wating_to_exit;
 
 void* worker(void *args) {
-    wbt_thread_t *thread = args;
-    lgx_server_t *master = thread->ctx;
+    wbt_thread_t *thread = (wbt_thread_t *)args;
+    lgx_server_t *master = (lgx_server_t *)thread->ctx;
 
     lgx_vm_t vm;
     lgx_vm_init(&vm, master->vm->bc);
@@ -326,7 +326,7 @@ void* worker(void *args) {
 }
 
 int std_socket_server_create(void *p) {
-    lgx_vm_t *vm = p;
+    lgx_vm_t *vm = (lgx_vm_t *)p;
 
     unsigned base = vm->regs[0].v.fun->stack_size;
     lgx_hash_t *hash = vm->regs[base+4].v.arr;
@@ -397,7 +397,7 @@ int std_socket_server_create(void *p) {
         return lgx_ext_return_false(vm);
     }
 
-    lgx_server_t *server = xmalloc(sizeof(lgx_server_t));
+    lgx_server_t *server = (lgx_server_t *)xmalloc(sizeof(lgx_server_t));
     if (!server) {
         wbt_close_socket(fd);
         return lgx_ext_return_false(vm);

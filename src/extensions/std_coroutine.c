@@ -3,13 +3,13 @@
 #include "std_coroutine.h"
 
 int std_co_create(void *p) {
-    lgx_vm_t *vm = p;
+    lgx_vm_t *vm = (lgx_vm_t *)p;
 
     unsigned base = vm->regs[0].v.fun->stack_size;
     lgx_fun_t *fun = vm->regs[base+4].v.fun;
     long long l = vm->regs[base+5].v.l;
 
-    lgx_co_t *co = lgx_co_create(p, fun);
+    lgx_co_t *co = lgx_co_create(vm, fun);
     if (!co) {
         return lgx_ext_return_false(vm);
     }
@@ -25,7 +25,7 @@ int std_co_create(void *p) {
 }
 
 int std_co_yield(void *p) {
-    lgx_vm_t *vm = p;
+    lgx_vm_t *vm = (lgx_vm_t *)p;
 
     // 在协程切换前写入返回值
     lgx_ext_return_true(vm);
@@ -42,18 +42,20 @@ typedef struct {
 static wbt_status timer_wakeup(wbt_timer_t *timer) {
     co_sleep_ctx *ctx = (co_sleep_ctx *)timer;
 
-    return lgx_co_resume(ctx->vm, ctx->co);
+    lgx_co_resume(ctx->vm, ctx->co);
+
+    return WBT_OK;
 }
 
 extern time_t wbt_cur_mtime;
 
 int std_co_sleep(void *p) {
-    lgx_vm_t *vm = p;
+    lgx_vm_t *vm = (lgx_vm_t *)p;
 
     unsigned base = vm->regs[0].v.fun->stack_size;
     long long sleep = vm->regs[base+4].v.l;
 
-    co_sleep_ctx *ctx = xcalloc(1, sizeof(co_sleep_ctx));
+    co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
     if (!ctx) {
         return lgx_ext_return_false(vm);
     }

@@ -17,7 +17,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 
 lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, int n) {
-    lgx_ast_node_t* node = xcalloc(1, sizeof(lgx_ast_node_t) + n * sizeof(lgx_ast_node_t*));
+    lgx_ast_node_t* node = (lgx_ast_node_t*)xcalloc(1, sizeof(lgx_ast_node_t) + n * sizeof(lgx_ast_node_t*));
     // TODO ERROR CHECK
     node->children = 0;
     node->size = n;
@@ -28,7 +28,7 @@ lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, int n) {
 }
 
 lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast) {
-    lgx_ast_node_token_t* node = xcalloc(1, sizeof(lgx_ast_node_token_t));
+    lgx_ast_node_token_t* node = (lgx_ast_node_token_t*)xcalloc(1, sizeof(lgx_ast_node_token_t));
 
     node->tk_start = ast->cur_start;
     node->tk_length = ast->cur_length;
@@ -40,7 +40,7 @@ lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast) {
 
 lgx_ast_node_t* ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* child) {
     if (parent->children >= parent->size) {
-        parent = xrealloc(parent, sizeof(lgx_ast_node_t) + 2 * parent->size * sizeof(lgx_ast_node_t*));
+        parent = (lgx_ast_node_t*)xrealloc(parent, sizeof(lgx_ast_node_t) + 2 * parent->size * sizeof(lgx_ast_node_t*));
         // TODO ERROR CHECK
         parent->size *= 2;
     }
@@ -57,7 +57,7 @@ int lgx_ast_init(lgx_ast_t* ast) {
     ast->lex.line = 1;
     ast->cur_line = 1;
 
-    ast->err_info = xmalloc(256);
+    ast->err_info = (char *)xmalloc(256);
     ast->err_len = 0;
 
     return 0;
