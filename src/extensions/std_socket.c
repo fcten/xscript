@@ -422,13 +422,13 @@ int std_socket_server_create(void *p) {
 }
 
 int std_socket_server_send(void *p) {
-    lgx_vm_t *vm = p;
+    //lgx_vm_t *vm = p;
 
     return 0;
 }
 
 int std_socket_server_close(void *p) {
-    lgx_vm_t *vm = p;
+    //lgx_vm_t *vm = p;
 
     return 0;
 }

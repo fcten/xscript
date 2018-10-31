@@ -4,7 +4,7 @@
 #include "../common/list.h"
 #include "../common/val.h"
 #include "../compiler/compiler.h"
-#include "event.h"
+#include "../webit/wbt.h"
 
 typedef enum {
     CO_READY,
