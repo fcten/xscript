@@ -319,14 +319,20 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-// suf_expr -> pri_expr { '.' ID | '[' sub_expr ']' | funcargs }
+// suf_expr -> pri_expr { '->' ID | '.' ID | '[' sub_expr ']' | funcargs }
 void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_pri_expression(ast, parent);
 
     lgx_ast_node_t* binary_expression;
     while (1) {
-        if (ast->cur_token != '.' && ast->cur_token != '[' && ast->cur_token != '(') {
-            return;
+        switch (ast->cur_token) {
+            case TK_PTR:
+            case '.':
+            case '[':
+            case '(':
+                break;
+            default:
+                return;
         }
 
         binary_expression = ast_node_new(ast, 2);
@@ -336,6 +342,16 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         parent->child[parent->children-1] = binary_expression;
 
         switch (ast->cur_token) {
+            case TK_PTR:
+                binary_expression->u.op = TK_PTR;
+                ast_step(ast);
+
+                if (ast->cur_token != TK_ID) {
+                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                    return;
+                }
+                ast_parse_id_token(ast, binary_expression);
+                break;
             case '.':
                 binary_expression->u.op = TK_ATTR;
                 ast_step(ast);
@@ -433,8 +449,9 @@ void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
 int ast_operator_precedence(int token) {
     switch (token) {
-        // () []     = 1
-        // 单目运算符 = 2
+        // case () []
+        // case ->
+        // case 单目运算符
         case '*':
         case '/':
         case '%':
@@ -488,6 +505,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         case '~': // 按位取反运算符
         case '-': // 负号运算符
         case TK_TYPEOF: // typeof 运算符
+        case TK_NEW: // new 运算符
             // 单目运算符
             unary_expression = ast_node_new(ast, 1);
             unary_expression->type = UNARY_EXPRESSION;
@@ -497,7 +515,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
             ast_step(ast);
 
             ast_parse_sub_expression(ast, unary_expression, 2);
-            break;
+            break;    
         default:
             ast_parse_bsc_expression(ast, parent);
     }
@@ -1398,6 +1416,26 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
                 printf("%*s%s\n", indent+2, "", "=");
                 lgx_ast_print(node->child[1], indent+2);
             }
+            break;
+        case CLASS_DECLARATION:
+            printf("%*s%s\n", indent, "", "CLASS_DECLARATION");
+            for(i = 0; i < node->children; i++) {
+                lgx_ast_print(node->child[i], indent+2);
+            }
+            break;
+        case INTERFACE_DECLARATION:
+            printf("%*s%s\n", indent, "", "INTERFACE_DECLARATION");
+            for(i = 0; i < node->children; i++) {
+                lgx_ast_print(node->child[i], indent+2);
+            }
+            break;
+        case PROPERTY_DECLARATION:
+            printf("%*s%s\n", indent, "", "PROPERTY_DECLARATION");
+            lgx_ast_print(node->child[0], indent+2);
+            break;
+        case METHOD_DECLARATION:
+            printf("%*s%s\n", indent, "", "METHOD_DECLARATION");
+            lgx_ast_print(node->child[0], indent+2);
             break;
         // Expression
         case CONDITIONAL_EXPRESSION:
