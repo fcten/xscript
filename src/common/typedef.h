@@ -133,6 +133,31 @@ struct lgx_hash_s {
     lgx_hash_node_t* table;
 };
 
+enum {
+    P_PACKAGE = 0,
+    P_PUBLIC,
+    P_PROTECTED,
+    P_PRIVATE
+};
+
+typedef struct {
+    // 是否为静态方法
+    char is_static;
+    // public = 0 / protected = 1 / private = 2
+    char access;
+    // 方法值
+    lgx_fun_t *fun;
+} lgx_method_t;
+
+typedef struct {
+    // 是否为静态属性
+    char is_static;
+    // public = 0 / protected = 1 / private = 2
+    char access;
+    // 属性值
+    lgx_val_t *val;
+} lgx_property_t;
+
 struct lgx_obj_s {
     // GC 信息
     lgx_gc_t gc;
@@ -144,7 +169,7 @@ struct lgx_obj_s {
     char is_interface;
     // 继承的父类
     lgx_obj_t *parent;
-    // 属性 is_static public/protected/private
+    // 属性
     lgx_hash_t properties;
     // 方法
     lgx_hash_t methods;

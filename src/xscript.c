@@ -30,8 +30,8 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_t ast;
     lgx_ast_init(&ast);
-    //ast.lex.length = read_file(argv[1], &ast.lex.source);
-    ast.lex.length = read_file("./test.x", &ast.lex.source);
+    ast.lex.length = read_file(argv[1], &ast.lex.source);
+    //ast.lex.length = read_file("./test.x", &ast.lex.source);
 
     lgx_ast_parser(&ast);
     if (ast.err_no) {
