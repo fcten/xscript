@@ -1,17 +1,21 @@
-interface Ship {
-    int hp;
+/*
+interface A {
+    public function m1();
 }
 
-interface Weapon {
-    int damage;
+interface B {
+    public function m2();
 }
 
-class Battleship implements Ship, Weapon {
-
+class C implements A, B {
+    private int i;
+}
+*/
+class D {
+    public function print() {
+        echo "hello";
+    }
 }
 
-class Megathron extends Battleship {
-
-}
-
-object ship = new Megathron();
+object test = new D();
+test->print();

@@ -56,7 +56,7 @@ void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     a->type = b->type;
 
     // 在前一条指令为 mov、add 等指定指令时，直接复用
-    if (b->u.c.type == R_TEMP) {
+    if (b->u.c.type == R_TEMP && bc->bc_top > 0) {
         unsigned i = bc->bc[bc->bc_top-1];
         if ( (OP(i) >= OP_ADD && OP(i) <= OP_DIVI) ||
             (OP(i) >= OP_SHL && OP(i) <= OP_XOR) ||

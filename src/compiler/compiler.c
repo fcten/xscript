@@ -70,6 +70,10 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     return 1;
 }
 
+static int bc_member(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *obj, lgx_val_t *member) {
+    return 0;
+}
+
 static int bc_long(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     char *s = ((lgx_ast_node_token_t *)node)->tk_start;
 
@@ -752,6 +756,135 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
     return 0;
 }
 
+static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!check_type(&e1, T_OBJECT)) {
+        bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (bc_member(bc, node->child[1], &e1, e)) {
+        return 1;
+    }
+
+    reg_free(bc, &e1);
+
+    return 0;
+}
+
+static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    e->type = T_OBJECT;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
+
+    return 0;
+}
+
+static int bc_expr_unary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!check_type(&e1, T_BOOL)) {
+        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (!is_register(&e1)) {
+        if (lgx_op_unary(node->u.op, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_unary(bc, node, e, &e1)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    return 0;
+}
+
+static int bc_expr_unary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!check_type(&e1, T_LONG)) {
+        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (!is_register(&e1)) {
+        if (lgx_op_unary(node->u.op, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_unary(bc, node, e, &e1)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    return 0;
+}
+
+static int bc_expr_unary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
+        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
+
+    if (!is_register(&e1)) {
+        if (lgx_op_unary(node->u.op, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_unary(bc, node, e, &e1)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    return 0;
+}
+
+static int bc_expr_unary_typeof(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!is_register(&e1)) {
+        if (lgx_op_unary(node->u.op, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_unary(bc, node, e, &e1)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    return 0;
+}
+
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -814,6 +947,11 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                         return 1;
                     }
                     break;
+                case TK_PTR:
+                    if (bc_expr_binary_ptr(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
                 case TK_ATTR:
                 case TK_ASSIGN_ADD:
                 case TK_ASSIGN_SUB:
@@ -832,48 +970,36 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             break;
         }
         case UNARY_EXPRESSION:{
-            lgx_val_t e1;
-            lgx_val_init(&e1);
-            if (bc_expr(bc, node->child[0], &e1)) {
-                return 1;
-            }
-
             switch (node->u.op) {
+                case TK_NEW:
+                    if (bc_expr_unary_new(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
                 case '!':
-                    if (!check_type(&e1, T_BOOL)) {
-                        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                    if (bc_expr_unary_logic(bc, node, e)) {
                         return 1;
                     }
                     break;
                 case '~':
-                    if (!check_type(&e1, T_LONG)) {
-                        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                    if (bc_expr_unary_bitwise(bc, node, e)) {
                         return 1;
                     }
                     break;
                 case '-':
-                    if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
-                        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                    if (bc_expr_unary_math(bc, node, e)) {
                         return 1;
                     }
                     break;
                 case TK_TYPEOF:
+                    if (bc_expr_unary_typeof(bc, node, e)) {
+                        return 1;
+                    }
                     break;
                 default:
+                    bc_error(bc, "[Error] [Line:%d] unknown operator `%c`\n", node->line, node->u.op);
                     return 1;
             }
-
-            if (!is_register(&e1)) {
-                if (lgx_op_unary(node->u.op, e, &e1)) {
-                    return 1;
-                }
-            } else {
-                if (bc_expr_unary(bc, node, e, &e1)) {
-                    return 1;
-                }
-            }
-
-            reg_free(bc, &e1);
             break;
         }
         default:
@@ -1430,6 +1556,18 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 执行一次赋值操作
             //bc_load(bc, e, e);
             
+            break;
+        }
+        case CLASS_DECLARATION:{
+            break;
+        }
+        case INTERFACE_DECLARATION:{
+            break;
+        }
+        case METHOD_DECLARATION:{
+            break;
+        }
+        case PROPERTY_DECLARATION:{
             break;
         }
         default:
