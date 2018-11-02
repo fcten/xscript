@@ -72,6 +72,8 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_XOR:
         case OP_ARRAY_GET:
         case OP_ARRAY_SET:
+        case OP_OBJECT_GET:
+        case OP_OBJECT_SET:
             printf("%4d %11s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
             break;
         case OP_ADDI:
@@ -102,6 +104,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
             printf("%4d %11s R[%d] G[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
             break;
         case OP_LOAD:
+        case OP_OBJECT_NEW:
             printf("%4d %11s R[%d] C[%d]\n", n, op_name[OP(i)], PA(i), PD(i));
             break;
         case OP_MOVI:

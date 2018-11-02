@@ -1,6 +1,8 @@
 #include "../common/common.h"
 #include "../common/val.h"
 #include "../common/fun.h"
+#include "../common/obj.h"
+#include "../common/str.h"
 #include "../extensions/ext.h"
 #include "scope.h"
 #include "ast.h"
@@ -65,8 +67,29 @@ int lgx_ast_init(lgx_ast_t* ast) {
     return 0;
 }
 
-void ast_set_variable_type(lgx_val_t *t, unsigned type) {
-    switch (type) {
+int ast_is_class(lgx_ast_t* ast) {
+    lgx_str_t s;
+    s.buffer = ast->cur_start;
+    s.length = ast->cur_length;
+
+    lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
+    if (!v) {
+        return 0;
+    }
+
+    if (v->type != T_OBJECT) {
+        return 0;
+    }
+
+    if (lgx_str_cmp(&s, v->v.obj->name) != 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
+void ast_set_variable_type(lgx_val_t *t, lgx_ast_node_t* node) {
+    switch (node->u.type.type) {
         case TK_INT:
             t->type = T_LONG;
             break;
@@ -82,9 +105,12 @@ void ast_set_variable_type(lgx_val_t *t, unsigned type) {
         case TK_ARR:
             t->type = T_ARRAY;
             break;
-        case TK_OBJ:
+        case TK_ID: {
+            lgx_val_t *v = lgx_scope_global_val_get(node, node->u.type.obj_name);
             t->type = T_OBJECT;
+            t->v.obj = v->v.obj;
             break;
+        }
         case TK_AUTO:
         default:
             t->type = T_UNDEFINED;
@@ -209,9 +235,15 @@ void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         switch (ast->cur_token) {
             case TK_AUTO: case TK_INT: case TK_FLOAT:
-            case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
-                variable_declaration->u.type = ast->cur_token;
+            case TK_BOOL: case TK_STR: case TK_ARR:
+                variable_declaration->u.type.type = ast->cur_token;
                 break;
+            case TK_ID:
+                if (ast_is_class(ast)) {
+                    variable_declaration->u.type.type = TK_ID;
+                    variable_declaration->u.type.obj_name = lgx_str_new_ref(ast->cur_start, ast->cur_length);
+                    break;
+                }
             default:
                 ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
                 return;
@@ -609,7 +641,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
             lgx_val_t *t;
             if ((t = lgx_scope_val_add(parent->child[2], &s))) {
-                ast_set_variable_type(t, parent->child[1]->child[i]->u.type);
+                ast_set_variable_type(t, parent->child[1]->child[i]);
                 // 函数参数不检查是否使用
                 t->u.c.used = 1;
             } else {
@@ -1010,8 +1042,15 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_parse_throw_statement(ast, parent);
                 break;
             case TK_AUTO: case TK_INT: case TK_FLOAT:
-            case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ:
+            case TK_BOOL: case TK_STR: case TK_ARR:
                 ast_parse_variable_declaration(ast, parent);
+                break;
+            case TK_ID:
+                if (ast_is_class(ast)) {
+                    ast_parse_variable_declaration(ast, parent);
+                } else {
+                    ast_parse_expression_statement(ast, parent);
+                }
                 break;
             case TK_FUNCTION:
                 if (parent->parent) {
@@ -1043,12 +1082,15 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* variable_declaration;
 
     int var_type = ast->cur_token;
+    char *type_str = ast->cur_start;
+    int type_len = ast->cur_length;
     ast_step(ast);
 
     while (1) {
         variable_declaration = ast_node_new(ast, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
-        variable_declaration->u.type = var_type;
+        variable_declaration->u.type.type = var_type;
+        variable_declaration->u.type.obj_name = lgx_str_new_ref(type_str, type_len);
         ast_node_append_child(parent, variable_declaration);
 
         if (ast->cur_token != TK_ID) {
@@ -1077,7 +1119,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         lgx_val_t *t;
         if ((t = lgx_scope_val_add(variable_declaration, &s))) {
-            ast_set_variable_type(t, var_type);
+            ast_set_variable_type(t, variable_declaration);
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;
@@ -1116,6 +1158,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_val_t *f;
     if ((f = lgx_scope_val_add(function_declaration, &s))) {
         f->type = T_FUNCTION;
+        f->u.c.used = 1;
     } else {
         ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
         return;
@@ -1141,7 +1184,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     for (i = 0; i < function_declaration->child[1]->children; i++) {
         lgx_ast_node_t *n = function_declaration->child[1]->child[i];
         // 设置参数类型
-        ast_set_variable_type(&f->v.fun->args[i], n->u.type);
+        ast_set_variable_type(&f->v.fun->args[i], n);
         // 是否有默认参数
         if (n->child[1]) {
             f->v.fun->args[i].u.c.init = 1;
@@ -1151,14 +1194,25 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // 解析返回值
     switch (ast->cur_token) {
         case TK_AUTO: case TK_INT: case TK_FLOAT:
-        case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ: {
-            ast_set_variable_type(&f->v.fun->ret, ast->cur_token);
+        case TK_BOOL: case TK_STR: case TK_ARR: {
+            function_declaration->u.type.type = ast->cur_token;
             ast_step(ast);
             break;
         }
+        case TK_ID:
+            if (ast_is_class(ast)) {
+                function_declaration->u.type.type = ast->cur_token;
+                function_declaration->u.type.obj_name = lgx_str_new_ref(ast->cur_start, ast->cur_length);
+            } else {
+                ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            }
+            ast_step(ast);
+            break;
         default:
-            f->v.fun->ret.type = T_UNDEFINED;
+            function_declaration->u.type.type = TK_AUTO;
     }
+    ast_set_variable_type(&f->v.fun->ret, function_declaration);
 
     ast_parse_block_statement_with_braces(ast, function_declaration);
 }
@@ -1239,6 +1293,22 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_parse_id_token(ast, class_declaration);
 
+    // 创建类加入作用域
+    lgx_str_t s;
+    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)class_declaration->child[0];
+    s.buffer = n->tk_start;
+    s.length = n->tk_length;
+
+    lgx_val_t *f;
+    if ((f = lgx_scope_val_add(class_declaration, &s))) {
+        f->type = T_OBJECT;
+        f->v.obj = lgx_obj_create(&s);
+        f->u.c.used = 1;
+    } else {
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        return;
+    }
+
     if (ast->cur_token != '{') {
         ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
@@ -1259,10 +1329,21 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_node_append_child(class_declaration, method_declaration);
 
             ast_parse_function_declaration(ast, method_declaration);
+
+            //lgx_hash_node_t n;
+
+            //lgx_obj_add_method(f->v.obj, &n);
         } else {
             switch (ast->cur_token) {
                 case TK_AUTO: case TK_INT: case TK_FLOAT:
-                case TK_BOOL: case TK_STR: case TK_ARR: case TK_OBJ: {
+                case TK_BOOL: case TK_STR: case TK_ARR: case TK_ID: {
+                    if (ast->cur_token == TK_ID) {
+                        if (!ast_is_class(ast)) {
+                            ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                            return;
+                        }
+                    }
+
                     lgx_ast_node_t* property_declaration = ast_node_new(ast, 1);
                     property_declaration->type = PROPERTY_DECLARATION;
                     property_declaration->u.modifier.is_static = is_static;
@@ -1271,6 +1352,8 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     ast_node_append_child(class_declaration, property_declaration);
 
                     ast_parse_variable_declaration(ast, property_declaration);
+
+                    //lgx_obj_add_property(f->v.obj, &n);
                     break;
                 }
                 default:

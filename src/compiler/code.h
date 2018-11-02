@@ -61,6 +61,10 @@ void bc_array_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
 void bc_global_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 void bc_global_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 
+void bc_object_new(lgx_bc_t *bc, lgx_val_t *a, unsigned char i);
+void bc_object_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+void bc_object_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c);
+
 void bc_typeof(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b);
 
 void bc_set(lgx_bc_t *bc, unsigned pos, unsigned i);

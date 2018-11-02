@@ -594,3 +594,46 @@ void bc_global_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
         bc_append(bc, I2(OP_GLOBAL_SET, b->u.c.reg, a->u.c.reg));
     }
 }
+
+void bc_object_new(lgx_bc_t *bc, lgx_val_t *a, unsigned char i) {
+    bc_append(bc, I2(OP_OBJECT_NEW, a->u.c.reg, i));
+}
+
+void bc_object_get(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    if (!is_register(c)) {
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, c);
+        bc_append(bc, I3(OP_OBJECT_GET, a->u.c.reg, b->u.c.reg, r.u.c.reg));
+        reg_free(bc, &r);
+    } else {
+        bc_append(bc, I3(OP_OBJECT_GET, a->u.c.reg, b->u.c.reg, c->u.c.reg));
+    }
+}
+
+void bc_object_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
+    lgx_val_t rb, rc;
+    int fb = 0, fc = 0;
+
+    rb = *b;
+    rc = *c;
+
+    if (!is_register(b)) {
+        bc_load_to_reg(bc, &rb, b);
+        fb = 1;
+    }
+
+    if (!is_register(c)) {
+        bc_load_to_reg(bc, &rc, c);
+        fc = 1;
+    }
+
+    bc_append(bc, I3(OP_OBJECT_SET, a->u.c.reg, rb.u.c.reg, rc.u.c.reg));
+
+    if (fb) {
+        reg_free(bc, &rb);
+    }
+
+    if (fc) {
+        reg_free(bc, &rc);
+    }
+}

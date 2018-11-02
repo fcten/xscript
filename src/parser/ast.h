@@ -79,7 +79,10 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 VARIABLE_DECLARATION 时，保存变量类型
         // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
-        unsigned type;
+        struct {
+            unsigned type;
+            lgx_str_t *obj_name;
+        } type;
 
         // 当节点类型为 PROPERTY_DECLARATION、METHOD_DECLARATION 时，保存 modifier
         struct {

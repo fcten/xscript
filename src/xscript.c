@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    //lgx_ast_print(ast.root, 0);
+    lgx_ast_print(ast.root, 0);
 
     //printf("%lld\n", execute(ast.root));
 
@@ -50,9 +50,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    //lgx_bc_print(bc.bc, bc.bc_top);
+    lgx_bc_print(bc.bc, bc.bc_top);
 
-    //lgx_hash_print(bc.constant);
+    lgx_hash_print(bc.constant);
     //printf("\n");
 
     lgx_vm_t vm;

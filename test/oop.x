@@ -17,5 +17,5 @@ class D {
     }
 }
 
-object test = new D();
+D test = new D();
 test->print();

@@ -3,6 +3,7 @@
 #include "../common/val.h"
 #include "../common/cast.h"
 #include "../common/operator.h"
+#include "../common/obj.h"
 #include "register.h"
 #include "compiler.h"
 #include "code.h"
@@ -68,10 +69,6 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
 
     bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
     return 1;
-}
-
-static int bc_member(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *obj, lgx_val_t *member) {
-    return 0;
 }
 
 static int bc_long(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
@@ -758,7 +755,9 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
 
 static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1;
+    lgx_val_t e2;
     lgx_val_init(&e1);
+    lgx_val_init(&e2);
 
     if (bc_expr(bc, node->child[0], &e1)) {
         return 1;
@@ -769,19 +768,39 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
         return 1;
     }
 
-    if (bc_member(bc, node->child[1], &e1, e)) {
-        return 1;
-    }
+    e2.type = T_STRING;
+    e2.v.str = lgx_str_new_ref(((lgx_ast_node_token_t *)(node->child[1]))->tk_start, ((lgx_ast_node_token_t *)(node->child[1]))->tk_length);
+
+    e2.u.c.type = 0;
+    e2.u.c.reg = 0;
+
+    // 判断类型
+    //lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
+
+    e->type = T_UNDEFINED;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
+    bc_object_get(bc, e, &e1, &e2);
 
     reg_free(bc, &e1);
+    reg_free(bc, &e2);
 
     return 0;
 }
 
 static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_str_t s;
+    s.buffer = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start;
+    s.length = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length;
+    lgx_val_t *v = lgx_scope_global_val_get(node, &s);
+
     e->type = T_OBJECT;
+    e->v.obj = v->v.obj;
+
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
+
+    bc_object_new(bc, e, const_get(bc, v));
 
     return 0;
 }
@@ -1018,7 +1037,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_hash_node_t* next = node->u.symbols->head;
             // 为当前作用域的变量分配寄存器
             while (next) {
-                if (next->v.type != T_FUNCTION) {
+                if (next->v.type != T_FUNCTION) { // TODO CLASS 不需要分配寄存器
                     next->v.u.c.reg = reg_pop(bc);
                 }
                 next = next->order;
@@ -1091,7 +1110,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     bc_error(bc, "[Error] [Line:%d] unused variable `%.*s`\n", node->line, next->k.v.str->length, next->k.v.str->buffer);
                     return 1;
                 }
-                if (next->v.type != T_FUNCTION) {
+                if (next->v.type != T_FUNCTION) { // TODO CLASS 不需要分配寄存器
                     reg_push(bc, next->v.u.c.reg);
                 }
                 next = next->order;

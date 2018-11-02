@@ -2,6 +2,7 @@
 #include "../common/bytecode.h"
 #include "../common/operator.h"
 #include "../common/fun.h"
+#include "../common/obj.h"
 #include "vm.h"
 #include "gc.h"
 #include "coroutine.h"
@@ -168,7 +169,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 lgx_gc_ref_add(&R(PB(i)));
 
                 R(PA(i)).type = R(PB(i)).type;
-                R(PA(i)).v.l = R(PB(i)).v.l;
+                R(PA(i)).v = R(PB(i)).v;
 
                 break;
             }
@@ -718,10 +719,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_GET:{
-                lgx_gc_ref_del(&R(PA(i)));
-
                 if (EXPECTED(R(PB(i)).type == T_ARRAY)) {
                     if (EXPECTED(R(PC(i)).type == T_LONG || R(PC(i)).type == T_STRING)) {
+                        lgx_gc_ref_del(&R(PA(i)));
                         lgx_hash_node_t *n = lgx_hash_get(R(PB(i)).v.arr, &R(PC(i)));
                         if (n) {
                             R(PA(i)) = n->v;
@@ -729,6 +729,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             // runtime warning
                             R(PA(i)).type = T_UNDEFINED;
                         }
+                        lgx_gc_ref_add(&R(PA(i)));
                     } else {
                         // runtime warning
                         throw_exception(vm, "attempt to index a %s key, integer or string expected", lgx_val_typeof(&R(PC(i))));
@@ -754,6 +755,51 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 lgx_gc_ref_del(&G(PD(i)));
                 lgx_gc_ref_add(&R(PA(i)));
                 G(PD(i)) = R(PA(i));
+                break;
+            }
+            case OP_OBJECT_NEW:{
+                if (EXPECTED(C(PD(i)).type == T_OBJECT)) {
+                    lgx_gc_ref_del(&R(PA(i)));
+                    R(PA(i)).type = T_OBJECT;
+                    R(PA(i)).v.obj = lgx_obj_new(C(PD(i)).v.obj);
+                } else {
+                    throw_exception(vm, "attempt to new a %s value, object expected", lgx_val_typeof(&C(PD(i))));
+                }
+                break;
+            }
+            case OP_OBJECT_GET:{
+                if (EXPECTED(R(PB(i)).type == T_OBJECT)) {
+                    if (EXPECTED(R(PC(i)).type == T_STRING)) {
+                        lgx_gc_ref_del(&R(PA(i)));
+                        lgx_val_t *v = lgx_obj_get(R(PB(i)).v.obj, &R(PC(i)));
+                        if (v) {
+                            R(PA(i)) = *v;
+                        } else {
+                            throw_exception(vm, "property %.*s not exists", R(PC(i)).v.str->length, R(PC(i)).v.str->buffer);
+                        }
+                        lgx_gc_ref_add(&R(PA(i)));
+                    } else {
+                        throw_exception(vm, "attempt to index a %s value, string expected", lgx_val_typeof(&R(PC(i))));
+                    }
+                } else {
+                    throw_exception(vm, "attempt to access a %s value, object expected", lgx_val_typeof(&R(PB(i))));
+                }
+                break;
+            }
+            case OP_OBJECT_SET:{
+                if (EXPECTED(R(PA(i)).type == T_OBJECT)) {
+                    if (EXPECTED(R(PB(i)).type == T_STRING)) {
+                        if (lgx_obj_set(R(PA(i)).v.obj, &R(PB(i)), &R(PC(i))) == 0) {
+                            lgx_gc_ref_add(&R(PC(i)));
+                        } else {
+                            throw_exception(vm, "property %.*s not exists", R(PB(i)).v.str->length, R(PB(i)).v.str->buffer);
+                        }
+                    } else {
+                        throw_exception(vm, "attempt to index a %s value, string expected", lgx_val_typeof(&R(PB(i))));
+                    }
+                } else {
+                    throw_exception(vm, "attempt to access a %s value, object expected", lgx_val_typeof(&R(PA(i))));
+                }
                 break;
             }
             case OP_NOP: break;

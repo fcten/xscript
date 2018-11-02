@@ -162,7 +162,7 @@ struct lgx_obj_s {
     // GC 信息
     lgx_gc_t gc;
     // 类名称
-    lgx_str_t name;
+    lgx_str_t *name;
     // 是否为内置（否则为用户定义）
     char is_buildin;
     // 是否为接口（否则为类）
@@ -170,11 +170,11 @@ struct lgx_obj_s {
     // 继承的父类
     lgx_obj_t *parent;
     // 属性
-    lgx_hash_t properties;
+    lgx_hash_t *properties;
     // 方法
-    lgx_hash_t methods;
+    lgx_hash_t *methods;
     // 常量
-    lgx_hash_t constants;
+    lgx_hash_t *constants;
 };
 
 struct lgx_res_s {

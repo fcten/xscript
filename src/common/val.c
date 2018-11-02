@@ -109,6 +109,11 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                     return 1;
                 }
                 break;
+            case T_OBJECT:
+                if (src->v.obj == dst->v.obj) {
+                    return 1;
+                }
+                break;
         }
     }
 

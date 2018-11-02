@@ -39,7 +39,6 @@ enum {
     TK_BOOL,
     TK_STR,
     TK_ARR,
-    TK_OBJ,
 
     TK_TYPEOF,
     TK_INSTANCEOF,

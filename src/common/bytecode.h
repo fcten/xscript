@@ -77,9 +77,9 @@ enum {
     OP_GLOBAL_SET,// GLOBAL_SET R G     G = R
 
     // 类与对象
-    OP_OBJECT_NEW,
-    OP_OBJECT_GET,
-    OP_OBJECT_SET,
+    OP_OBJECT_NEW,// OBJECT_NEW R C     R = new C
+    OP_OBJECT_GET,// OBJECT_GET R R R   R = R->R
+    OP_OBJECT_SET,// OBJECT_SET R R R   R->R = R
 
     // 终止执行
     OP_HLT,
