@@ -4,7 +4,7 @@
 #include "../interpreter/gc.h"
 
 lgx_obj_t* lgx_obj_create(lgx_str_t *name) {
-    lgx_obj_t *obj = xcalloc(1, sizeof(lgx_obj_t));
+    lgx_obj_t *obj = (lgx_obj_t *)xcalloc(1, sizeof(lgx_obj_t));
     if (!obj) {
         return NULL;
     }
@@ -22,7 +22,9 @@ lgx_obj_t* lgx_obj_create(lgx_str_t *name) {
 }
 
 lgx_obj_t* lgx_obj_new(lgx_obj_t *obj) {
-    return lgx_obj_create(obj->name);
+    lgx_obj_t *object = lgx_obj_create(obj->name);
+    object->parent = obj;
+    return object;
 }
 
 int lgx_obj_delete(lgx_obj_t *obj) {
@@ -93,5 +95,16 @@ int lgx_obj_add_method(lgx_obj_t *obj, lgx_hash_node_t *node) {
 }
 
 int lgx_obj_print(lgx_obj_t *obj) {
+    printf("\n{\n\t\"properties\":");
+    lgx_hash_print(obj->properties);
+    printf(",\n\t\"methods\":");
+    lgx_hash_print(obj->methods);
+    printf(",\n\t\"parent\":");
+    if (obj->parent) {
+        lgx_obj_print(obj->parent);
+    } else {
+        printf("null");
+    }
+    printf(",\n}\n");
     return 0;
 }

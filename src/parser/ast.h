@@ -71,7 +71,6 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
         // 当节点类型为 SWITCH_CASE_STATEMENT 时，保存 break 语句出现的位置
-        // 当节点类型为 FUNCTION_DECLARATION 时，保存 return 语句出现的位置
         lgx_ast_node_list_t *jmps;
 
         // 当节点类型为 BREAK_STATEMENT、CONTINUE_STATEMENT、RETURN_STATEMENT 时，用于保存语句在字节码中对于的位置

@@ -656,7 +656,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    if (!check_type(&e1, T_FUNCTION)) {
+    if (!check_type(&e1, T_FUNCTION) || !e1.v.fun) {
         bc_error(bc, "[Error] [Line:%d] makes function from %s without a cast\n", node->line, lgx_val_typeof(&e1));
         return 1;
     }
@@ -775,12 +775,18 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     e2.u.c.reg = 0;
 
     // 判断类型
-    //lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
+    lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
+    if (!v) {
+        bc_error(bc, "[Error] [Line:%d] property or method %s not exists\n", node->line, lgx_val_typeof(&e1));
+        return 1;
+    }
 
-    e->type = T_UNDEFINED;
+    *e = *v;
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
     bc_object_get(bc, e, &e1, &e2);
+
+    
 
     reg_free(bc, &e1);
     reg_free(bc, &e2);
@@ -1475,7 +1481,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 lgx_str_t s;
                 s.buffer = ((lgx_ast_node_token_t *)(n->child[0]))->tk_start;
                 s.length = ((lgx_ast_node_token_t *)(n->child[0]))->tk_length;
-                lgx_val_t *f = lgx_scope_global_val_get(n, &s);
+                lgx_val_t *f = lgx_scope_val_get(n, &s);
                 ret.type = f->v.fun->ret.type;
             } else {
                 ret.type = T_UNDEFINED;
@@ -1547,7 +1553,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_str_t s;
             s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
             s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-            e = lgx_scope_global_val_get(node, &s);
+            e = lgx_scope_val_get(node, &s);
             e->v.fun->addr = bc->bc_top;
 
             // 重置寄存器分配
@@ -1578,12 +1584,18 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case CLASS_DECLARATION:{
+            if (bc_stat(bc, node->child[1])) {
+                return 1;
+            }
             break;
         }
         case INTERFACE_DECLARATION:{
             break;
         }
         case METHOD_DECLARATION:{
+            if (bc_stat(bc, node->child[0])) {
+                return 1;
+            }
             break;
         }
         case PROPERTY_DECLARATION:{

@@ -771,11 +771,12 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (EXPECTED(R(PB(i)).type == T_OBJECT)) {
                     if (EXPECTED(R(PC(i)).type == T_STRING)) {
                         lgx_gc_ref_del(&R(PA(i)));
+                        //lgx_obj_print(R(PB(i)).v.obj);
                         lgx_val_t *v = lgx_obj_get(R(PB(i)).v.obj, &R(PC(i)));
                         if (v) {
                             R(PA(i)) = *v;
                         } else {
-                            throw_exception(vm, "property %.*s not exists", R(PC(i)).v.str->length, R(PC(i)).v.str->buffer);
+                            throw_exception(vm, "property or method %.*s not exists", R(PC(i)).v.str->length, R(PC(i)).v.str->buffer);
                         }
                         lgx_gc_ref_add(&R(PA(i)));
                     } else {

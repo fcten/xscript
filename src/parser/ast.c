@@ -146,7 +146,6 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
         case WHILE_STATEMENT:
         case DO_WHILE_STATEMENT:
         case SWITCH_STATEMENT:
-        case FUNCTION_DECLARATION:
             if (node->u.jmps) {
                 while (!lgx_list_empty(&node->u.jmps->head)) {
                     lgx_ast_node_list_t *n = lgx_list_first_entry(&node->u.jmps->head, lgx_ast_node_list_t, head);
@@ -154,6 +153,11 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
                     xfree(n);
                 }
                 xfree(node->u.jmps);
+            }
+            break;
+        case FUNCTION_DECLARATION:
+            if (node->u.type.obj_name) {
+                lgx_str_delete(node->u.type.obj_name);
             }
             break;
     }
@@ -1280,7 +1284,7 @@ void ast_parse_modifer(lgx_ast_t* ast, char *is_static, char *is_const, char *ac
 }
 
 void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* class_declaration = ast_node_new(ast, 128);
+    lgx_ast_node_t* class_declaration = ast_node_new(ast, 2);
     class_declaration->type = CLASS_DECLARATION;
     ast_node_append_child(parent, class_declaration);
 
@@ -1315,6 +1319,13 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_step(ast);
 
+    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
+    block_statement->type = BLOCK_STATEMENT;
+    ast_node_append_child(class_declaration, block_statement);
+
+    // 创建新的作用域
+    block_statement->u.symbols = lgx_hash_new(32);
+
     int endloop = 0;
     while (!endloop) {
         char is_static, is_const, access;
@@ -1326,13 +1337,17 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             method_declaration->u.modifier.is_static = is_static;
             method_declaration->u.modifier.is_const = is_const;
             method_declaration->u.modifier.access = access;
-            ast_node_append_child(class_declaration, method_declaration);
+            ast_node_append_child(block_statement, method_declaration);
 
             ast_parse_function_declaration(ast, method_declaration);
 
-            //lgx_hash_node_t n;
+            lgx_hash_node_t n;
+            lgx_ast_node_token_t *method_name = (lgx_ast_node_token_t *)method_declaration->child[0]->child[0];
+            n.k.type = T_STRING;
+            n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
+            n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
 
-            //lgx_obj_add_method(f->v.obj, &n);
+            lgx_obj_add_method(f->v.obj, &n);
         } else {
             switch (ast->cur_token) {
                 case TK_AUTO: case TK_INT: case TK_FLOAT:
@@ -1349,7 +1364,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     property_declaration->u.modifier.is_static = is_static;
                     property_declaration->u.modifier.is_const = is_const;
                     property_declaration->u.modifier.access = access;
-                    ast_node_append_child(class_declaration, property_declaration);
+                    ast_node_append_child(block_statement, property_declaration);
 
                     ast_parse_variable_declaration(ast, property_declaration);
 
