@@ -144,6 +144,26 @@ static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
+static int bc_this(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
+    // 查找 class 原型
+    while (node->type != CLASS_DECLARATION) {
+        node = node->parent;
+    }
+    lgx_str_t s;
+    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)node->child[0];
+    s.buffer = n->tk_start;
+    s.length = n->tk_length;
+    lgx_val_t *v = lgx_scope_val_get(node, &s);
+
+    expr->type = T_OBJECT;
+    expr->v.obj = v->v.obj;
+
+    expr->u.c.type = R_LOCAL;
+    expr->u.c.reg = 4;
+
+    return 0;
+}
+
 static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1) {
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
@@ -640,6 +660,8 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         reg_free(bc, &e2);
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_ATTR) {
         // TODO 对象属性赋值
+    } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
+        // TODO 对象属性赋值
     } else {
         bc_error(bc, "[Error] [Line:%d] invalid left variable for assignment\n", node->line);
         return 1;
@@ -777,7 +799,7 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     // 判断类型
     lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
     if (!v) {
-        bc_error(bc, "[Error] [Line:%d] property or method %s not exists\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, "[Error] [Line:%d] property or method `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
         return 1;
     }
 
@@ -785,8 +807,6 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
     bc_object_get(bc, e, &e1, &e2);
-
-    
 
     reg_free(bc, &e1);
     reg_free(bc, &e2);
@@ -928,6 +948,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             return bc_undefined(bc, node, e);
         case ARRAY_TOKEN:
             return bc_expr_array(bc, node, e);
+        case THIS_TOKEN:
+            return bc_this(bc, node, e);
         case CONDITIONAL_EXPRESSION:
             break;
         case BINARY_EXPRESSION:{

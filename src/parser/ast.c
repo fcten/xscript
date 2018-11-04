@@ -350,6 +350,14 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         case TK_ID:
             ast_parse_id_token(ast, parent);
             break;
+        case TK_THIS:{
+            lgx_ast_node_token_t *id = ast_node_token_new(ast);
+            id->type = THIS_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(ast);
+            break;
+        }
         default:
             return;
     }
@@ -1124,6 +1132,8 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         lgx_val_t *t;
         if ((t = lgx_scope_val_add(variable_declaration, &s))) {
             ast_set_variable_type(t, variable_declaration);
+            // TODO 只检查局部变量
+            t->u.c.used = 1;
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;
@@ -1368,7 +1378,19 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
                     ast_parse_variable_declaration(ast, property_declaration);
 
-                    //lgx_obj_add_property(f->v.obj, &n);
+                    lgx_hash_node_t n;
+                    lgx_ast_node_token_t *property_name = (lgx_ast_node_token_t *)property_declaration->child[0]->child[0];
+                    n.k.type = T_STRING;
+                    n.k.v.str = lgx_str_new_ref(property_name->tk_start, property_name->tk_length);
+                    n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
+
+                    lgx_obj_add_property(f->v.obj, &n);
+
+                    if (ast->cur_token != ';') {
+                        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                        return;
+                    }
+                    ast_step(ast);
                     break;
                 }
                 default:

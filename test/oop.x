@@ -12,8 +12,11 @@ class C implements A, B {
 }
 */
 class C1 {
+    public string msg;
+
     public function print() {
-        echo "C1:print\n";
+        this->msg = "C1:print\n";
+        echo this->msg;
     }
 }
 

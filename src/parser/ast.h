@@ -48,7 +48,8 @@ enum {
     ARRAY_TOKEN,
     OBJECT_TOKEN,
     TRUE_TOKEN,
-    FALSE_TOKEN
+    FALSE_TOKEN,
+    THIS_TOKEN
 };
 
 typedef struct lgx_ast_node_list_s {
