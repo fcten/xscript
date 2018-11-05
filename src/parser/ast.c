@@ -127,6 +127,7 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
         case STRING_TOKEN:
         case TRUE_TOKEN:
         case FALSE_TOKEN:
+        case THIS_TOKEN:
             xfree(node);
             return;
         case BLOCK_STATEMENT:

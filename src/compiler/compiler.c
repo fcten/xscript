@@ -136,6 +136,7 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
+    // TODO 内存泄漏
     expr->v.str = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.c.type = 0;
@@ -671,11 +672,44 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 }
 
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1;
+    lgx_val_t e1, obj;
     lgx_val_init(&e1);
+    lgx_val_init(&obj);
 
-    if (bc_expr(bc, node->child[0], &e1)) {
-        return 1;
+    if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
+        if (bc_expr(bc, node->child[0]->child[0], &obj)) {
+            return 1;
+        }
+
+        if (!check_type(&obj, T_OBJECT)) {
+            bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            return 1;
+        }
+
+        lgx_val_t e2;
+        lgx_val_init(&e2);
+        e2.type = T_STRING;
+        // TODO 内存泄漏
+        e2.v.str = lgx_str_new_ref(
+            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_start,
+            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_length
+        );
+
+        // 判断类型
+        lgx_val_t *v = lgx_obj_get(obj.v.obj, &e2);
+        if (!v) {
+            bc_error(bc, "[Error] [Line:%d] property or method `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
+            return 1;
+        }
+        e1 = *v;
+
+        e1.u.c.type = R_TEMP;
+        e1.u.c.reg = reg_pop(bc);
+        bc_object_get(bc, &e1, &obj, &e2);
+    } else {
+        if (bc_expr(bc, node->child[0], &e1)) {
+            return 1;
+        }
     }
 
     if (!check_type(&e1, T_FUNCTION) || !e1.v.fun) {
@@ -701,8 +735,10 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     bc_call_new(bc, e1.u.c.reg);
 
     // TODO 如果调用的是类的方法，则把对象压入堆栈
+    int base = 4;
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
-
+        base = 5;
+        bc_call_set(bc, 4, &obj);
     }
 
     for(i = 0; i < fun->args_num; i++) {
@@ -714,7 +750,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
                 return 1;
             }
 
-            bc_call_set(bc, i+4, &expr[i]);
+            bc_call_set(bc, i + base, &expr[i]);
             reg_free(bc, &expr[i]);
         } else {
             if (!fun->args[i].u.c.init) {
@@ -732,6 +768,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     bc_call(bc, e, e1.u.c.reg);
 
     reg_free(bc, &e1);
+    reg_free(bc, &obj);
 
     return 0;
 }
@@ -796,7 +833,11 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     }
 
     e2.type = T_STRING;
-    e2.v.str = lgx_str_new_ref(((lgx_ast_node_token_t *)(node->child[1]))->tk_start, ((lgx_ast_node_token_t *)(node->child[1]))->tk_length);
+    // TODO 内存泄漏
+    e2.v.str = lgx_str_new_ref(
+        ((lgx_ast_node_token_t *)(node->child[1]))->tk_start,
+        ((lgx_ast_node_token_t *)(node->child[1]))->tk_length
+    );
 
     e2.u.c.type = 0;
     e2.u.c.reg = 0;
@@ -1586,6 +1627,10 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 重置寄存器分配
             lgx_reg_alloc_t *reg = bc->reg;
             bc->reg = reg_allocator_new();
+            if (node->parent->type == METHOD_DECLARATION) {
+                // 类方法隐藏的 this 参数
+                reg_pop(bc);
+            }
 
             // 编译函数体
             bc_stat(bc, node->child[2]);

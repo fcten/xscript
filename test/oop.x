@@ -18,6 +18,14 @@ class C1 {
         this->msg = "C1:print\n";
         echo this->msg;
     }
+
+    public function t() {
+        this->test();
+    }
+
+    public function test() {
+        echo "test\n";
+    }
 }
 
 class C2 {
@@ -29,5 +37,6 @@ class C2 {
 C1 obj1 = new C1();
 C2 obj2 = new C2();
 // TODO 方法调用可以在编译时确定
+obj1->t();
 obj1->print();
 obj2->print();
