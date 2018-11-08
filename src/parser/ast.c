@@ -1294,6 +1294,23 @@ void ast_parse_modifer(lgx_ast_t* ast, char *is_static, char *is_const, char *ac
     }
 }
 
+// 根据变量类型初始化变量的值
+void ast_init_value(lgx_val_t *v) {
+    switch (v->type) {
+        case T_UNDEFINED: break;
+        case T_LONG:      v->v.l = 0; break;
+        case T_DOUBLE:    v->v.d = 0; break;
+        case T_BOOL:      v->v.l = 0; break;
+        case T_REDERENCE: break;
+        case T_STRING:    v->v.str = lgx_str_new_ref("", 0); break;
+        case T_ARRAY:     v->v.arr = lgx_hash_new(8); break;
+        case T_OBJECT:    break;
+        case T_FUNCTION:  break;
+        case T_RESOURCE:  break;
+        default: assert(0);
+    }
+}
+
 void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* class_declaration = ast_node_new(ast, 2);
     class_declaration->type = CLASS_DECLARATION;
@@ -1383,7 +1400,11 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     lgx_ast_node_token_t *property_name = (lgx_ast_node_token_t *)property_declaration->child[0]->child[0];
                     n.k.type = T_STRING;
                     n.k.v.str = lgx_str_new_ref(property_name->tk_start, property_name->tk_length);
-                    n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
+
+                    // TODO 根据 ast 初始化 property
+                    lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
+                    n.v.type = v->type;
+                    ast_init_value(&n.v);
 
                     lgx_obj_add_property(f->v.obj, &n);
 

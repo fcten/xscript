@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <memory.h>
+#include <assert.h>
 
 //#include <jemalloc/jemalloc.h>
 
