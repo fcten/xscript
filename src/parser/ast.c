@@ -1360,6 +1360,11 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         ast_parse_modifer(ast, &is_static, &is_const, &access);
 
         if (ast->cur_token == TK_FUNCTION) {
+            if (is_const) {
+                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", ast->cur_line);
+                return;
+            }
+
             lgx_ast_node_t* method_declaration = ast_node_new(ast, 1);
             method_declaration->type = METHOD_DECLARATION;
             method_declaration->u.modifier.is_static = is_static;
@@ -1377,6 +1382,9 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             n.k.type = T_STRING;
             n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
             n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
+
+            n.v.v.fun->is_static = is_static;
+            n.v.v.fun->access = access;
 
             lgx_obj_add_method(f->v.obj, &n);
         } else {
@@ -1410,6 +1418,10 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
                     n.v.type = v->type;
                     ast_init_value(&n.v);
+
+                    n.v.u.c.is_static = is_static;
+                    n.v.u.c.is_const = is_const;
+                    n.v.u.c.access = access;
 
                     lgx_obj_add_property(f->v.obj, &n);
 

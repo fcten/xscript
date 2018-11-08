@@ -3,6 +3,40 @@
 
 #include "list.h"
 
+#define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
+#define IS_GC_VALUE(x) ((x)->type > T_BOOL)
+
+enum {
+    // 基本类型
+    T_UNDEFINED = 0,// 变量尚未定义
+    T_LONG,         // 64 位有符号整数
+    T_DOUBLE,       // 64 位有符号浮点数
+    T_BOOL,         // T_BOOL 必须是基本类型的最后一种，因为它被用于是否为基本类型的判断
+    // 高级类型
+    T_REDERENCE,
+    T_STRING,
+    T_ARRAY,
+    T_OBJECT,
+    T_FUNCTION,
+    T_RESOURCE
+};
+
+// 寄存器类型
+enum {
+    R_NOT = 0,  // 不是寄存器
+    R_TEMP,     // 临时寄存器
+    R_LOCAL,    // 局部变量
+    R_GLOBAL    // 全局变量
+};
+
+// 访问权限
+enum {
+    P_PACKAGE = 0,
+    P_PUBLIC,
+    P_PROTECTED,
+    P_PRIVATE
+};
+
 typedef struct lgx_val_s  lgx_val_t;
 typedef struct lgx_str_s  lgx_str_t;
 typedef struct lgx_hash_s lgx_hash_t;
@@ -27,18 +61,24 @@ struct lgx_val_s {
     unsigned char type;
     // 这个 union 结构有 7 个字节可用
     union {
-        // 变量所使用的寄存器，仅在编译时使用
+        // 仅在编译时使用
         struct {
-            // 寄存器类型
-            unsigned char type;
             // 寄存器编号
             unsigned char reg;
+            // 寄存器类型
+            unsigned char type:2;
             // 是否使用过
-            unsigned char used;
+            unsigned char used:1;
             // 是否有默认值(作为函数参数)
-            unsigned char init;
+            unsigned char init:1;
+            // 是否为静态变量
+            unsigned char is_static:1;
+            // 是否为常量
+            unsigned char is_const:1;
+            // 访问权限
+            unsigned char access:2;
         } c;
-        // 调试信息，运行时使用
+        // 仅运行时使用
     } u;
 };
 
@@ -79,6 +119,13 @@ struct lgx_fun_s {
     lgx_gc_t gc;
     // 函数名称
     lgx_str_t name;
+
+    // 仅用于类方法
+    // - 是否为静态方法
+    unsigned char is_static;
+    // - 访问权限
+    unsigned char access;
+
     // 需求的堆栈空间
     unsigned stack_size;
     // 入口地址
@@ -132,31 +179,6 @@ struct lgx_hash_s {
     // 存储数据的结构
     lgx_hash_node_t* table;
 };
-
-enum {
-    P_PACKAGE = 0,
-    P_PUBLIC,
-    P_PROTECTED,
-    P_PRIVATE
-};
-
-typedef struct {
-    // 是否为静态方法
-    char is_static;
-    // public = 0 / protected = 1 / private = 2
-    char access;
-    // 方法值
-    lgx_fun_t *fun;
-} lgx_method_t;
-
-typedef struct {
-    // 是否为静态属性
-    char is_static;
-    // public = 0 / protected = 1 / private = 2
-    char access;
-    // 属性值
-    lgx_val_t *val;
-} lgx_property_t;
 
 struct lgx_obj_s {
     // GC 信息
