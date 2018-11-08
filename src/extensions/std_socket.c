@@ -326,22 +326,16 @@ void* worker(void *args) {
     return NULL;
 }
 
-int std_socket_server_start(void *p) {
+int std_socket_server_listen(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
-    return lgx_ext_return_false(vm);
 
     unsigned base = vm->regs[0].v.fun->stack_size;
-    lgx_hash_t *hash = vm->regs[base+4].v.arr;
 
-    lgx_val_t *port = lgx_hash_get_s(hash, "port");
-    lgx_val_t *fun = lgx_hash_get_s(hash, "on_request");
-    lgx_val_t *worker_num = lgx_hash_get_s(hash, "worker_num");
+    lgx_val_t *obj = &vm->regs[base+4];
+    lgx_val_t *port = &vm->regs[base+5];
 
-    if (!fun || fun->type != T_FUNCTION) {
-        return lgx_ext_return_false(vm);
-    }
-
-    if (!port || port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+    if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+        // TODO throw exception?
         return lgx_ext_return_false(vm);
     }
 
@@ -386,29 +380,96 @@ int std_socket_server_start(void *p) {
         return lgx_ext_return_false(vm);
     }
 
+    lgx_val_t k, v;
+    k.type = T_STRING;
+    k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1); // TODO memory leak
+    v.type = T_LONG;
+    v.v.l = fd;
+    if (lgx_obj_set(obj->v.obj, &k, &v) != 0) {
+        wbt_close_socket(fd);
+        return lgx_ext_return_false(vm);
+    }
+
+    return lgx_ext_return_true(vm);
+}
+
+int std_socket_server_on_request(void *p) {
+    lgx_vm_t *vm = (lgx_vm_t *)p;
+
+    unsigned base = vm->regs[0].v.fun->stack_size;
+
+    lgx_val_t *obj = &vm->regs[base+4];
+    lgx_val_t *on_request = &vm->regs[base+5];
+
+    if (on_request->type != T_FUNCTION) {
+        return lgx_ext_return_false(vm);
+    }
+
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = lgx_str_new_ref("on_req", sizeof("on_req")-1); // TODO memory leak
+    if (lgx_obj_set(obj->v.obj, &k, on_request) != 0) {
+        return lgx_ext_return_false(vm);
+    }
+
+    return lgx_ext_return_true(vm);
+}
+
+int std_socket_server_start(void *p) {
+    lgx_vm_t *vm = (lgx_vm_t *)p;
+
+    unsigned base = vm->regs[0].v.fun->stack_size;
+
+    lgx_val_t *obj = &vm->regs[base+4];
+    lgx_val_t *worker_num = &vm->regs[base+5];
+
+    if (worker_num->type != T_LONG || worker_num->v.l < 0 || worker_num->v.l > 128) {
+        // TODO throw exception?
+        return lgx_ext_return_false(vm);
+    }
+
+    //lgx_obj_print(obj->v.obj);
+
+    lgx_str_t name;
+    name.buffer = "fd";
+    name.length = sizeof("fd")-1;
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *fd = lgx_obj_get(obj->v.obj, &k);
+    if (!fd || fd->type != T_LONG || fd->v.l == 0) {
+        return lgx_ext_return_false(vm);
+    }
+
+    name.buffer = "on_req";
+    name.length = sizeof("on_req")-1;
+    lgx_val_t *on_req = lgx_obj_get(obj->v.obj, &k);
+    if (!on_req || on_req->type != T_FUNCTION || on_req->v.fun == NULL) {
+        return lgx_ext_return_false(vm);
+    }
+
     wbt_event_t ev, *p_ev;
     memset(&ev, 0, sizeof(wbt_event_t));
 
     ev.on_recv = std_socket_on_accept;
     ev.on_send = NULL;
     ev.events = WBT_EV_READ | WBT_EV_ET;
-    ev.fd = fd;
+    ev.fd = fd->v.l;
 
     if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
-        wbt_close_socket(fd);
+        wbt_close_socket(fd->v.l);
         return lgx_ext_return_false(vm);
     }
 
     lgx_server_t *server = (lgx_server_t *)xmalloc(sizeof(lgx_server_t));
     if (!server) {
-        wbt_close_socket(fd);
+        wbt_close_socket(fd->v.l);
         return lgx_ext_return_false(vm);
     }
 
     server->vm = vm;
-    server->on_request = fun->v.fun;
-    if (worker_num && worker_num->type == T_LONG &&
-        worker_num->v.l > 0 && worker_num->v.l <= 128) {
+    server->on_request = on_req->v.fun;
+    if (worker_num->v.l) {
         server->pool = wbt_thread_create_pool(worker_num->v.l, worker, server); // TODO 读取参数决定线程数量
     } else {
         server->pool = NULL;
@@ -444,12 +505,58 @@ int std_socket_load_symbols(lgx_hash_t *hash) {
     symbol.type = T_OBJECT;
     symbol.v.obj = lgx_obj_create(&name);
 
+    lgx_hash_node_t symbol_fd;
+    symbol_fd.k.type = T_STRING;
+    symbol_fd.k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1);
+    symbol_fd.v.type = T_LONG;
+    symbol_fd.v.v.l = 0;
+    symbol_fd.v.u.c.access = P_PRIVATE;
+
+    if (lgx_obj_add_property(symbol.v.obj, &symbol_fd)) {
+        return 1;
+    }
+
+    lgx_hash_node_t symbol_on_req;
+    symbol_on_req.k.type = T_STRING;
+    symbol_on_req.k.v.str = lgx_str_new_ref("on_req", sizeof("on_req")-1);
+    symbol_on_req.v.type = T_UNDEFINED; // todo 初始化为空函数
+    symbol_on_req.v.u.c.access = P_PRIVATE;
+
+    if (lgx_obj_add_property(symbol.v.obj, &symbol_on_req)) {
+        return 1;
+    }
+
+    lgx_hash_node_t symbol_listen;
+    symbol_listen.k.type = T_STRING;
+    symbol_listen.k.v.str = lgx_str_new_ref("listen", sizeof("listen")-1);
+    symbol_listen.v.type = T_FUNCTION;
+    symbol_listen.v.v.fun = lgx_fun_new(1);
+    symbol_listen.v.v.fun->buildin = std_socket_server_listen;
+    symbol_listen.v.v.fun->args[0].type = T_LONG;
+
+    if (lgx_obj_add_method(symbol.v.obj, &symbol_listen)) {
+        return 1;
+    }
+
+    lgx_hash_node_t symbol_on_request;
+    symbol_on_request.k.type = T_STRING;
+    symbol_on_request.k.v.str = lgx_str_new_ref("on_request", sizeof("on_request")-1);
+    symbol_on_request.v.type = T_FUNCTION;
+    symbol_on_request.v.v.fun = lgx_fun_new(1);
+    symbol_on_request.v.v.fun->buildin = std_socket_server_on_request;
+    symbol_on_request.v.v.fun->args[0].type = T_FUNCTION; // TODO 编译时需要能够检查函数原型
+
+    if (lgx_obj_add_method(symbol.v.obj, &symbol_on_request)) {
+        return 1;
+    }
+
     lgx_hash_node_t symbol_create;
     symbol_create.k.type = T_STRING;
     symbol_create.k.v.str = lgx_str_new_ref("start", sizeof("start")-1);
     symbol_create.v.type = T_FUNCTION;
-    symbol_create.v.v.fun = lgx_fun_new(0);
+    symbol_create.v.v.fun = lgx_fun_new(1);
     symbol_create.v.v.fun->buildin = std_socket_server_start;
+    symbol_create.v.v.fun->args[0].type = T_LONG;
 
     if (lgx_obj_add_method(symbol.v.obj, &symbol_create)) {
         return 1;
