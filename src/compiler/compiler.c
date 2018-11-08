@@ -147,14 +147,19 @@ static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_this(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     // 查找 class 原型
-    while (node->type != CLASS_DECLARATION) {
-        node = node->parent;
+    lgx_ast_node_t *parent = node;
+    while (parent->type != CLASS_DECLARATION) {
+        parent = parent->parent;
+        if (!parent) {
+            bc_error(bc, "[Error] [Line:%d] Invalid using `this` outside of classes\n", node->line);
+            return 1;
+        }
     }
     lgx_str_t s;
-    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)node->child[0];
+    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)parent->child[0];
     s.buffer = n->tk_start;
     s.length = n->tk_length;
-    lgx_val_t *v = lgx_scope_val_get(node, &s);
+    lgx_val_t *v = lgx_scope_val_get(parent, &s);
 
     expr->type = T_OBJECT;
     expr->v.obj = v->v.obj;
