@@ -94,6 +94,26 @@ int lgx_obj_add_method(lgx_obj_t *obj, lgx_hash_node_t *node) {
     return lgx_hash_set(obj->methods, node);
 }
 
+lgx_str_t * lgx_obj_get_name(lgx_obj_t *obj) {
+    while (obj->name == NULL) {
+        obj = obj->parent;
+        if (!obj) {
+            return NULL;
+        }
+    }
+
+    return obj->name;
+}
+
+int lgx_obj_is_same_class(lgx_obj_t *obj1, lgx_obj_t *obj2) {
+    lgx_str_t *n1 = lgx_obj_get_name(obj1);
+    lgx_str_t *n2 = lgx_obj_get_name(obj2);
+
+    assert(n1 && n2);
+
+    return lgx_str_cmp(n1, n2);
+}
+
 int lgx_obj_print(lgx_obj_t *obj) {
     printf("\n{\n\t\"properties\":");
     lgx_hash_print(obj->properties);

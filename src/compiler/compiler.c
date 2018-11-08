@@ -597,17 +597,34 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             return 1;
         }
 
-        if (!is_auto(&e1) && !is_auto(&e2) && e1.type != e2.type) {
-            // 允许从 int 到 float 的隐式转换
-            if (e1.type == T_DOUBLE && check_constant(&e2, T_LONG)) {
-                // 常量类型转换
-                lgx_val_t tmp = e2;
-                lgx_cast_double(&tmp, &e2);
-                e2 = tmp;
-                // TODO 变量类型转换
+        if (!is_auto(&e1) && !is_auto(&e2)) {
+            if (e1.type != e2.type) {
+                // 允许从 int 到 float 的隐式转换
+                if (e1.type == T_DOUBLE && check_constant(&e2, T_LONG)) {
+                    // 常量类型转换
+                    lgx_val_t tmp = e2;
+                    lgx_cast_double(&tmp, &e2);
+                    e2 = tmp;
+                    // TODO 变量类型转换
+                } else {
+                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+                    return 1;
+                }
             } else {
-                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
-                return 1;
+                if (e1.type == T_OBJECT) {
+                    if (lgx_obj_is_same_class(e1.v.obj, e2.v.obj)) {
+                        lgx_str_t *n1 = lgx_obj_get_name(e1.v.obj);
+                        lgx_str_t *n2 = lgx_obj_get_name(e2.v.obj);
+                        bc_error(bc, "[Error] [Line:%d] makes %s<%.*s> from %s<%.*s> without a cast\n",
+                            node->line,
+                            lgx_val_typeof(&e1),
+                            n1->length, n1->buffer,
+                            lgx_val_typeof(&e2),
+                            n2->length, n2->buffer
+                        );
+                        return 1;
+                    }
+                }
             }
         }
 

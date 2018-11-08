@@ -1368,6 +1368,9 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_node_append_child(block_statement, method_declaration);
 
             ast_parse_function_declaration(ast, method_declaration);
+            if (ast->err_no) {
+                return;
+            }
 
             lgx_hash_node_t n;
             lgx_ast_node_token_t *method_name = (lgx_ast_node_token_t *)method_declaration->child[0]->child[0];
@@ -1395,6 +1398,9 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     ast_node_append_child(block_statement, property_declaration);
 
                     ast_parse_variable_declaration(ast, property_declaration);
+                    if (ast->err_no) {
+                        return;
+                    }
 
                     lgx_hash_node_t n;
                     lgx_ast_node_token_t *property_name = (lgx_ast_node_token_t *)property_declaration->child[0]->child[0];
