@@ -663,6 +663,39 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         // TODO 对象属性赋值
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
         // TODO 对象属性赋值
+        lgx_val_t e1, e2, e3;
+        lgx_val_init(&e1);
+        lgx_val_init(&e2);
+        lgx_val_init(&e3);
+
+        if (bc_expr(bc, node->child[0]->child[0], &e1)) {
+            return 1;
+        }
+
+        if (!check_type(&e1, T_OBJECT)) {
+            bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            return 1;
+        }
+
+        e2.type = T_STRING;
+        // TODO 内存泄漏
+        e2.v.str = lgx_str_new_ref(
+            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_start,
+            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_length
+        );
+
+        // 判断类型
+        lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
+        if (!v || v->type == T_FUNCTION) {
+            bc_error(bc, "[Error] [Line:%d] property `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
+            return 1;
+        }
+
+        if (bc_expr(bc, node->child[1], &e3)) {
+            return 1;
+        }
+
+        bc_object_set(bc, &e1, &e2, &e3);
     } else {
         bc_error(bc, "[Error] [Line:%d] invalid left variable for assignment\n", node->line);
         return 1;

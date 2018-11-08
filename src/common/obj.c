@@ -46,16 +46,16 @@ int lgx_obj_delete(lgx_obj_t *obj) {
 }
 
 int lgx_obj_set(lgx_obj_t *obj, lgx_val_t *k, lgx_val_t *v) {
-    lgx_hash_node_t *node = lgx_hash_get(obj->properties, k);
-    if (!node) {
+    lgx_val_t *val = lgx_obj_get(obj, k);
+    if (!val || val->type == T_FUNCTION) {
         return 1;
     }
 
-    lgx_gc_ref_del(&node->v);
-    node->v = *v;
-    lgx_gc_ref_add(&node->v);
+    lgx_hash_node_t node;
+    node.k = *k;
+    node.v = *v;
 
-    return 0;
+    return lgx_hash_set(obj->properties, &node);
 }
 
 lgx_val_t* lgx_obj_get(lgx_obj_t *obj, lgx_val_t *k) {
