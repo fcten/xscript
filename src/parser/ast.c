@@ -1407,7 +1407,6 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     n.k.type = T_STRING;
                     n.k.v.str = lgx_str_new_ref(property_name->tk_start, property_name->tk_length);
 
-                    // TODO 根据 ast 初始化 property
                     lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
                     n.v.type = v->type;
                     ast_init_value(&n.v);

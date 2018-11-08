@@ -1726,6 +1726,52 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case PROPERTY_DECLARATION:{
+            // property 节点不需要生成任何代码
+            // 如果需要初始化，直接初始化对应的 lgx_obj_t 结构体
+            if (!node->child[0]->child[1]) {
+                break;
+            }
+
+            lgx_val_t v;
+            lgx_val_init(&v);
+            if (bc_expr(bc, node->child[0]->child[1], &v)) {
+                return 1;
+            }
+
+            if (is_register(&v)) {
+                bc_error(bc, "[Error] [Line:%d] only constant expression allowed in property declaration", node->line);
+                return 1;
+            }
+
+            // 查找 class 原型
+            lgx_ast_node_t *parent = node;
+            while (parent->type != CLASS_DECLARATION) {
+                parent = parent->parent;
+            }
+            lgx_str_t s;
+            lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)parent->child[0];
+            s.buffer = n->tk_start;
+            s.length = n->tk_length;
+            lgx_val_t *o = lgx_scope_val_get(parent, &s);
+            assert(o);
+
+            lgx_val_t k;
+            k.type = T_STRING;
+            // TODO 内存泄漏
+            k.v.str = lgx_str_new_ref(
+                ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start,
+                ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length
+            );
+
+            lgx_val_t *val = lgx_obj_get(o->v.obj, &k);
+
+            if (!check_type(&v, val->type)) {
+                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(val), lgx_val_typeof(&v));
+                return 1;
+            }
+
+            lgx_obj_set(o->v.obj, &k, &v);
+
             break;
         }
         default:
