@@ -6,6 +6,7 @@
 
 #include "../common/str.h"
 #include "../common/fun.h"
+#include "../common/obj.h"
 #include "../interpreter/coroutine.h"
 #include "std_coroutine.h"
 
@@ -325,8 +326,9 @@ void* worker(void *args) {
     return NULL;
 }
 
-int std_socket_server_create(void *p) {
+int std_socket_server_start(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
+    return lgx_ext_return_false(vm);
 
     unsigned base = vm->regs[0].v.fun->stack_size;
     lgx_hash_t *hash = vm->regs[base+4].v.arr;
@@ -434,15 +436,26 @@ int std_socket_server_close(void *p) {
 }
 
 int std_socket_load_symbols(lgx_hash_t *hash) {
+    lgx_str_t name;
+    name.buffer = "Server";
+    name.length = sizeof("Server")-1;
+
     lgx_val_t symbol;
+    symbol.type = T_OBJECT;
+    symbol.v.obj = lgx_obj_create(&name);
 
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(1);
-    symbol.v.fun->buildin = std_socket_server_create;
+    lgx_hash_node_t symbol_create;
+    symbol_create.k.type = T_STRING;
+    symbol_create.k.v.str = lgx_str_new_ref("start", sizeof("start")-1);
+    symbol_create.v.type = T_FUNCTION;
+    symbol_create.v.v.fun = lgx_fun_new(0);
+    symbol_create.v.v.fun->buildin = std_socket_server_start;
 
-    symbol.v.fun->args[0].type = T_ARRAY;
+    if (lgx_obj_add_method(symbol.v.obj, &symbol_create)) {
+        return 1;
+    }
 
-    if (lgx_ext_add_symbol(hash, "server_create", &symbol)) {
+    if (lgx_ext_add_symbol(hash, symbol.v.obj->name->buffer, &symbol)) {
         return 1;
     }
 

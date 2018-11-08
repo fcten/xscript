@@ -917,8 +917,17 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
 
 static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_str_t s;
-    s.buffer = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start;
-    s.length = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length;
+    if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
+        s.buffer = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start;
+        s.length = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length;
+    } else if (node->child[0]->type == IDENTIFIER_TOKEN) {
+        s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
+        s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
+    } else {
+        bc_error(bc, "[Error] [Line:%d] invalid expression for `new` operator\n", node->line);
+        return 1;
+    }
+
     lgx_val_t *v = lgx_scope_global_val_get(node, &s);
 
     e->type = T_OBJECT;
