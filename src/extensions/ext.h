@@ -17,10 +17,11 @@ int lgx_ext_load_symbols(lgx_hash_t *hash);
 
 int lgx_ext_add_symbol(lgx_hash_t *hash, char *symbol, lgx_val_t *v);
 
-int lgx_ext_return(lgx_vm_t *vm, lgx_val_t *v);
-int lgx_ext_return_long(lgx_vm_t *vm, long long v);
-int lgx_ext_return_double(lgx_vm_t *vm, double v);
-int lgx_ext_return_true(lgx_vm_t *vm);
-int lgx_ext_return_false(lgx_vm_t *vm);
+int lgx_ext_return(lgx_co_t *co, lgx_val_t *v);
+int lgx_ext_return_long(lgx_co_t *co, long long v);
+int lgx_ext_return_double(lgx_co_t *co, double v);
+int lgx_ext_return_true(lgx_co_t *co);
+int lgx_ext_return_false(lgx_co_t *co);
+int lgx_ext_return_string(lgx_co_t *co, lgx_str_t *str);
 
 #endif // LGX_EXT_H

@@ -51,48 +51,57 @@ int lgx_ext_load_symbols(lgx_hash_t *hash) {
     return 0;
 }
 
-int lgx_ext_return(lgx_vm_t *vm, lgx_val_t *v) {
+int lgx_ext_return(lgx_co_t *co, lgx_val_t *v) {
     // 参数起始地址
-    int base = vm->regs[0].v.fun->stack_size;
+    int base = co->stack.buf[0].v.fun->stack_size;
 
     // 返回值地址
-    int ret = vm->regs[base + 1].v.l;
+    int ret = co->stack.buf[base + 1].v.l;
 
     // 写入返回值
-    lgx_gc_ref_del(&vm->regs[ret]);
-    vm->regs[ret] = *v;
+    lgx_gc_ref_del(&co->stack.buf[ret]);
+    co->stack.buf[ret] = *v;
+    lgx_gc_ref_add(&co->stack.buf[ret]);
 
     return 0;
 }
 
-int lgx_ext_return_long(lgx_vm_t *vm, long long v) {
+int lgx_ext_return_long(lgx_co_t *co, long long v) {
     lgx_val_t ret;
     ret.type = T_LONG;
     ret.v.l = v;
 
-    return lgx_ext_return(vm, &ret);
+    return lgx_ext_return(co, &ret);
 }
 
-int lgx_ext_return_double(lgx_vm_t *vm, double v) {
+int lgx_ext_return_double(lgx_co_t *co, double v) {
     lgx_val_t ret;
     ret.type = T_DOUBLE;
     ret.v.d = v;
 
-    return lgx_ext_return(vm, &ret);
+    return lgx_ext_return(co, &ret);
 }
 
-int lgx_ext_return_true(lgx_vm_t *vm) {
+int lgx_ext_return_true(lgx_co_t *co) {
     lgx_val_t ret;
     ret.type = T_BOOL;
     ret.v.d = 1;
 
-    return lgx_ext_return(vm, &ret);
+    return lgx_ext_return(co, &ret);
 }
 
-int lgx_ext_return_false(lgx_vm_t *vm) {
+int lgx_ext_return_false(lgx_co_t *co) {
     lgx_val_t ret;
     ret.type = T_BOOL;
     ret.v.d = 0;
 
-    return lgx_ext_return(vm, &ret);
+    return lgx_ext_return(co, &ret);
+}
+
+int lgx_ext_return_string(lgx_co_t *co, lgx_str_t *str) {
+    lgx_val_t ret;
+    ret.type = T_STRING;
+    ret.v.str = str;
+
+    return lgx_ext_return(co, &ret);
 }

@@ -35,7 +35,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
         return NULL;
     }
 
-    if (lgx_co_stack_init(&co->stack, fun->stack_size)) {
+    if (lgx_co_stack_init(&co->stack, fun->stack_size > 16 ? fun->stack_size : 16)) {
         xfree(co);
         return NULL;
     }
