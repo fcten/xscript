@@ -25,6 +25,11 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
         return NULL;
     }
 
+    if (fun->buildin) {
+        // 只支持为 xscript 函数创建协程
+        return NULL;
+    }
+
     lgx_co_t *co = (lgx_co_t *)xcalloc(1, sizeof(lgx_co_t));
     if (!co) {
         return NULL;
