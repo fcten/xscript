@@ -1341,6 +1341,57 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         return;
     }
 
+    // 处理继承。只支持单继承。
+    if (ast->cur_token == TK_EXTENDS) {
+        ast_step(ast);
+        if (ast->cur_token != TK_ID) {
+            ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
+
+        s.buffer = ast->cur_start;
+        s.length = ast->cur_length;
+
+        lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
+        if (!v || v->type != T_OBJECT || v->v.obj->is_interface) {
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a class\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            return;
+        }
+
+        f->v.obj->parent = v->v.obj;
+
+        ast_step(ast);
+    }
+
+    if (ast->cur_token == TK_IMPLEMENTS) {
+        ast_step(ast);
+
+        while (1) {
+            if (ast->cur_token != TK_ID) {
+                ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            }
+
+            s.buffer = ast->cur_start;
+            s.length = ast->cur_length;
+
+            lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
+            if (!v || v->type != T_OBJECT || !v->v.obj->is_interface) {
+                ast_error(ast, "[Error] [Line:%d] `%.*s` is not a interface\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            }
+
+            // TODO 处理 interface
+
+            ast_step(ast);
+
+            if (ast->cur_token != ',') {
+                break;
+            }
+            ast_step(ast);
+        }
+    }
+
     if (ast->cur_token != '{') {
         ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
@@ -1443,6 +1494,8 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         return;
     }
     ast_step(ast);
+
+    // TODO 检查 implements
 }
 
 void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
