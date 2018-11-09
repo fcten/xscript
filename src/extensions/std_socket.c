@@ -23,6 +23,101 @@ typedef struct {
     lgx_fun_t *on_request;
 } lgx_server_t;
 
+wbt_socket_t std_socket_create_fd() {
+    wbt_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(fd < 0) {
+        //wbt_log_add("create socket failed\n");
+        return fd;
+    }
+
+    /* 把监听socket设置为非阻塞方式 */
+    if( wbt_nonblocking(fd) == -1 ) {
+        //wbt_log_add("set nonblocking failed\n");
+        wbt_close_socket(fd);
+        return fd;
+    }
+
+    return fd;
+}
+
+wbt_status std_socket_listen(wbt_socket_t fd, int port) {
+    /* 在重启程序以及进行热更新时，避免 TIME_WAIT 和 CLOSE_WAIT 状态的连接导致 bind 失败 */
+    int on = 1; 
+    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) != 0) {  
+        //wbt_log_add("set SO_REUSEADDR failed\n");
+        return WBT_ERROR;
+    }
+
+    /* bind & listen */    
+    struct sockaddr_in sin;
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(port);
+
+    if(bind(fd, (const struct sockaddr*)&sin, sizeof(sin)) != 0) {
+        //wbt_log_add("bind failed\n");
+        return WBT_ERROR;
+    }
+
+    if(listen(fd, WBT_CONN_BACKLOG) != 0) {
+        //wbt_log_add("listen failed\n");
+        return WBT_ERROR;
+    }
+
+    return WBT_OK;
+}
+
+wbt_status std_socket_connect(wbt_socket_t fd, char *ip, int port) {
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+#ifdef WIN32
+    addr.sin_addr.S_un.S_addr = inet_addr(ip);
+#else
+    addr.sin_addr.s_addr = inet_addr(ip);
+#endif
+    memset(addr.sin_zero, 0x00, 8);
+
+    int ret = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if (ret < 0) {
+        wbt_err_t err = wbt_socket_errno;
+
+        if (err != WBT_EINPROGRESS
+#ifdef WIN32
+            /* Winsock returns WSAEWOULDBLOCK (WBT_EAGAIN) */
+            && err != WBT_EAGAIN
+#endif
+            )
+        {
+            if (err == WBT_ECONNREFUSED
+#ifndef WIN32 // TODO 判断 LINUX 平台
+                /*
+                 * Linux returns EAGAIN instead of ECONNREFUSED
+                 * for unix sockets if listen queue is full
+                 */
+                || err == WBT_EAGAIN
+#endif
+                || err == WBT_ECONNRESET
+                || err == WBT_ENETDOWN
+                || err == WBT_ENETUNREACH
+                || err == WBT_EHOSTDOWN
+                || err == WBT_EHOSTUNREACH)
+            {
+                // 普通错误
+                return WBT_ERROR;
+            } else {
+                // 未知错误
+                return WBT_ERROR;
+            }
+        } else {
+            return WBT_EAGAIN;
+        }
+    }
+
+    return WBT_OK;
+}
+
 wbt_status std_socket_on_close(wbt_event_t *ev) {
     //wbt_log_debug("connection %d close.",ev->fd);
     
@@ -339,47 +434,18 @@ int std_socket_server_listen(void *p) {
         return lgx_ext_return_false(vm);
     }
 
-    // 创建监听端口并加入事件循环
-    wbt_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
-    if(fd <= 0) {
-        //wbt_log_add("create socket failed\n");
+    // 创建监听端口
+    wbt_socket_t fd = std_socket_create_fd();
+    if (fd < 0) {
         return lgx_ext_return_false(vm);
     }
 
-    /* 把监听socket设置为非阻塞方式 */
-    if( wbt_nonblocking(fd) == -1 ) {
-        //wbt_log_add("set nonblocking failed\n");
+    if (std_socket_listen(fd, port->v.l) != WBT_OK) {
         wbt_close_socket(fd);
         return lgx_ext_return_false(vm);
     }
 
-    /* 在重启程序以及进行热更新时，避免 TIME_WAIT 和 CLOSE_WAIT 状态的连接导致 bind 失败 */
-    int on = 1; 
-    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) != 0) {  
-        //wbt_log_add("set SO_REUSEADDR failed\n");
-        wbt_close_socket(fd);
-        return lgx_ext_return_false(vm);
-    }
-
-    /* bind & listen */    
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(port->v.l);
-
-    if(bind(fd, (const struct sockaddr*)&sin, sizeof(sin)) != 0) {
-        //wbt_log_add("bind failed\n");
-        wbt_close_socket(fd);
-        return lgx_ext_return_false(vm);
-    }
-
-    if(listen(fd, WBT_CONN_BACKLOG) != 0) {
-        //wbt_log_add("listen failed\n");
-        wbt_close_socket(fd);
-        return lgx_ext_return_false(vm);
-    }
-
+    // 把 fd 记录到对象的 fd 属性中
     lgx_val_t k, v;
     k.type = T_STRING;
     k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1); // TODO memory leak
@@ -432,6 +498,7 @@ int std_socket_server_start(void *p) {
         return lgx_ext_return_false(vm);
     }
 
+    // 把监听的 socket 加入事件循环
     wbt_event_t ev, *p_ev;
     memset(&ev, 0, sizeof(wbt_event_t));
 
@@ -464,18 +531,6 @@ int std_socket_server_start(void *p) {
     lgx_ext_return_true(vm);
 
     lgx_co_suspend(vm);
-
-    return 0;
-}
-
-int std_socket_server_send(void *p) {
-    //lgx_vm_t *vm = p;
-
-    return 0;
-}
-
-int std_socket_server_close(void *p) {
-    //lgx_vm_t *vm = p;
 
     return 0;
 }
