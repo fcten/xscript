@@ -396,22 +396,6 @@ int std_socket_server_listen(void *p) {
 int std_socket_server_on_request(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
-    unsigned base = vm->regs[0].v.fun->stack_size;
-
-    lgx_val_t *obj = &vm->regs[base+4];
-    lgx_val_t *on_request = &vm->regs[base+5];
-
-    if (on_request->type != T_FUNCTION) {
-        return lgx_ext_return_false(vm);
-    }
-
-    lgx_val_t k;
-    k.type = T_STRING;
-    k.v.str = lgx_str_new_ref("on_req", sizeof("on_req")-1); // TODO memory leak
-    if (lgx_obj_set(obj->v.obj, &k, on_request) != 0) {
-        return lgx_ext_return_false(vm);
-    }
-
     return lgx_ext_return_true(vm);
 }
 
@@ -441,8 +425,8 @@ int std_socket_server_start(void *p) {
         return lgx_ext_return_false(vm);
     }
 
-    name.buffer = "on_req";
-    name.length = sizeof("on_req")-1;
+    name.buffer = "onRequest";
+    name.length = sizeof("onRequest")-1;
     lgx_val_t *on_req = lgx_obj_get(obj->v.obj, &k);
     if (!on_req || on_req->type != T_FUNCTION || on_req->v.fun == NULL) {
         return lgx_ext_return_false(vm);
@@ -516,16 +500,6 @@ int std_socket_load_symbols(lgx_hash_t *hash) {
         return 1;
     }
 
-    lgx_hash_node_t symbol_on_req;
-    symbol_on_req.k.type = T_STRING;
-    symbol_on_req.k.v.str = lgx_str_new_ref("on_req", sizeof("on_req")-1);
-    symbol_on_req.v.type = T_UNDEFINED; // todo 初始化为空函数
-    symbol_on_req.v.u.c.access = P_PRIVATE;
-
-    if (lgx_obj_add_property(symbol.v.obj, &symbol_on_req)) {
-        return 1;
-    }
-
     lgx_hash_node_t symbol_listen;
     symbol_listen.k.type = T_STRING;
     symbol_listen.k.v.str = lgx_str_new_ref("listen", sizeof("listen")-1);
@@ -540,7 +514,7 @@ int std_socket_load_symbols(lgx_hash_t *hash) {
 
     lgx_hash_node_t symbol_on_request;
     symbol_on_request.k.type = T_STRING;
-    symbol_on_request.k.v.str = lgx_str_new_ref("on_request", sizeof("on_request")-1);
+    symbol_on_request.k.v.str = lgx_str_new_ref("onRequest", sizeof("onRequest")-1);
     symbol_on_request.v.type = T_FUNCTION;
     symbol_on_request.v.v.fun = lgx_fun_new(1);
     symbol_on_request.v.v.fun->buildin = std_socket_server_on_request;
