@@ -98,7 +98,7 @@ static wbt_status try_listen(wbt_socket_t fd, int port) {
 static wbt_status on_close(wbt_event_t *ev) {
     wbt_debug("server:on_close %d", ev->fd);
 
-    wbt_debug("close time: %lld", wbt_cur_mtime);
+    //wbt_debug("close time: %lld", wbt_cur_mtime);
     
     lgx_conn_t *conn = (lgx_conn_t *)ev->ctx;
     lgx_server_t *server = conn->server;
@@ -154,8 +154,8 @@ static int on_yield(lgx_vm_t *vm) {
     ev->send.len = str->length;
     ev->send.offset = 0;
 
-    // 修改事件
-    ev->events = WBT_EV_WRITE | WBT_EV_ET;
+    // 修改事件，每产生一个响应都会重置超时事件
+    ev->events = WBT_EV_WRITE | WBT_EV_READ | WBT_EV_ET;
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
 
     if(wbt_event_mod(vm->events, ev) != WBT_OK) {
@@ -226,6 +226,14 @@ static wbt_status on_recv(wbt_event_t *ev) {
         return WBT_OK;
     } else if (ret == 2) {
         // 数据不合法，关闭连接
+        on_close(ev);
+        return WBT_OK;
+    }
+
+    // 收到完整的数据包则重置超时事件
+    ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
+
+    if(wbt_event_mod(server->vm->events, ev) != WBT_OK) {
         on_close(ev);
         return WBT_OK;
     }
@@ -358,7 +366,7 @@ static wbt_status on_accept(wbt_event_t *ev) {
             tmp_ev.events  = WBT_EV_READ | WBT_EV_ET;
             tmp_ev.fd      = conn_sock;
 
-            wbt_debug("accept time: %lld", wbt_cur_mtime);
+            //wbt_debug("accept time: %lld", wbt_cur_mtime);
 
             if((p_ev = wbt_event_add(server->vm->events, &tmp_ev)) == NULL) {
                 xfree(conn);
