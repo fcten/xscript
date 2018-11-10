@@ -852,7 +852,6 @@ int lgx_vm_start(lgx_vm_t *vm) {
         } else {
             timeout = wbt_timer_process(&vm->events->timer);
             wbt_event_wait(vm->events, timeout);
-            wbt_time_update();
             timeout = wbt_timer_process(&vm->events->timer);
         }
     }

@@ -15,7 +15,7 @@ extern wbt_atomic_t wbt_wating_to_exit;
 
 /* 初始化事件队列 */
 wbt_event_pool_t * wbt_event_init() {
-    wbt_event_pool_t *pool = wbt_malloc(sizeof(wbt_event_pool_t));
+    wbt_event_pool_t *pool = (wbt_event_pool_t *)wbt_malloc(sizeof(wbt_event_pool_t));
     if (!pool) {
         return NULL;
     }
@@ -26,12 +26,12 @@ wbt_event_pool_t * wbt_event_init() {
 
     wbt_list_init(&pool->node.list);
     
-    pool->node.pool = wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t) );
+    pool->node.pool = (wbt_event_t *)wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t) );
     if( pool->node.pool == NULL ) {
         goto init_error;
     }
 
-    pool->available = wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t *) );
+    pool->available = (wbt_event_t **)wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t *) );
     if( pool->available == NULL ) {
         goto init_error;
     }
@@ -61,18 +61,18 @@ init_error:
 }
 
 wbt_status wbt_event_resize(wbt_event_pool_t *pool) {
-    wbt_event_pool_node_t *new_node = wbt_calloc(sizeof(wbt_event_pool_node_t));
+    wbt_event_pool_node_t *new_node = (wbt_event_pool_node_t *)wbt_calloc(sizeof(wbt_event_pool_node_t));
     if( new_node == NULL ) {
         return WBT_ERROR;
     }
 
-    new_node->pool = wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t) );
+    new_node->pool = (wbt_event_t *)wbt_malloc( WBT_EVENT_LIST_SIZE * sizeof(wbt_event_t) );
     if( new_node->pool == NULL ) {
         wbt_free(new_node);
         return WBT_ERROR;
     }
     
-    void * tmp = wbt_realloc(pool->available, (pool->max + WBT_EVENT_LIST_SIZE) * sizeof(wbt_event_t *));
+    wbt_event_t **tmp = (wbt_event_t **)wbt_realloc(pool->available, (pool->max + WBT_EVENT_LIST_SIZE) * sizeof(wbt_event_t *));
     if( tmp == NULL ) {
         wbt_free(new_node->pool);
         wbt_free(new_node);
@@ -119,8 +119,14 @@ wbt_event_t * wbt_event_add(wbt_event_pool_t *pool, wbt_event_t *ev) {
     t->timer.on_timeout = ev->timer.on_timeout;
     t->timer.timeout    = ev->timer.timeout;
 
-    t->buff = NULL;
-    t->buff_len = 0;
+    t->recv.buf = NULL;
+    t->recv.len = 0;
+    t->recv.offset = 0;
+
+    t->send.buf = NULL;
+    t->send.len = 0;
+    t->send.offset = 0;
+
     t->ctx  = NULL;
 
     /* 注册epoll事件 */
@@ -161,11 +167,18 @@ wbt_status wbt_event_del(wbt_event_pool_t *pool, wbt_event_t *ev) {
     wbt_timer_del(&pool->timer, &ev->timer);
     
     /* 释放可能存在的事件数据缓存 */
-    if (ev->buff) {
-        wbt_free(ev->buff);
-        ev->buff = NULL;
-        ev->buff_len = 0;
+    if (ev->recv.buf) {
+        wbt_free(ev->recv.buf);
+        ev->recv.buf = NULL;
+        ev->recv.len = 0;
     }
+    if (ev->send.buf) {
+        wbt_free(ev->send.buf);
+        ev->send.buf = NULL;
+        ev->send.len = 0;
+    }
+
+    /* 注意： ev->ctx 需要应用自行在必要的时候释放 */
 
     /* 删除epoll事件 */
     if(ev->fd >= 0) {
@@ -283,6 +296,8 @@ wbt_status wbt_event_wait(wbt_event_pool_t *pool, time_t timeout) {
     wbt_event_t *ev;
 
     int nfds = epoll_wait(pool->epoll_fd, events, WBT_MAX_EVENTS, timeout);
+
+    wbt_time_update();
     
     if (nfds == -1) {
         if (errno == EINTR) {

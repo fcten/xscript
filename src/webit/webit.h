@@ -17,7 +17,10 @@ extern "C" {
 
 #ifndef WIN32
 
+#ifdef _DEBUG
 #define WBT_DEBUG
+#endif
+
 #include "os/linux/wbt_os_util.h"
 
 #else /* WIN32 */
@@ -48,7 +51,8 @@ int wbt_main( int argc, char** argv );
 
 typedef enum {
     WBT_OK,
-    WBT_ERROR
+    WBT_ERROR,
+    WBT_AGAIN
 } wbt_status;
 
 typedef int wbt_atomic_t;

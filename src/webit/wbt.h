@@ -8,6 +8,7 @@ extern "C" {
 int wbt_init();
 
 #include "webit.h"
+#include "common/wbt_error.h"
 #include "common/wbt_timer.h"
 #include "event/wbt_event.h"
 #include "thread/wbt_thread.h"

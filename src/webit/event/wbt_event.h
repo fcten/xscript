@@ -39,6 +39,15 @@ enum {
     WBT_PROTOCOL_LENGTH
 };
 
+typedef struct {
+    // 缓冲区
+    void * buf;
+    // 缓冲区长度
+    size_t len;
+    // 已使用的缓冲区长度
+    size_t offset;
+} wbt_event_buf_t;
+
 typedef struct wbt_event_s {
     wbt_timer_t timer;                              /* 超时事件 */
     wbt_socket_t fd;                                /* 事件句柄 */
@@ -46,9 +55,8 @@ typedef struct wbt_event_s {
     wbt_status (*on_recv)(struct wbt_event_s *);    /* 触发回调函数 */
     wbt_status (*on_send)(struct wbt_event_s *);    /* 触发回调函数 */
     /* 事件数据缓存 */
-    void * buff;
-    size_t buff_len;
-    size_t buff_offset;
+    wbt_event_buf_t recv;
+    wbt_event_buf_t send;
     /* 自定义数据 */
     void * ctx;
 } wbt_event_t;
