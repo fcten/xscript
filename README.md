@@ -35,7 +35,7 @@ echo "Hello World";
 - string
 - array
 
-未定义值
+未定义值字面量
 
 - undefined
 
@@ -64,6 +64,25 @@ echo "Hello World";
 - do
 - while
 - for
+
+面向对象
+
+- this
+- new
+- class
+- interface
+- extends
+- implements
+- public
+- private
+- protected
+- final
+
+异常
+
+- try
+- catch
+- throw
 
 # 基本数据类型 (data type)
 
@@ -514,7 +533,44 @@ for (;;) { // 死循环
 
 # 面向对象
 
+## 类 (class)
+
+类必须先定义再使用。
+
+```
+class Test {
+    public function print() {
+        echo "Test:print\n";
+    }
+}
+
+Test obj = new Test;
+obj->print();
+```
+
+## 接口 (interface)
+
 # 异常
+
+```
+try {
+    throw 1;
+} catch (auto e) {
+    echo "catch exception 1\n";
+}
+
+function test() {
+    throw 2;
+}
+
+try {
+    test();
+} catch (auto e) {
+    echo "catch exception 2\n";
+}
+
+throw 3; // uncaught uncaught exception 3
+```
 
 # 垃圾回收 (garbage collection)
 
