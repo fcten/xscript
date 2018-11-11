@@ -1,4 +1,5 @@
 #include <assert.h>
+#include "../common/common.h"
 #include "coroutine.h"
 
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
@@ -44,7 +45,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     co->on_yield = NULL;
 
     co->status = CO_READY;
-    lgx_list_add_tail(&co->head, &vm->co_ready);
+    wbt_list_add_tail(&co->head, &vm->co_ready);
 
     lgx_val_t *R = co->stack.buf;
 
@@ -84,7 +85,7 @@ int lgx_co_set_on_resume(lgx_co_t *co, int (*on_yield)(struct lgx_vm_s *vm)) {
 }
 
 int lgx_co_has_ready_task(lgx_vm_t *vm) {
-    if (!lgx_list_empty(&vm->co_ready)) {
+    if (!wbt_list_empty(&vm->co_ready)) {
         return 1;
     }
 
@@ -96,11 +97,11 @@ int lgx_co_has_task(lgx_vm_t *vm) {
         return 1;
     }
 
-    if (!lgx_list_empty(&vm->co_ready)) {
+    if (!wbt_list_empty(&vm->co_ready)) {
         return 1;
     }
 
-    if (!lgx_list_empty(&vm->co_suspend)) {
+    if (!wbt_list_empty(&vm->co_suspend)) {
         return 1;
     }
 
@@ -111,7 +112,7 @@ int lgx_co_schedule(lgx_vm_t *vm) {
     assert(vm->co_running == NULL);
     assert(lgx_co_has_ready_task(vm));
 
-    lgx_co_t *co = lgx_list_first_entry(&vm->co_ready, lgx_co_t, head);
+    lgx_co_t *co = wbt_list_first_entry(&vm->co_ready, lgx_co_t, head);
 
     return lgx_co_resume(vm, co);
 }
@@ -121,10 +122,10 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
         lgx_co_yield(vm);
     }
 
-    if (!lgx_list_empty(&co->head)) {
-        lgx_list_del(&co->head);
+    if (!wbt_list_empty(&co->head)) {
+        wbt_list_del(&co->head);
     }
-    lgx_list_init(&co->head);
+    wbt_list_init(&co->head);
 
     co->status = CO_RUNNING;
     vm->co_running = co;
@@ -147,7 +148,7 @@ int lgx_co_yield(lgx_vm_t *vm) {
     }
 
     vm->co_running = NULL;
-    lgx_list_add_tail(&co->head, &vm->co_ready);
+    wbt_list_add_tail(&co->head, &vm->co_ready);
 
     return 0;
 }
@@ -165,7 +166,7 @@ int lgx_co_suspend(lgx_vm_t *vm) {
     }
 
     vm->co_running = NULL;
-    lgx_list_add_tail(&co->head, &vm->co_suspend);
+    wbt_list_add_tail(&co->head, &vm->co_suspend);
 
     return 0;
 }
@@ -186,7 +187,7 @@ int lgx_co_died(lgx_vm_t *vm) {
 
     if (0) {
         // 如果协程暂时不能删除
-        lgx_list_add_tail(&co->head, &vm->co_died);
+        wbt_list_add_tail(&co->head, &vm->co_died);
     } else {
         lgx_co_delete(vm, co);
     }

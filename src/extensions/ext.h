@@ -1,6 +1,7 @@
 #ifndef LGX_EXT_H
 #define LGX_EXT_H
 
+#include "../common/common.h"
 #include "../interpreter/vm.h"
 #include "../interpreter/gc.h"
 

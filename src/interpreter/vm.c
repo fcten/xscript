@@ -7,7 +7,6 @@
 #include "vm.h"
 #include "gc.h"
 #include "coroutine.h"
-#include "exception.h"
 
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].v)
@@ -30,6 +29,44 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
     return 0;
 }
 
+// 寻找当前协程的退出指令位置
+static unsigned find_co_end(lgx_vm_t *vm) {
+    unsigned base = vm->co_running->stack.base;
+    lgx_val_t *regs = vm->co_running->stack.buf + base;
+
+    assert(regs[2].type == T_LONG);
+
+    while (regs[2].v.l >= 0) {
+        assert(regs[3].type == T_LONG);
+        base = regs[3].v.l;
+        regs = vm->co_running->stack.buf + base;
+        assert(regs[2].type == T_LONG);
+    }
+
+    assert(regs[0].type == T_FUNCTION);
+
+    return regs[0].v.fun->end;
+}
+
+void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
+    assert(vm->co_running);
+
+    unsigned cur_pc = vm->co_running->pc - 1;
+
+    // TODO 匹配最接近的 try-catch 块
+
+    // 没有匹配的 catch 块，退出当前协程
+    if (1) {
+        printf("[uncaught exception] [%d] ", cur_pc);
+        lgx_val_print(e);
+        printf("\n");
+
+        lgx_vm_backtrace(vm);
+
+        vm->co_running->pc = find_co_end(vm);
+    }
+}
+
 // 抛出一个异常
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     char *buf = (char *)xmalloc(128);
@@ -45,16 +82,16 @@ void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
     e.v.str->length = len;
     e.v.str->is_ref = 0;
 
-    lgx_exception_throw(vm, &e);
+    lgx_vm_throw(vm, &e);
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    lgx_list_init(&vm->co_ready);
-    lgx_list_init(&vm->co_suspend);
-    lgx_list_init(&vm->co_died);
+    wbt_list_init(&vm->co_ready);
+    wbt_list_init(&vm->co_suspend);
+    wbt_list_init(&vm->co_died);
 
-    lgx_list_init(&vm->heap.young);
-    lgx_list_init(&vm->heap.old);
+    wbt_list_init(&vm->heap.young);
+    wbt_list_init(&vm->heap.old);
     vm->heap.young_size = 0;
     vm->heap.old_size = 0;
 
@@ -75,6 +112,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 
     lgx_fun_t *fun = lgx_fun_new(0);
     fun->addr = 0;
+    fun->end = bc->bc_top - 1;
     fun->stack_size = bc->reg->max + 1;
 
     vm->co_main = lgx_co_create(vm, fun);
@@ -99,15 +137,15 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     // TODO 释放事件池
 
     // 清理所有变量
-    lgx_list_t *list = vm->heap.young.next;
+    wbt_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
-        lgx_list_t *next = list->next;
+        wbt_list_t *next = list->next;
         xfree(list);
         list = next;
     }
     list = vm->heap.old.next;
     while(list != &vm->heap.old) {
-        lgx_list_t *next = list->next;
+        wbt_list_t *next = list->next;
         xfree(list);
         list = next;
     }
@@ -804,7 +842,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_THROW: {
-                lgx_exception_throw(vm, &R(PA(i)));
+                lgx_vm_throw(vm, &R(PA(i)));
                 break;
             }
             case OP_NOP: break;

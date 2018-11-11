@@ -1,3 +1,4 @@
+#include "common.h"
 #include "obj.h"
 #include "hash.h"
 #include "str.h"

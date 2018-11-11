@@ -4,6 +4,7 @@
 #include "../common/cast.h"
 #include "../common/operator.h"
 #include "../common/obj.h"
+#include "../common/exception.h"
 #include "register.h"
 #include "compiler.h"
 #include "code.h"
@@ -261,7 +262,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
     if (!loop->u.jmps) {
         loop->u.jmps = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
         if (loop->u.jmps) {
-            lgx_list_init(&loop->u.jmps->head);
+            wbt_list_init(&loop->u.jmps->head);
             loop->u.jmps->node = NULL;
         } else {
             bc_error(bc, "[Error] [Line:%d] out of memory\n", node->line);
@@ -272,8 +273,8 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
     lgx_ast_node_list_t *n = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
     if (n) {
         n->node = node;
-        lgx_list_init(&n->head);
-        lgx_list_add_tail(&n->head, &loop->u.jmps->head);
+        wbt_list_init(&n->head);
+        wbt_list_add_tail(&n->head, &loop->u.jmps->head);
 
         return 0;
     } else {
@@ -296,7 +297,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
     }
 
     lgx_ast_node_list_t *n;
-    lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
+    wbt_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
         if (n->node->type == BREAK_STATEMENT) {
             bc_set_pe(bc, n->node->u.pos, end);
         } else if (n->node->type == CONTINUE_STATEMENT) {
@@ -1589,6 +1590,70 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case TRY_STATEMENT:{
+            lgx_exception_t *exception = lgx_exception_new();
+
+            exception->try_block.start = bc->bc_top;
+            bc_stat(bc, node->child[0]);
+            exception->try_block.end = bc->bc_top;
+
+            if (exception->try_block.start == exception->try_block.end) {
+                // try block 没有编译产生任何代码
+                lgx_exception_delete(exception);
+                break;
+            } else {
+                exception->try_block.end --;
+            }
+
+            int i;
+            for (i = 1; i < node->children; i ++) {
+                lgx_ast_node_t *n = node->child[i];
+
+                if (n->type == CATCH_STATEMENT) {
+                    lgx_exception_block_t *block = lgx_exception_block_new();
+
+                    unsigned pos = bc->bc_top;
+                    bc_jmpi(bc, 0);
+
+                    block->start = bc->bc_top;
+                    // TODO 处理参数
+                    // 编译 catch block
+                    bc_stat(bc, node->child[i]->child[1]);
+                    block->end = bc->bc_top;
+
+                    if (block->start == block->end) {
+                        // catch block 没有编译产生任何代码
+                        bc_nop(bc);
+                    } else {
+                        block->end --;
+                    }
+
+                    bc_set_pe(bc, pos, bc->bc_top);
+
+                    wbt_list_add_tail(&block->head, &exception->catch_blocks);
+                } else {
+                    bc_error(bc, "[Error] [Line:%d] finally block is not supported\n", n->line);
+                    return 1;
+                }
+            }
+
+            if (wbt_list_empty(&exception->catch_blocks)) {
+                // 如果没有任何 catch block
+                lgx_exception_delete(exception);
+                break;
+            }
+
+            // 添加 exception
+            unsigned long long int key = ((unsigned long long int)exception->try_block.start << 32) | (0xFFFFFFFF - exception->try_block.end); 
+
+            wbt_str_t k;
+            k.str = (char *)&key;
+            k.len = sizeof(key);
+
+            wbt_rb_node_t *n = wbt_rb_insert(bc->exception, &k);
+            assert(n);
+            n->value.str = (char *)exception;
+            n->value.len = sizeof(lgx_exception_t);
+
             break;
         }
         case THROW_STATEMENT:{
@@ -1814,6 +1879,9 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
 
     bc->constant = lgx_hash_new(32);
 
+    bc->exception = (wbt_rb_t *)xmalloc(sizeof(wbt_rb_t));
+    wbt_rb_init(bc->exception, WBT_RB_KEY_LONGLONG);
+
     if (bc_stat(bc, ast->root)) {
         bc_error(bc, "[Error] unknown error\n");
         return 1;
@@ -1831,6 +1899,10 @@ int lgx_bc_cleanup(lgx_bc_t *bc) {
     reg_allocator_delete(bc->reg);
     xfree(bc->bc);
     xfree(bc->err_info);
+
+    wbt_rb_destroy(bc->exception);
+    xfree(bc->exception);
+
     // TODO 需要处理内存泄漏和重复释放问题
     //lgx_hash_delete(bc->constant);
 

@@ -26,7 +26,7 @@ typedef struct {
 } lgx_server_t;
 
 typedef struct {
-    lgx_list_t head;
+    wbt_list_t head;
     lgx_server_t *server;
     wbt_event_t *ev;
 } lgx_request_t;
@@ -105,11 +105,11 @@ static wbt_status on_close(wbt_event_t *ev) {
 
     wbt_event_del(server->vm->events, ev);
 
-    if (lgx_list_empty(&conn->req.head)) {
+    if (wbt_list_empty(&conn->req.head)) {
         xfree(conn);
     } else {
         lgx_request_t *req;
-        lgx_list_for_each_entry(req, lgx_request_t, &conn->req.head, head) {
+        wbt_list_for_each_entry(req, lgx_request_t, &conn->req.head, head) {
             req->ev = NULL;
         }
     }
@@ -127,7 +127,7 @@ static int on_yield(lgx_vm_t *vm) {
     }
 
     // 释放 request
-    lgx_list_del(&req->head);
+    wbt_list_del(&req->head);
     xfree(req);
 
     if (!ev) {
@@ -251,7 +251,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
     req->ev = ev;
     req->server = server;
-    lgx_list_add_tail(&req->head, &conn->req.head);
+    wbt_list_add_tail(&req->head, &conn->req.head);
 
     // 调用 xscript
     lgx_co_t *co = lgx_co_create(server->vm, server->on_request);
@@ -356,7 +356,7 @@ static wbt_status on_accept(wbt_event_t *ev) {
                 continue;
             }
             conn->server = server;
-            lgx_list_init(&conn->req.head);
+            wbt_list_init(&conn->req.head);
 
             wbt_event_t *p_ev, tmp_ev;
             tmp_ev.timer.on_timeout = on_timeout;

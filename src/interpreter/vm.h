@@ -1,7 +1,6 @@
 #ifndef LGX_VM_H
 #define LGX_VM_H
 
-#include "../common/list.h"
 #include "../common/val.h"
 #include "../compiler/compiler.h"
 #include "../webit/wbt.h"
@@ -25,7 +24,7 @@ typedef struct {
 typedef struct lgx_vm_s lgx_vm_t;
 
 typedef struct lgx_co_s {
-    lgx_list_t head;
+    wbt_list_t head;
     // 协程状态
     lgx_co_status status;
     // 协程栈
@@ -44,9 +43,9 @@ struct lgx_vm_s {
     // 协程
     lgx_co_t *co_running;
     lgx_co_t *co_main;
-    lgx_list_t co_ready;
-    lgx_list_t co_suspend;
-    lgx_list_t co_died;
+    wbt_list_t co_ready;
+    wbt_list_t co_suspend;
+    wbt_list_t co_died;
     // 协程数量统计
     unsigned co_count;
 
@@ -62,10 +61,10 @@ struct lgx_vm_s {
     // 如果 Full GC 触发过于频繁，将会抛出 OutOfMemory 异常。
     struct {
         // 新生代
-        lgx_list_t young;
+        wbt_list_t young;
         unsigned young_size;
         // 老年代
-        lgx_list_t old;
+        wbt_list_t old;
         unsigned old_size;
     } heap;
 
@@ -84,5 +83,6 @@ int lgx_vm_execute(lgx_vm_t *vm);
 int lgx_vm_start(lgx_vm_t *vm);
 int lgx_vm_cleanup(lgx_vm_t *vm);
 int lgx_vm_backtrace(lgx_vm_t *vm);
+void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e);
 
 #endif // LGX_VM_H

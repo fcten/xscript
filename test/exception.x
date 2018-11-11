@@ -4,9 +4,7 @@ try {
     a = 1;
     throw 1;
 } catch (auto e) {
-
-} finally {
-    
+    echo 1;
 }
 
 function test() {

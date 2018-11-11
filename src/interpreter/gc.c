@@ -25,17 +25,17 @@ static int full_gc(lgx_vm_t *vm) {
 static int minor_gc(lgx_vm_t *vm) {
     int cnt = 0;
 
-    lgx_list_t *list = vm->heap.young.next;
+    wbt_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
-        lgx_list_t *next = list->next;
-        lgx_list_del(list);
+        wbt_list_t *next = list->next;
+        wbt_list_del(list);
         
         switch (((lgx_gc_t*)list)->type) {
             case T_STRING: {
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
                     xfree(list);
                 } else {
-                    lgx_list_add_tail(list, &vm->heap.old);
+                    wbt_list_add_tail(list, &vm->heap.old);
 
                     vm->heap.old_size += ((lgx_gc_t*)list)->size;
 
@@ -47,7 +47,7 @@ static int minor_gc(lgx_vm_t *vm) {
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
                     lgx_hash_delete((lgx_hash_t *)list);
                 } else {
-                    lgx_list_add_tail(list, &vm->heap.old);
+                    wbt_list_add_tail(list, &vm->heap.old);
 
                     vm->heap.old_size += ((lgx_gc_t*)list)->size;
 
@@ -90,7 +90,7 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
 
     }
 
-    lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
+    wbt_list_add_tail(&v->v.gc->head ,&vm->heap.young);
     vm->heap.young_size += v->v.gc->size;
 
     return 0;

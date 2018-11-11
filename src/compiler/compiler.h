@@ -4,6 +4,7 @@
 #include "../common/hash.h"
 #include "../common/bytecode.h"
 #include "../parser/ast.h"
+#include "../webit/common/wbt_rbtree.h"
 
 typedef struct {
     unsigned char top;
@@ -26,6 +27,9 @@ typedef struct {
 
     // 全局变量
     lgx_hash_t* global;
+
+    // 异常处理
+    wbt_rb_t *exception;
 
     int err_no;
     char *err_info;

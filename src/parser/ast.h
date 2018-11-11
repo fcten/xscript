@@ -53,7 +53,7 @@ enum {
 };
 
 typedef struct lgx_ast_node_list_s {
-    lgx_list_t head;
+    wbt_list_t head;
     struct lgx_ast_node_s *node;
 } lgx_ast_node_list_t;
 

@@ -1,7 +1,7 @@
 #ifndef LGX_TYPEDEF_H
 #define LGX_TYPEDEF_H
 
-#include "list.h"
+#include "../webit/common/wbt_list.h"
 
 #define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
 #define IS_GC_VALUE(x) ((x)->type > T_BOOL)
@@ -83,13 +83,13 @@ struct lgx_val_s {
 };
 
 typedef struct {
-    lgx_list_t head;
+    wbt_list_t head;
     lgx_val_t *v;
 } lgx_val_list_t;
 
 struct lgx_gc_s {
     // 双向链表
-    lgx_list_t head;
+    wbt_list_t head;
     // GC 对象的内存占用，字节
     unsigned size;
     // 引用计数

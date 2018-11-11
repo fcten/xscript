@@ -148,9 +148,9 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
         case DO_WHILE_STATEMENT:
         case SWITCH_STATEMENT:
             if (node->u.jmps) {
-                while (!lgx_list_empty(&node->u.jmps->head)) {
-                    lgx_ast_node_list_t *n = lgx_list_first_entry(&node->u.jmps->head, lgx_ast_node_list_t, head);
-                    lgx_list_del(&n->head);
+                while (!wbt_list_empty(&node->u.jmps->head)) {
+                    lgx_ast_node_list_t *n = wbt_list_first_entry(&node->u.jmps->head, lgx_ast_node_list_t, head);
+                    wbt_list_del(&n->head);
                     xfree(n);
                 }
                 xfree(node->u.jmps);

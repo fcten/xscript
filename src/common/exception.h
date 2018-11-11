@@ -1,10 +1,10 @@
 #ifndef LGX_EXCEPTION_H
 #define LGX_EXCEPTION_H
 
-#include "vm.h"
+#include "../webit/common/wbt_list.h"
 
 typedef struct {
-    lgx_list_t head;
+    wbt_list_t head;
     // block position
     unsigned start;
     unsigned end;
@@ -14,11 +14,15 @@ typedef struct {
     // try block position
     lgx_exception_block_t try_block;
     // catch block list
-    lgx_list_t catch_blocks;
+    wbt_list_t catch_blocks;
     // finally block
     lgx_exception_block_t finally_block;
 } lgx_exception_t;
 
-void lgx_exception_throw(lgx_vm_t *vm, lgx_val_t *e);
+lgx_exception_t* lgx_exception_new();
+void lgx_exception_delete(lgx_exception_t *exception);
+
+lgx_exception_block_t* lgx_exception_block_new();
+void lgx_exception_block_delete(lgx_exception_block_t *block);
 
 #endif // LGX_EXCEPTION_H

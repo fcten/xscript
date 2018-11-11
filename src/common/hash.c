@@ -25,15 +25,15 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
 
     hash->gc.size = head_size + data_size;
     hash->gc.type = T_ARRAY;
-    lgx_list_init(&hash->gc.head);
+    wbt_list_init(&hash->gc.head);
 
     return hash;
 }
 
 // 删除哈希表，并删除有所引用计数小于等于 1 的子元素
 int lgx_hash_delete(lgx_hash_t *hash) {
-    if (!lgx_list_empty(&hash->gc.head)) {
-        lgx_list_del(&hash->gc.head);
+    if (!wbt_list_empty(&hash->gc.head)) {
+        wbt_list_del(&hash->gc.head);
     }
 
     if (hash->flag_non_basic_elements) {
