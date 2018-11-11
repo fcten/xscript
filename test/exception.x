@@ -9,4 +9,12 @@ try {
     
 }
 
+function test() {
+    try {
+        throw 3;
+    } catch (auto e) {
+
+    }
+}
+
 throw 2;

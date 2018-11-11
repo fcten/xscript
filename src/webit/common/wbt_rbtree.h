@@ -46,7 +46,7 @@ typedef struct wbt_rb_node_s {
 } wbt_rb_node_t;
 
 #define wbt_rb_parent(r)   ((wbt_rb_node_t *)((r)->parent_color & ~3))
-#define wbt_rb_color(r)    ((r)->parent_color & 1)
+#define wbt_rb_color(r)    ((wbt_rb_color_t)((r)->parent_color & 1))
 #define wbt_rb_is_red(r)   (!wbt_rb_color(r))
 #define wbt_rb_is_black(r) wbt_rb_color(r)
 #define wbt_rb_set_red(r)  do { (r)->parent_color &= ~1; } while (0)

@@ -166,12 +166,12 @@ wbt_rb_node_t * wbt_rb_insert(wbt_rb_t *rbt, wbt_str_t *key) {
     wbt_rb_node_t *tmp_node, *tail_node;
     int ret;
 
-    tmp_node = wbt_malloc(sizeof(wbt_rb_node_t));
+    tmp_node = (wbt_rb_node_t *)wbt_malloc(sizeof(wbt_rb_node_t));
     if( tmp_node == NULL ) {
         return NULL;
     }
 
-    tmp_node->key.str.s = wbt_strdup(key->str, key->len);
+    tmp_node->key.str.s = (char *)wbt_strdup(key->str, key->len);
     tmp_node->key.len = key->len;
     if( tmp_node->key.str.s == NULL ) {
         wbt_free(tmp_node);
