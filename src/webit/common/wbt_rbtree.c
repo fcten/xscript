@@ -26,9 +26,9 @@ static wbt_inline void wbt_rbtree_set_color(wbt_rb_node_t *node, wbt_rb_color_t 
     node->parent_color = (node->parent_color & ~1) | color;
 }
 
-static wbt_inline void wbt_rbtree_set_parent_color(wbt_rb_node_t *node, wbt_rb_node_t *parent, wbt_rb_color_t color) {
-    node->parent_color = (unsigned long int)parent | color;
-}
+//static wbt_inline void wbt_rbtree_set_parent_color(wbt_rb_node_t *node, wbt_rb_node_t *parent, wbt_rb_color_t color) {
+//    node->parent_color = (unsigned long int)parent | color;
+//}
 
 static int wbt_rbtree_compare(wbt_rb_t *rbt, wbt_rb_key_t *key1, wbt_rb_key_t *key2) {
     switch( rbt->key_type ) {

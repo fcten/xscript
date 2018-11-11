@@ -648,7 +648,8 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // 优先把函数参数添加到符号表
     if (parent->type == FUNCTION_DECLARATION) {
         lgx_str_t s;
-        for (int i = 0; i < parent->child[1]->children; i++) {
+        int i;
+        for (i = 0; i < parent->child[1]->children; i++) {
             s.buffer = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_start;
             s.length = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_length;
 
