@@ -547,8 +547,17 @@ class Test {
 Test obj = new Test;
 obj->print();
 ```
-
 ## 接口 (interface)
+
+## 封装
+
+## 继承
+
+## 多态
+
+## 构造函数
+
+## 析构函数
 
 # 异常
 
@@ -569,8 +578,12 @@ try {
     echo "catch exception 2\n";
 }
 
-throw 3; // uncaught uncaught exception 3
+throw 3; // uncaught exception 3
 ```
+
+## 抛出异常 (throw)
+
+## 捕获异常 (catch)
 
 # 垃圾回收 (garbage collection)
 
