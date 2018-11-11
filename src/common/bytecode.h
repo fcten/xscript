@@ -81,6 +81,9 @@ enum {
     OP_OBJECT_GET,// OBJECT_GET R R R   R = R->R
     OP_OBJECT_SET,// OBJECT_SET R R R   R->R = R
 
+    // 异常处理
+    OP_THROW,
+
     // 终止执行
     OP_HLT,
 

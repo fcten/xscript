@@ -72,4 +72,6 @@ void bc_set_pa(lgx_bc_t *bc, unsigned pos, unsigned pa);
 void bc_set_pd(lgx_bc_t *bc, unsigned pos, unsigned pd);
 void bc_set_pe(lgx_bc_t *bc, unsigned pos, unsigned pe);
 
+void bc_throw(lgx_bc_t *bc, lgx_val_t *a);
+
 #endif // LGX_CODE_H

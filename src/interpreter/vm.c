@@ -3,9 +3,11 @@
 #include "../common/operator.h"
 #include "../common/fun.h"
 #include "../common/obj.h"
+#include "../common/str.h"
 #include "vm.h"
 #include "gc.h"
 #include "coroutine.h"
+#include "exception.h"
 
 #define R(r)  (vm->regs[r])
 #define C(r)  (vm->constant->table[r].v)
@@ -28,24 +30,22 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
     return 0;
 }
 
-// TODO 使用真正的异常处理机制
-// TODO 未捕获的异常只导致该协程退出，而不是使整个程序退出
+// 抛出一个异常
 void throw_exception(lgx_vm_t *vm, const char *fmt, ...) {
-    printf("[runtime error: %d] ", vm->co_running->pc-1);
-
-    static char buf[128];
+    char *buf = (char *)xmalloc(128);
 
     va_list args;
     va_start(args, fmt);
     int len = vsnprintf(buf, 128, fmt, args);
     va_end(args);
 
-    printf("%.*s\n", len, buf);
+    lgx_val_t e;
+    e.type = T_STRING;
+    e.v.str = lgx_str_new_ref(buf, 128);
+    e.v.str->length = len;
+    e.v.str->is_ref = 0;
 
-    lgx_vm_backtrace(vm);
-
-    //vm->pc = vm->bc_size - 1;
-    exit(1);
+    lgx_exception_throw(vm, &e);
 }
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
@@ -191,7 +191,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).v.d = R(PB(i)).v.d + R(PC(i)).v.d;
                 } else {
                     if (lgx_op_add(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
-                        throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "+", lgx_val_typeof(&R(PC(i))));
+                        throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "+", lgx_val_typeof(&R(PC(i))));
                     }
                     lgx_gc_trace(vm, &R(PA(i)));
                     lgx_gc_ref_add(&R(PA(i)));
@@ -209,7 +209,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).v.d = R(PB(i)).v.d - R(PC(i)).v.d;
                 } else {
                     if (lgx_op_sub(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
-                        throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "-", lgx_val_typeof(&R(PC(i))));
+                        throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "-", lgx_val_typeof(&R(PC(i))));
                     }
                 }
                 break;
@@ -225,7 +225,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).v.d = R(PB(i)).v.d * R(PC(i)).v.d;
                 } else {
                     if (lgx_op_mul(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
-                        throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "*", lgx_val_typeof(&R(PC(i))));
+                        throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "*", lgx_val_typeof(&R(PC(i))));
                     }
                 }
                 break;
@@ -249,7 +249,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     if (lgx_op_div(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
-                        throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "/", lgx_val_typeof(&R(PC(i))));
+                        throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "/", lgx_val_typeof(&R(PC(i))));
                     }
                 }
                 break;
@@ -268,7 +268,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     c.type = T_LONG;
                     c.v.l = PC(i);
                     if (lgx_op_add(&R(PA(i)), &R(PB(i)), &c)) {
-                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                        throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                     }
                 }
                 break;
@@ -287,7 +287,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     c.type = T_LONG;
                     c.v.l = PC(i);
                     if (lgx_op_sub(&R(PA(i)), &R(PB(i)), &c)) {
-                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                        throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                     }
                 }
                 break;
@@ -306,7 +306,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     c.type = T_LONG;
                     c.v.l = PC(i);
                     if (lgx_op_mul(&R(PA(i)), &R(PB(i)), &c)) {
-                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                        throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                     }
                 }
                 break;
@@ -326,7 +326,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     c.type = T_LONG;
                     c.v.l = PC(i);
                     if (lgx_op_add(&R(PA(i)), &R(PB(i)), &c)) {
-                        throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                        throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                     }
                 }
                 break;
@@ -339,7 +339,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.d = -R(PB(i)).v.d;
                 } else {
-                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -350,7 +350,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << R(PC(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "<<", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "<<", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -361,7 +361,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> R(PC(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), ">>", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), ">>", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -372,7 +372,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l << PC(i);
                 } else {
-                    throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -383,7 +383,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l >> PC(i);
                 } else {
-                    throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -394,7 +394,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l & R(PC(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "&", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "&", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -405,7 +405,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l | R(PC(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "|", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "|", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -416,7 +416,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l ^ R(PC(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "^", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "^", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -427,7 +427,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = ~R(PB(i)).v.l;
                 } else {
-                    throw_exception(vm, "error operation: %s %s %s\n", lgx_val_typeof(&R(PB(i))), "~", lgx_val_typeof(&R(PC(i))));
+                    throw_exception(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "~", lgx_val_typeof(&R(PC(i))));
                 }
                 break;
             }
@@ -493,7 +493,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d >= PC(i);
                 } else {
-                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -507,7 +507,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d <= PC(i);
                 } else {
-                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -521,7 +521,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d > PC(i);
                 } else {
-                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -535,7 +535,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(PB(i)).type == T_DOUBLE) {
                     R(PA(i)).v.l = R(PB(i)).v.d < PC(i);
                 } else {
-                    throw_exception(vm, "makes number from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -547,7 +547,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (EXPECTED(R(PB(i)).type == T_BOOL)) {
                     R(PA(i)).v.l = !R(PB(i)).v.l;
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PB(i))));
+                    throw_exception(vm, "makes boolean from %s without a cast", lgx_val_typeof(&R(PB(i))));
                 }
                 break;
             }
@@ -557,7 +557,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         vm->co_running->pc += PD(i);
                     }
                 } else {
-                    throw_exception(vm, "makes boolean from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "makes boolean from %s without a cast", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -565,7 +565,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (R(PA(i)).type == T_LONG) {
                     vm->co_running->pc = R(PA(i)).v.l;
                 } else {
-                    throw_exception(vm, "makes integer from %s without a cast\n", lgx_val_typeof(&R(PA(i))));
+                    throw_exception(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(PA(i))));
                 }
                 break;
             }
@@ -803,6 +803,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 }
                 break;
             }
+            case OP_THROW: {
+                lgx_exception_throw(vm, &R(PA(i)));
+                break;
+            }
             case OP_NOP: break;
             case OP_HLT: {
                 // 释放所有局部变量和临时变量
@@ -827,7 +831,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             default:
-                throw_exception(vm, "unknown op %d @ %d\n", OP(i), vm->co_running->pc);
+                throw_exception(vm, "unknown op %d @ %d", OP(i), vm->co_running->pc);
         }
     }
 

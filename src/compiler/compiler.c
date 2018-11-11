@@ -1592,6 +1592,15 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case THROW_STATEMENT:{
+            lgx_val_t r;
+            lgx_val_init(&r);
+
+            if (bc_expr(bc, node->child[0], &r)) {
+                return 1;
+            }
+
+            bc_throw(bc, &r);
+            reg_free(bc, &r);
             break;
         }
         case RETURN_STATEMENT:{
@@ -1714,8 +1723,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             bc_set_pe(bc, start, bc->bc_top);
 
-            // 执行一次赋值操作
-            //bc_load(bc, e, e);
+            e->v.fun->end = bc->bc_top;
             
             break;
         }

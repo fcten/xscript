@@ -637,3 +637,14 @@ void bc_object_set(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b, lgx_val_t *c) {
         reg_free(bc, &rc);
     }
 }
+
+void bc_throw(lgx_bc_t *bc, lgx_val_t *a) {
+    if (!is_register(a)) {
+        lgx_val_t r;
+        bc_load_to_reg(bc, &r, a);
+        bc_append(bc, I1(OP_THROW, r.u.c.reg));
+        reg_free(bc, &r);
+    } else {
+        bc_append(bc, I1(OP_THROW, a->u.c.reg));
+    }
+}
