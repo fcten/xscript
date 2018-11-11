@@ -4,6 +4,7 @@
 #include "../common/fun.h"
 #include "../common/obj.h"
 #include "../common/str.h"
+#include "../common/exception.h"
 #include "vm.h"
 #include "gc.h"
 #include "coroutine.h"
@@ -29,41 +30,72 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
     return 0;
 }
 
-// 寻找当前协程的退出指令位置
-static unsigned find_co_end(lgx_vm_t *vm) {
-    unsigned base = vm->co_running->stack.base;
-    lgx_val_t *regs = vm->co_running->stack.buf + base;
-
-    assert(regs[2].type == T_LONG);
-
-    while (regs[2].v.l >= 0) {
-        assert(regs[3].type == T_LONG);
-        base = regs[3].v.l;
-        regs = vm->co_running->stack.buf + base;
-        assert(regs[2].type == T_LONG);
-    }
-
-    assert(regs[0].type == T_FUNCTION);
-
-    return regs[0].v.fun->end;
-}
-
 void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
     assert(vm->co_running);
 
-    unsigned cur_pc = vm->co_running->pc - 1;
+    unsigned pc = vm->co_running->pc - 1;
 
-    // TODO 匹配最接近的 try-catch 块
+    // 匹配最接近的 try-catch 块
+    unsigned long long int key = ((unsigned long long int)pc + 1) << 32;
 
-    // 没有匹配的 catch 块，退出当前协程
-    if (1) {
-        printf("[uncaught exception] [%d] ", cur_pc);
-        lgx_val_print(e);
-        printf("\n");
+    wbt_str_t k;
+    k.str = (char *)&key;
+    k.len = sizeof(key);
 
-        lgx_vm_backtrace(vm);
+    lgx_exception_t *exception;
+    lgx_exception_block_t *block = NULL;
+    wbt_rb_node_t *n = wbt_rb_get_lesser(vm->exception, &k);
+    if (n) {
+        exception = (lgx_exception_t *)n->value.str;
+        if (pc >= exception->try_block.start && pc <= exception->try_block.end) {
+            // TODO 匹配参数类型符合的 catch block
+            block = wbt_list_first_entry(&exception->catch_blocks, lgx_exception_block_t, head);
+        }
+    }
 
-        vm->co_running->pc = find_co_end(vm);
+    if (block) {
+        // 跳转到指定的 catch block
+        vm->co_running->pc = block->start;
+
+        // TODO 把异常变量写入到 catch block 的参数中，并释放原位置变量
+    } else {
+        // 没有匹配的 catch 块，递归向上寻找
+        unsigned base = vm->co_running->stack.base;
+        lgx_val_t *regs = vm->co_running->stack.buf + base;
+
+        assert(regs[0].type == T_FUNCTION);
+        assert(regs[2].type == T_LONG);
+        assert(regs[3].type == T_LONG);
+
+        if (regs[2].v.l >= 0) {
+            // 释放所有局部变量和临时变量
+            int n;
+            for (n = 4; n < regs[0].v.fun->stack_size; n ++) {
+                if (e == &regs[n]) {
+                    // 不要释放抛出的异常
+                    continue;
+                }
+                lgx_gc_ref_del(&regs[n]);
+                regs[n].type = T_UNDEFINED;
+            }
+
+            // 切换执行堆栈
+            vm->co_running->stack.base = regs[3].v.l;
+            vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
+
+            // 在函数调用点重新抛出异常
+            vm->co_running->pc = regs[2].v.l;
+            lgx_vm_throw(vm, e);
+        } else {
+            // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
+            printf("[uncaught exception] ");
+            lgx_val_print(e);
+            printf("\n");
+
+            lgx_vm_backtrace(vm);
+
+            vm->co_running->pc = regs[0].v.fun->end;
+        }
     }
 }
 
@@ -96,7 +128,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     vm->heap.old_size = 0;
 
     vm->bc = bc;
-    
+    vm->exception = bc->exception;
     vm->constant = bc->constant;
 
     // 创建事件池

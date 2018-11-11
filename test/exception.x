@@ -4,15 +4,17 @@ try {
     a = 1;
     throw 1;
 } catch (auto e) {
-    echo 1;
+    echo "catch exception 1\n";
 }
 
 function test() {
-    try {
-        throw 3;
-    } catch (auto e) {
+    throw 3;
+}
 
-    }
+try {
+    test();
+} catch (auto e) {
+    echo "catch exception 3\n";
 }
 
 throw 2;

@@ -1643,7 +1643,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             // 添加 exception
-            unsigned long long int key = ((unsigned long long int)exception->try_block.start << 32) | (0xFFFFFFFF - exception->try_block.end); 
+            unsigned long long int key = ((unsigned long long int)exception->try_block.start << 32) | (0XFFFFFFFF - exception->try_block.end);
 
             wbt_str_t k;
             k.str = (char *)&key;

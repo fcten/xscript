@@ -30,19 +30,19 @@ static wbt_inline void wbt_rbtree_set_color(wbt_rb_node_t *node, wbt_rb_color_t 
 //    node->parent_color = (unsigned long int)parent | color;
 //}
 
-static int wbt_rbtree_compare(wbt_rb_t *rbt, wbt_rb_key_t *key1, wbt_rb_key_t *key2) {
+static long long wbt_rbtree_compare(wbt_rb_t *rbt, wbt_rb_key_t *key1, wbt_rb_key_t *key2) {
     switch( rbt->key_type ) {
         case WBT_RB_KEY_INTEGER:
             if( *key1->str.i > *key2->str.i ) {
                 return *key1->str.i - *key2->str.i;
             } else {
-                return -(int)(*key2->str.i - *key1->str.i);
+                return -(*key2->str.i - *key1->str.i);
             }
         case WBT_RB_KEY_LONGLONG:
             if( *key1->str.l > *key2->str.l ) {
-                return (int)(*key1->str.l - *key2->str.l);
+                return *key1->str.l - *key2->str.l;
             } else {
-                return -(int)(*key2->str.l - *key1->str.l);
+                return -(*key2->str.l - *key1->str.l);
             }
         default:
             return wbt_strcmp((wbt_str_t *)key1, (wbt_str_t *)key2);
@@ -164,7 +164,7 @@ void wbt_rb_init(wbt_rb_t *rbt, wbt_rb_key_type_t type) {
 
 wbt_rb_node_t * wbt_rb_insert(wbt_rb_t *rbt, wbt_str_t *key) {
     wbt_rb_node_t *tmp_node, *tail_node;
-    int ret;
+    long long ret;
 
     tmp_node = (wbt_rb_node_t *)wbt_malloc(sizeof(wbt_rb_node_t));
     if( tmp_node == NULL ) {
@@ -379,7 +379,7 @@ void wbt_rb_delete(wbt_rb_t * rbt, wbt_rb_node_t * node) {
 
 wbt_rb_node_t * wbt_rb_get(wbt_rb_t *rbt, wbt_str_t *key) {
     wbt_rb_node_t *node;
-    int ret;
+    long long ret;
     
     node = rbt->root;
     

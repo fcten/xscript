@@ -71,6 +71,9 @@ struct lgx_vm_s {
     // 常量表
     lgx_hash_t *constant;
 
+    // 异常
+    wbt_rb_t *exception;
+
     // GC 开关
     unsigned gc_enable;
 
