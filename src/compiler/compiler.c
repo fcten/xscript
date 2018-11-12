@@ -930,6 +930,10 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     }
 
     lgx_val_t *v = lgx_scope_global_val_get(node, &s);
+    if (!v || v->type != T_OBJECT) {
+        bc_error(bc, "[Error] [Line:%d] `%.*s` is not a class\n", node->line, s.length, s.buffer);
+        return 1;
+    }
 
     e->type = T_OBJECT;
     e->v.obj = v->v.obj;

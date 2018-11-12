@@ -14,4 +14,4 @@ try {
     echo "catch exception 2\n";
 }
 
-throw 3;
+throw new Exception("exception 3");

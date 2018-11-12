@@ -5,6 +5,7 @@
 #include "std_time.h"
 #include "std_math.h"
 #include "std_coroutine.h"
+#include "std_exception.h"
 #include "std_net_tcp_server.h"
 #include "std_net_tcp_client.h"
 
@@ -12,6 +13,7 @@ lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
     &ext_std_math_ctx,
     &ext_std_coroutine_ctx,
+    &ext_std_exception_ctx,
     &ext_std_net_tcp_server_ctx,
     &ext_std_net_tcp_client_ctx
 };

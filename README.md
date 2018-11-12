@@ -612,6 +612,7 @@ xscript 标准库是以包的形式提供的。
 - std.string.*
 - std.array.*
 - std.coroutine.*
+- std.exception.*
 
 ## 扩展库
 
