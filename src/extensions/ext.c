@@ -100,6 +100,13 @@ int lgx_ext_return_false(lgx_co_t *co) {
     return lgx_ext_return(co, &ret);
 }
 
+int lgx_ext_return_undefined(lgx_co_t *co) {
+    lgx_val_t ret;
+    ret.type = T_UNDEFINED;
+
+    return lgx_ext_return(co, &ret);
+}
+
 int lgx_ext_return_string(lgx_co_t *co, lgx_str_t *str) {
     lgx_val_t ret;
     ret.type = T_STRING;

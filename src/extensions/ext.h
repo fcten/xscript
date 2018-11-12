@@ -23,6 +23,7 @@ int lgx_ext_return_long(lgx_co_t *co, long long v);
 int lgx_ext_return_double(lgx_co_t *co, double v);
 int lgx_ext_return_true(lgx_co_t *co);
 int lgx_ext_return_false(lgx_co_t *co);
+int lgx_ext_return_undefined(lgx_co_t *co);
 int lgx_ext_return_string(lgx_co_t *co, lgx_str_t *str);
 
 #endif // LGX_EXT_H

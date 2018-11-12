@@ -86,6 +86,8 @@ int lgx_vm_execute(lgx_vm_t *vm);
 int lgx_vm_start(lgx_vm_t *vm);
 int lgx_vm_cleanup(lgx_vm_t *vm);
 int lgx_vm_backtrace(lgx_vm_t *vm);
+
 void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e);
+void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...);
 
 #endif // LGX_VM_H

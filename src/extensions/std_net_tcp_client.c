@@ -106,17 +106,20 @@ static wbt_status on_connect(wbt_event_t *ev) {
     wbt_debug("client:on_connect %d", ev->fd);
 
     lgx_client_t *client = (lgx_client_t *)ev->ctx;
+    lgx_vm_t *vm = client->vm;
 
 	// 检查 socket 是否连接成功 
 	int result;
 	socklen_t result_len = sizeof(result);
 	if (getsockopt(ev->fd, SOL_SOCKET, SO_ERROR, &result, &result_len) < 0) {
         on_close(ev);
+        lgx_vm_throw_s(vm, "connect faild");
         return WBT_OK;
 	}
 
 	if (result != 0) {
         on_close(ev);
+        lgx_vm_throw_s(vm, "connect faild");
         return WBT_OK;
 	}
 	
@@ -126,8 +129,9 @@ static wbt_status on_connect(wbt_event_t *ev) {
     ev->events = WBT_EV_WRITE | WBT_EV_ET;
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
 
-    if(wbt_event_mod(client->vm->events, ev) != WBT_OK) {
+    if(wbt_event_mod(vm->events, ev) != WBT_OK) {
         on_close(ev);
+        lgx_vm_throw_s(vm, "mod event faild");
         return WBT_OK;
     }
 
@@ -143,7 +147,7 @@ static wbt_status on_close(wbt_event_t *ev) {
 
     // 写入返回值
     if (!client->is_return) {
-        lgx_ext_return_false(client->co);
+        lgx_ext_return_undefined(client->co);
     }
 
     // 恢复协程执行
@@ -158,6 +162,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     wbt_debug("client:on_recv %d", ev->fd);
 
     lgx_client_t *client = (lgx_client_t *)ev->ctx;
+    lgx_vm_t *vm = client->vm;
 
     if (ev->recv.buf == NULL) {
         ev->recv.buf = xmalloc(WBT_MAX_PROTO_BUF_LEN);
@@ -166,6 +171,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
         if( ev->recv.buf == NULL ) {
             /* 内存不足 */
             on_close(ev);
+            lgx_vm_throw_s(vm, "out of memory");
             return WBT_OK;
         }
     }
@@ -173,8 +179,8 @@ static wbt_status on_recv(wbt_event_t *ev) {
     if (ev->recv.len >= WBT_MAX_PROTO_BUF_LEN) {
         /* 请求长度超过限制
          */
-        wbt_debug("client: request length exceeds limitation %d", ev->fd);
         on_close(ev);
+        lgx_vm_throw_s(vm, "client %d: request length exceeds limitation", ev->fd);
         return WBT_OK;
     }
 
@@ -187,18 +193,18 @@ static wbt_status on_recv(wbt_event_t *ev) {
             // 当前缓冲区已无数据可读
         } else if (err == WBT_ECONNRESET) {
             // 对方发送了RST
-            wbt_debug("client: connection reset by peer %d", ev->fd);
             on_close(ev);
+            lgx_vm_throw_s(vm, "client %d: connection reset by peer", ev->fd);
             return WBT_OK;
         } else {
             // 其他不可弥补的错误
-            wbt_debug("client: errno %d %d", err, ev->fd);
             on_close(ev);
+            lgx_vm_throw_s(vm, "client %d: errno %d", ev->fd, err);
             return WBT_OK;
         }
     } else if (nread == 0) {
-        wbt_debug("client: connection closed by peer %d", ev->fd);
         on_close(ev);
+        lgx_vm_throw_s(vm, "client %d: connection closed by peer", ev->fd);
         return WBT_OK;
     } else {
         ev->recv.len += nread;
@@ -287,17 +293,20 @@ static int client_get(void *p) {
 
     if (ip->type != T_STRING || ip->v.str->length > 15) {
         // TODO throw exception?
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "invalid param `ip`");
+        return 1;
     }
 
     if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
         // TODO throw exception?
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "invalid param `port`");
+        return 1;
     }
 
     wbt_socket_t fd = create_fd();
     if (fd < 0) {
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "create socket faild");
+        return 1;
     }
 
     char ip_str[16];
@@ -308,7 +317,8 @@ static int client_get(void *p) {
 
     if (ret == WBT_ERROR) {
         wbt_close_socket(fd);
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "connect faild");
+        return 1;
     } else if (ret == WBT_OK) {
         lgx_client_t *client = (lgx_client_t *)xcalloc(1, sizeof(lgx_client_t));
         client->vm = vm;
@@ -326,7 +336,8 @@ static int client_get(void *p) {
         if((p_ev = wbt_event_add(vm->events, &tmp_ev)) == NULL) {
             xfree(client);
             wbt_close_socket(fd);
-            return lgx_ext_return_false(vm->co_running);
+            lgx_vm_throw_s(vm, "add event faild");
+            return 1;
         }
 
         p_ev->ctx = client;
@@ -353,7 +364,8 @@ static int client_get(void *p) {
         if((p_ev = wbt_event_add(vm->events, &tmp_ev)) == NULL) {
             xfree(client);
             wbt_close_socket(fd);
-            return lgx_ext_return_false(vm->co_running);
+            lgx_vm_throw_s(vm, "add event faild");
+            return 1;
         }
 
         p_ev->ctx = client;

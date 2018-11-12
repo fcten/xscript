@@ -1788,7 +1788,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             bc_set_pe(bc, start, bc->bc_top);
 
-            e->v.fun->end = bc->bc_top;
+            e->v.fun->end = bc->bc_top - 1;
             
             break;
         }
