@@ -3,6 +3,8 @@
 
 #include "ext.h"
 
+#define WITH_WEBSOCKET
+
 extern lgx_buildin_ext_t ext_std_net_http_server_ctx;
 
 #endif // LGX_EXT_STD_NET_TCP_SERVER_H
