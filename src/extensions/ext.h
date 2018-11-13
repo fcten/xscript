@@ -16,6 +16,7 @@ typedef struct lgx_ext_s {
 
 int lgx_ext_load_symbols(lgx_hash_t *hash);
 
+lgx_val_t* lgx_ext_get_symbol(lgx_hash_t *hash, char *symbol);
 int lgx_ext_add_symbol(lgx_hash_t *hash, char *symbol, lgx_val_t *v);
 
 int lgx_ext_return(lgx_co_t *co, lgx_val_t *v);

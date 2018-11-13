@@ -8,6 +8,7 @@
 #include "std_exception.h"
 #include "std_net_tcp_server.h"
 #include "std_net_tcp_client.h"
+#include "std_net_http_server.h"
 
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
@@ -15,7 +16,8 @@ lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_coroutine_ctx,
     &ext_std_exception_ctx,
     &ext_std_net_tcp_server_ctx,
-    &ext_std_net_tcp_client_ctx
+    &ext_std_net_tcp_client_ctx,
+    &ext_std_net_http_server_ctx
 };
 
 int lgx_ext_init(lgx_vm_t *vm) {
@@ -39,6 +41,23 @@ int lgx_ext_add_symbol(lgx_hash_t *hash, char *symbol, lgx_val_t *v) {
     lgx_hash_set(hash, &n);
 
     return 0;
+}
+
+lgx_val_t* lgx_ext_get_symbol(lgx_hash_t *hash, char *symbol) {
+    lgx_str_t s;
+    s.buffer = symbol;
+    s.length = strlen(symbol);
+
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &s;
+
+    lgx_hash_node_t *n = lgx_hash_get(hash, &k);
+    if (!n) {
+        return NULL;
+    } else {
+        return &n->v;
+    }
 }
 
 int lgx_ext_load_symbols(lgx_hash_t *hash) {

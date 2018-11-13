@@ -42,10 +42,12 @@ enum {
 typedef struct {
     // 缓冲区
     void * buf;
-    // 缓冲区长度
+    // 缓冲区内容长度
     size_t len;
-    // 已使用的缓冲区长度
+    // 缓冲区已处理位置
     size_t offset;
+    // 缓冲区可用长度
+    size_t size;
 } wbt_event_buf_t;
 
 typedef struct wbt_event_s {

@@ -144,15 +144,28 @@ static int on_yield(lgx_vm_t *vm) {
     lgx_str_t *str = vm->regs[1].v.str;
 
     // 生成响应
-    // TODO 如果存在未发送完毕的响应，则追加到缓冲区末尾
-    ev->send.buf = xmalloc(str->length);
-    if (!ev->send.buf) {
-        on_close(ev);
-        return 1;
+    // 如果存在未发送完毕的响应，则追加到缓冲区末尾
+    if (ev->send.buf) {
+        if (ev->send.size - ev->send.len < str->length) {
+            void *buf = xrealloc(ev->send.buf, ev->send.size + str->length);
+            if (!buf) {
+                on_close(ev);
+                return 1;
+            }
+            ev->send.size += str->length;
+        }
+    } else {
+        ev->send.buf = xmalloc(str->length);
+        if (!ev->send.buf) {
+            on_close(ev);
+            return 1;
+        }
+        ev->send.size = str->length;
+        ev->send.len = 0;
+        ev->send.offset = 0;
     }
-    memcpy(ev->send.buf, str->buffer, str->length);
-    ev->send.len = str->length;
-    ev->send.offset = 0;
+    memcpy(ev->send.buf + ev->send.len, str->buffer, str->length);
+    ev->send.len += str->length;
 
     // 修改事件，每产生一个响应都会重置超时事件
     ev->events = WBT_EV_WRITE | WBT_EV_READ | WBT_EV_ET;
@@ -174,7 +187,8 @@ static wbt_status on_recv(wbt_event_t *ev) {
 
     if (ev->recv.buf == NULL) {
         ev->recv.buf = xmalloc(WBT_MAX_PROTO_BUF_LEN);
-        ev->recv.len = WBT_MAX_PROTO_BUF_LEN;
+        ev->recv.size = WBT_MAX_PROTO_BUF_LEN;
+        ev->recv.len = 0;
         ev->recv.offset = 0;
         
         if( ev->recv.buf == NULL ) {
@@ -184,7 +198,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
         }
     }
     
-    if (ev->recv.offset >= WBT_MAX_PROTO_BUF_LEN) {
+    if (ev->recv.len >= WBT_MAX_PROTO_BUF_LEN) {
         /* 请求长度超过限制
          */
         wbt_debug("server: request length exceeds limitation", ev->fd);
@@ -192,8 +206,8 @@ static wbt_status on_recv(wbt_event_t *ev) {
         return WBT_OK;
     }
 
-    int nread = recv(ev->fd, (unsigned char *)ev->recv.buf + ev->recv.offset,
-        WBT_MAX_PROTO_BUF_LEN - ev->recv.offset, 0);
+    int nread = recv(ev->fd, (unsigned char *)ev->recv.buf + ev->recv.len,
+        ev->recv.size - ev->recv.len, 0);
 
     if (nread < 0) {
         wbt_err_t err = wbt_socket_errno;
@@ -215,7 +229,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
         on_close(ev);
         return WBT_OK;
     } else {
-        ev->recv.offset += nread;
+        ev->recv.len += nread;
     }
 
     //printf("%.*s", (int)ev->buff_len, (char *)ev->buff);
@@ -242,6 +256,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     xfree(ev->recv.buf);
     ev->recv.buf = NULL;
     ev->recv.len = 0;
+    ev->recv.size = 0;
     ev->recv.offset = 0;
 
     lgx_request_t *req = (lgx_request_t *)xmalloc(sizeof(lgx_request_t));
@@ -498,7 +513,7 @@ static int server_listen(void *p) {
 static int server_on_request(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
-    return lgx_ext_return_true(vm->co_running);
+    return lgx_ext_return_undefined(vm->co_running);
 }
 
 static int server_start(void *p) {
@@ -590,7 +605,7 @@ static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
     symbol_fd.k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1);
     symbol_fd.v.type = T_LONG;
     symbol_fd.v.v.l = 0;
-    symbol_fd.v.u.c.access = P_PRIVATE;
+    symbol_fd.v.u.c.access = P_PROTECTED;
 
     if (lgx_obj_add_property(symbol.v.obj, &symbol_fd)) {
         return 1;
