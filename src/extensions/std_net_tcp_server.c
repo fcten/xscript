@@ -8,6 +8,7 @@
 #include "../common/fun.h"
 #include "../common/obj.h"
 #include "../interpreter/coroutine.h"
+#include "../webit/http/wbt_http.h"
 #include "std_coroutine.h"
 
 #define WBT_MAX_PROTO_BUF_LEN (64 * 1024)
@@ -232,17 +233,28 @@ static wbt_status on_recv(wbt_event_t *ev) {
         ev->recv.len += nread;
     }
 
-    //printf("%.*s", (int)ev->buff_len, (char *)ev->buff);
-    // TODO 启动一个协程来确定是否已经接收到一个完整的数据包
-    int ret = 0;
-    if (ret == 1) {
+    // HTTP 协议解析
+    lgx_http_request_t http_req;
+    http_req.state = 0;
+    http_req.recv.buf = ev->recv.buf;
+    http_req.recv.length = ev->recv.len;
+    http_req.recv.offset = 0;
+    wbt_status ret = wbt_http_parse(&http_req);
+    if (ret == WBT_AGAIN) {
         // 数据不完整，继续等待
         return WBT_OK;
-    } else if (ret == 2) {
+    } else if (ret == WBT_ERROR) {
         // 数据不合法，关闭连接
         on_close(ev);
         return WBT_OK;
     }
+
+    wbt_debug(
+        "%s %.*s %.*s",
+        wbt_http_method(http_req.method),
+        http_req.uri.len, http_req.recv.buf + http_req.uri.start,
+        http_req.params.len, http_req.recv.buf + http_req.params.start
+    );
 
     // 收到完整的数据包则重置超时事件
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
