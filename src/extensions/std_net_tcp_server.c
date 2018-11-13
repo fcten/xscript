@@ -461,19 +461,21 @@ static int server_listen(void *p) {
     lgx_val_t *port = &vm->regs[base+5];
 
     if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
-        // TODO throw exception?
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "invalid param `port`");
+        return 1;
     }
 
     // 创建监听端口
     wbt_socket_t fd = create_fd();
     if (fd < 0) {
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "create socket failed");
+        return 1;
     }
 
     if (try_listen(fd, port->v.l) != WBT_OK) {
         wbt_close_socket(fd);
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "listen failed");
+        return 1;
     }
 
     // 把 fd 记录到对象的 fd 属性中
@@ -484,10 +486,13 @@ static int server_listen(void *p) {
     v.v.l = fd;
     if (lgx_obj_set(obj->v.obj, &k, &v) != 0) {
         wbt_close_socket(fd);
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "set property `fd` failed");
+        return 1;
     }
 
-    return lgx_ext_return_true(vm->co_running);
+    lgx_ext_return_undefined(vm->co_running);
+
+    return 0;
 }
 
 static int server_on_request(void *p) {
@@ -505,8 +510,8 @@ static int server_start(void *p) {
     lgx_val_t *worker_num = &vm->regs[base+5];
 
     if (worker_num->type != T_LONG || worker_num->v.l < 0 || worker_num->v.l > 128) {
-        // TODO throw exception?
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "invalid param `ip`");
+        return 1;
     }
 
     //lgx_obj_print(obj->v.obj);
@@ -519,14 +524,16 @@ static int server_start(void *p) {
     k.v.str = &name;
     lgx_val_t *fd = lgx_obj_get(obj->v.obj, &k);
     if (!fd || fd->type != T_LONG || fd->v.l == 0) {
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "invalid property `fd`");
+        return 1;
     }
 
     name.buffer = "onRequest";
     name.length = sizeof("onRequest")-1;
     lgx_val_t *on_req = lgx_obj_get(obj->v.obj, &k);
-    if (!on_req || on_req->type != T_FUNCTION || on_req->v.fun == NULL) {
-        return lgx_ext_return_false(vm->co_running);
+    if (!on_req || on_req->type != T_FUNCTION || on_req->v.fun == NULL || on_req->v.fun->buildin) {
+        lgx_vm_throw_s(vm, "invalid method `onRequest`");
+        return 1;
     }
 
     // 把监听的 socket 加入事件循环
@@ -540,13 +547,15 @@ static int server_start(void *p) {
 
     if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
         wbt_close_socket(fd->v.l);
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "add event failed");
+        return 1;
     }
 
     lgx_server_t *server = (lgx_server_t *)xmalloc(sizeof(lgx_server_t));
     if (!server) {
         wbt_close_socket(fd->v.l);
-        return lgx_ext_return_false(vm->co_running);
+        lgx_vm_throw_s(vm, "out of memory");
+        return 1;
     }
 
     server->vm = vm;
@@ -560,7 +569,7 @@ static int server_start(void *p) {
 
     p_ev->ctx = server;
 
-    lgx_ext_return_true(vm->co_running);
+    lgx_ext_return_undefined(vm->co_running);
 
     lgx_co_suspend(vm);
 
