@@ -160,11 +160,13 @@ wbt_status wbt_http_parse_body(lgx_http_request_t *req) {
     if (req->content_length > 0) {
         if (req->recv.length >= req->recv.offset + req->content_length) {
             req->body.len = req->content_length;
+            req->recv.offset += req->content_length;
             return WBT_OK;
         } else {
             return WBT_AGAIN;
         }
     } else {
+        req->body.len = 0;
         return WBT_OK;
     }
 }

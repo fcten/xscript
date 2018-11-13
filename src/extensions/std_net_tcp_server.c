@@ -237,8 +237,8 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
 
     // HTTP 协议解析
-    conn->http.recv.buf = (char *)ev->recv.buf;
-    conn->http.recv.length = ev->recv.len;
+    conn->http.recv.buf = (char *)ev->recv.buf + ev->recv.offset;
+    conn->http.recv.length = ev->recv.len - ev->recv.offset;
 
     wbt_status ret = wbt_http_parse(&conn->http);
     if (ret == WBT_AGAIN) {
@@ -251,12 +251,24 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
 
     wbt_debug(
-        "%s %.*s %.*s",
+        "%s %.*s %.*s %u %d",
         wbt_http_method(conn->http.method),
         conn->http.uri.len, conn->http.recv.buf + conn->http.uri.start,
-        conn->http.params.len, conn->http.recv.buf + conn->http.params.start
+        conn->http.params.len, conn->http.recv.buf + conn->http.params.start,
+        conn->http.keep_alive, conn->http.content_length
     );
-    wbt_debug("%u %d", conn->http.keep_alive, conn->http.content_length);
+    wbt_debug(
+        "%.*s",
+        conn->http.body.len, conn->http.recv.buf + conn->http.body.start
+    );
+
+    // 释放掉旧数据
+    ev->recv.offset += conn->http.recv.offset;
+    if (ev->recv.offset > ev->recv.size / 2) {
+        wbt_memcpy(ev->recv.buf, ev->recv.buf + ev->recv.offset, ev->recv.len - ev->recv.offset);
+        ev->recv.len -= ev->recv.offset;
+        ev->recv.offset = 0;
+    }
 
     // 收到完整的数据包则重置超时事件
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
@@ -267,11 +279,6 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
 
     // TODO 取出数据包传递给对应的协程
-    xfree(ev->recv.buf);
-    ev->recv.buf = NULL;
-    ev->recv.len = 0;
-    ev->recv.size = 0;
-    ev->recv.offset = 0;
 
     lgx_request_t *req = (lgx_request_t *)xmalloc(sizeof(lgx_request_t));
     if (!req) {
@@ -330,9 +337,6 @@ static wbt_status on_send(wbt_event_t *ev) {
     }
 
     // 发送完毕
-    //on_close(ev);
-    xfree(ev->send.buf);
-    ev->send.buf = NULL;
     ev->send.len = 0;
     ev->send.offset = 0;
 
