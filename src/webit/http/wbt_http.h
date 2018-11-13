@@ -24,6 +24,12 @@ typedef enum {
 } lgx_http_method_t;
 
 typedef enum {
+    PROTO_HTTP_UNKNOWN,
+    PROTO_HTTP_1_0,
+    PROTO_HTTP_1_1
+} lgx_http_version_t;
+
+typedef enum {
     HEADER_UNKNOWN,
     HEADER_CACHE_CONTROL,
     HEADER_CONNECTION,
@@ -153,17 +159,15 @@ typedef struct {
     lgx_http_method_t method;
     wbt_str_offset_t uri;
     wbt_str_offset_t params;
-    wbt_str_offset_t version;
-    //lgx_hash_t *headers;
+    lgx_http_version_t version;
+    wbt_str_offset_t headers;
     wbt_str_offset_t body;
-} lgx_http_request_t;
 
-typedef struct {
-    lgx_http_status_t status;
-    wbt_str_t message;
-    //lgx_hash_t *headers;
-    wbt_str_t body;
-} lgx_http_response_t;
+    wbt_str_offset_t header_key;
+    wbt_str_offset_t header_value;
+    unsigned keep_alive;
+    int content_length;
+} lgx_http_request_t;
 
 const char *wbt_http_method(lgx_http_method_t method);
 

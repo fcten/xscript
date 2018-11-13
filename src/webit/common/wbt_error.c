@@ -30,7 +30,7 @@ wbt_status _wbt_debug(const char *fmt, ...) {
     time_t now;
     struct tm *timenow;
     char time_str[18];
-    char buff[256];
+    char buff[512];
     int len;
 
     now = time(NULL);
@@ -40,7 +40,7 @@ wbt_status _wbt_debug(const char *fmt, ...) {
     printf("[%s] [%lu] ", time_str, pthread_self());
 
     va_start(args, fmt);
-    len = vsnprintf(buff, 256, fmt, args);
+    len = vsnprintf(buff, 512, fmt, args);
     va_end(args);
 
     fprintf(stdout, "%.*s", len, buff);

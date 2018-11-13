@@ -34,6 +34,7 @@ typedef struct {
 
 typedef struct {
     lgx_server_t *server;
+    lgx_http_request_t http;
     lgx_request_t req;
 } lgx_conn_t;
 
@@ -113,6 +114,7 @@ static wbt_status on_close(wbt_event_t *ev) {
         wbt_list_for_each_entry(req, lgx_request_t, &conn->req.head, head) {
             req->ev = NULL;
         }
+        xfree(conn);
     }
 
     return WBT_OK;
@@ -127,14 +129,15 @@ static int on_yield(lgx_vm_t *vm) {
         return 0;
     }
 
-    // 释放 request
-    wbt_list_del(&req->head);
-    xfree(req);
-
     if (!ev) {
         // 在协程返回前连接已经被关闭
         wbt_debug("server:on_yeild conn closed");
+        xfree(req);
         return 0;
+    } else {
+        // 释放 request
+        wbt_list_del(&req->head);
+        xfree(req);
     }
 
     // 读取返回值
@@ -234,12 +237,10 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
 
     // HTTP 协议解析
-    lgx_http_request_t http_req;
-    http_req.state = 0;
-    http_req.recv.buf = ev->recv.buf;
-    http_req.recv.length = ev->recv.len;
-    http_req.recv.offset = 0;
-    wbt_status ret = wbt_http_parse(&http_req);
+    conn->http.recv.buf = (char *)ev->recv.buf;
+    conn->http.recv.length = ev->recv.len;
+
+    wbt_status ret = wbt_http_parse(&conn->http);
     if (ret == WBT_AGAIN) {
         // 数据不完整，继续等待
         return WBT_OK;
@@ -251,10 +252,11 @@ static wbt_status on_recv(wbt_event_t *ev) {
 
     wbt_debug(
         "%s %.*s %.*s",
-        wbt_http_method(http_req.method),
-        http_req.uri.len, http_req.recv.buf + http_req.uri.start,
-        http_req.params.len, http_req.recv.buf + http_req.params.start
+        wbt_http_method(conn->http.method),
+        conn->http.uri.len, conn->http.recv.buf + conn->http.uri.start,
+        conn->http.params.len, conn->http.recv.buf + conn->http.params.start
     );
+    wbt_debug("%u %d", conn->http.keep_alive, conn->http.content_length);
 
     // 收到完整的数据包则重置超时事件
     ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
@@ -334,13 +336,19 @@ static wbt_status on_send(wbt_event_t *ev) {
     ev->send.len = 0;
     ev->send.offset = 0;
 
-    // 修改事件
-    ev->events = WBT_EV_READ | WBT_EV_ET;
-    ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
+    if (conn->http.keep_alive) {
+        // 修改事件
+        ev->events = WBT_EV_READ | WBT_EV_ET;
+        ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
 
-    if (wbt_event_mod(server->vm->events, ev) != WBT_OK) {
+        if (wbt_event_mod(server->vm->events, ev) != WBT_OK) {
+            on_close(ev);
+            return WBT_OK;
+        }
+
+        wbt_memset(&conn->http, 0, sizeof(lgx_http_request_t));
+    } else {
         on_close(ev);
-        return WBT_OK;
     }
 
     return WBT_OK;
@@ -383,6 +391,7 @@ static wbt_status on_accept(wbt_event_t *ev) {
                 continue;
             }
             conn->server = server;
+            wbt_memset(&conn->http, 0, sizeof(lgx_http_request_t));
             wbt_list_init(&conn->req.head);
 
             wbt_event_t *p_ev, tmp_ev;

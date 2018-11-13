@@ -1,11 +1,7 @@
+#include "../common/wbt_error.h"
 #include "wbt_http.h"
 
-wbt_str_t http_ver_1_0 = wbt_string("HTTP/1.0");
-wbt_str_t http_ver_1_1 = wbt_string("HTTP/1.1");
-
 wbt_str_t header_server = wbt_string("BitMQ");
-wbt_str_t header_connection_keep_alive = wbt_string("keep-alive");
-wbt_str_t header_connection_close = wbt_string("close");
 wbt_str_t header_cache_control = wbt_string("max-age=3600");
 wbt_str_t header_cache_control_no_cache = wbt_string("no-store, no-cache, must-revalidate");
 wbt_str_t header_pragma_no_cache = wbt_string("no-cache");
@@ -159,7 +155,18 @@ wbt_status wbt_http_parse(lgx_http_request_t *req) {
 }
 
 wbt_status wbt_http_parse_body(lgx_http_request_t *req) {
-    return WBT_OK;
+    req->body.start = req->recv.offset;
+
+    if (req->content_length > 0) {
+        if (req->recv.length >= req->recv.offset + req->content_length) {
+            req->body.len = req->content_length;
+            return WBT_OK;
+        } else {
+            return WBT_AGAIN;
+        }
+    } else {
+        return WBT_OK;
+    }
 }
 
 wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
@@ -172,8 +179,7 @@ wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
                     wbt_str_t method;
                     method.str = req->recv.buf;
                     method.len = req->recv.offset;
-                    
-                    req->method = METHOD_UNKNOWN;
+
                     int i;
                     for(i = METHOD_UNKNOWN + 1 ; i < METHOD_LENGTH ; i++ ) {
                         if( wbt_strncmp(&method,
@@ -201,7 +207,6 @@ wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
                     req->state = 3;
                     req->params.start = 0;
                     req->params.len = 0;
-                    req->version.start = req->recv.offset + 1;
                 } else if (ch == '?') {
                     req->uri.len = req->recv.offset - req->uri.start;
                     req->state = 2;
@@ -213,44 +218,109 @@ wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
                 if (ch == ' ') {
                     req->params.len = req->recv.offset - req->params.start;
                     req->state = 3;
-                    req->version.start = req->recv.offset + 1;
                 }
                 break;
             }
             case 3: { // 解析 http 版本号
-                if (ch == '\r') {
-                    req->version.len = req->recv.offset - req->version.start;
-                    req->state = 4;
+                if (req->recv.length < req->recv.offset + 10) {
+                    return WBT_AGAIN;
                 }
+
+                wbt_str_t ver;
+                wbt_str_t http_ver_1_0 = wbt_string("HTTP/1.0\r\n");
+                wbt_str_t http_ver_1_1 = wbt_string("HTTP/1.1\r\n");
+
+                ver.str = req->recv.buf + req->recv.offset;
+                ver.len = http_ver_1_0.len;
+
+                if (wbt_strcmp(&ver, &http_ver_1_0) == 0) {
+                    req->version = PROTO_HTTP_1_0;
+                } else if (wbt_strcmp(&ver, &http_ver_1_1) == 0) {
+                    req->version = PROTO_HTTP_1_1;
+                } else {
+                    req->version = PROTO_HTTP_UNKNOWN;
+                    return WBT_ERROR;
+                }
+
+                req->recv.offset += ver.len - 1;
+                req->state = 4;
+                req->headers.start = req->recv.offset + 1;
+                req->header_key.start = req->recv.offset + 1;
                 break;
             }
             case 4: {
-                if (ch == '\n') {
+                if (ch == ':') {
+                    req->header_key.len = req->recv.offset - req->header_key.start;
                     req->state = 5;
-                } else {
-                    return WBT_ERROR;
                 }
                 break;
             }
             case 5: {
-                if (ch == '\r') {
+                if (ch != ' ') {
+                    req->header_value.start = req->recv.offset;
                     req->state = 6;
-                } else {
+                }
+            }
+            case 6: {
+                if (ch == '\r') {
+                    req->header_value.len = req->recv.offset - req->header_value.start;
+                    wbt_str_t header_key, header_value;
+                    wbt_offset_to_str(req->header_key, header_key, req->recv.buf);
+                    wbt_offset_to_str(req->header_value, header_value, req->recv.buf);
+
+                    wbt_debug("%.*s", header_key.len, header_key.str);
+                    
+                    int i;
+                    for( i = 1 ; i < HEADER_LENGTH ; i ++ ) {
+                        if( wbt_strnicmp( &header_key, &HTTP_HEADERS[i], HTTP_HEADERS[i].len ) == 0 ) {
+                            switch (i) {
+                                case HEADER_CONNECTION: {
+                                    wbt_str_t keep_alive = wbt_string("keep-alive");
+                                    if( wbt_strnicmp( &header_value, &keep_alive, keep_alive.len ) == 0 ) {
+                                        /* 声明为 keep-alive 连接 */
+                                        req->keep_alive = 1;
+                                    } else {
+                                        req->keep_alive = 0;
+                                    }
+                                    break;
+                                }
+                                case HEADER_CONTENT_LENGTH: {
+                                    req->content_length = wbt_atoi(&header_value);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     req->state = 7;
                 }
                 break;
             }
-            case 6: {
+            case 7: {
                 if (ch == '\n') {
-                    return WBT_OK;
+                    req->state = 8;
                 } else {
                     return WBT_ERROR;
                 }
                 break;
             }
-            case 7: { // 解析 header
+            case 8: {
                 if (ch == '\r') {
+                    req->state = 9;
+                } else {
+                    req->header_key.start = req->recv.offset;
                     req->state = 4;
+                }
+                break;
+            }
+            case 9: {
+                if (ch == '\n') {
+                    req->headers.len = req->recv.offset - req->headers.start - 3;
+                    req->recv.offset ++;
+
+                    return WBT_OK;
+                } else {
+                    return WBT_ERROR;
                 }
                 break;
             }
