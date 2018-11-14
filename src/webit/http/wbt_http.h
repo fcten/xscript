@@ -173,7 +173,7 @@ typedef struct {
     // 发送缓冲区
     struct {
         char *buf;
-        unsigned size;
+        unsigned length;
         unsigned offset;
     } send;
     // 响应属性
@@ -185,11 +185,55 @@ typedef struct {
 
 const char *wbt_http_method(wbt_http_method_t method);
 
-wbt_status wbt_http_parse(wbt_http_request_t *req);
+wbt_status wbt_http_parse_request(wbt_http_request_t *req);
 
-wbt_status wbt_http_generate_status(wbt_http_response_t *resp);
-wbt_status wbt_http_generate_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value);
-wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body);
+wbt_status wbt_http_generate_response_status(wbt_http_response_t *resp);
+wbt_status wbt_http_generate_response_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value);
+wbt_status wbt_http_generate_response_body(wbt_http_response_t *resp, wbt_str_t *body);
+
+typedef struct {
+    // 状态机状态
+    unsigned state;
+    // 接收缓冲区
+    struct {
+        char *buf;
+        unsigned length;
+        unsigned offset;
+    } recv;
+    // 保存解析好的请求
+    wbt_http_version_t version;
+    unsigned status;
+    wbt_str_offset_t message;
+    wbt_str_offset_t headers;
+    wbt_str_offset_t body;
+
+    wbt_str_offset_t header_key;
+    wbt_str_offset_t header_value;
+    unsigned keep_alive;
+    unsigned chunked;
+    int content_length;
+} wbt_http_upsteam_response_t;
+
+typedef struct {
+    // 发送缓冲区
+    struct {
+        char *buf;
+        unsigned length;
+        unsigned offset;
+    } send;
+    // 响应属性
+    wbt_http_method_t method;
+    wbt_str_t uri;
+    wbt_str_t params;
+    // headers
+    wbt_str_t content_type;
+} wbt_http_upsteam_request_t;
+
+wbt_status wbt_http_parse_response(wbt_http_upsteam_response_t *resp);
+
+wbt_status wbt_http_generate_request_line(wbt_http_upsteam_request_t *req);
+wbt_status wbt_http_generate_request_header(wbt_http_upsteam_request_t *req, wbt_http_line_t key, wbt_str_t *value);
+wbt_status wbt_http_generate_request_body(wbt_http_upsteam_request_t *req, wbt_str_t *body);
 
 #ifdef	__cplusplus
 }

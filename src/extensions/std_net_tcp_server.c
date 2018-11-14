@@ -124,7 +124,6 @@ static int on_yield(lgx_vm_t *vm) {
     lgx_co_t *co = vm->co_running;
     lgx_request_t *req = (lgx_request_t *)co->ctx;
     wbt_event_t *ev = req->ev;
-    lgx_conn_t *conn = (lgx_conn_t *)ev->ctx;
 
     if (co->status != CO_DIED) {
         return 0;
@@ -149,22 +148,24 @@ static int on_yield(lgx_vm_t *vm) {
 
     wbt_http_response_t resp;
     resp.status = STATUS_200;
-    wbt_http_generate_status(&resp);
+    wbt_http_generate_response_status(&resp);
+
+    lgx_conn_t *conn = (lgx_conn_t *)ev->ctx;
 
     if (conn->http.keep_alive) {
         wbt_str_t keep_alive = wbt_string("keep-alive");
-        wbt_http_generate_header(&resp, HEADER_CONNECTION, &keep_alive);
+        wbt_http_generate_response_header(&resp, HEADER_CONNECTION, &keep_alive);
     } else {
         wbt_str_t close = wbt_string("close");
-        wbt_http_generate_header(&resp, HEADER_CONNECTION, &close);
+        wbt_http_generate_response_header(&resp, HEADER_CONNECTION, &close);
     }
 
     wbt_str_t body;
     body.str = vm->regs[1].v.str->buffer;
     body.len = vm->regs[1].v.str->length;
-    wbt_http_generate_body(&resp, &body);
+    wbt_http_generate_response_body(&resp, &body);
 
-    wbt_debug("%.*s", resp.send.offset, resp.send.buf);
+    //wbt_debug("%.*s", resp.send.offset, resp.send.buf);
 
     // 生成响应
     // 如果存在未发送完毕的响应，则追加到缓冲区末尾
@@ -193,7 +194,7 @@ static int on_yield(lgx_vm_t *vm) {
 
     // 修改事件，每产生一个响应都会重置超时事件
     ev->events = WBT_EV_WRITE | WBT_EV_READ | WBT_EV_ET;
-    ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
+    ev->timer.timeout = wbt_cur_mtime + 30 * 1000;
 
     if(wbt_event_mod(vm->events, ev) != WBT_OK) {
         on_close(ev);
@@ -260,7 +261,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     conn->http.recv.buf = (char *)ev->recv.buf + ev->recv.offset;
     conn->http.recv.length = ev->recv.len - ev->recv.offset;
 
-    wbt_status ret = wbt_http_parse(&conn->http);
+    wbt_status ret = wbt_http_parse_request(&conn->http);
     if (ret == WBT_AGAIN) {
         // 数据不完整，继续等待
         return WBT_OK;
@@ -291,7 +292,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     }
 
     // 收到完整的数据包则重置超时事件
-    ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
+    ev->timer.timeout = wbt_cur_mtime + 30 * 1000;
 
     if(wbt_event_mod(server->vm->events, ev) != WBT_OK) {
         on_close(ev);
@@ -363,7 +364,7 @@ static wbt_status on_send(wbt_event_t *ev) {
     if (conn->http.keep_alive) {
         // 修改事件
         ev->events = WBT_EV_READ | WBT_EV_ET;
-        ev->timer.timeout = wbt_cur_mtime + 15 * 1000;
+        ev->timer.timeout = wbt_cur_mtime + 30 * 1000;
 
         if (wbt_event_mod(server->vm->events, ev) != WBT_OK) {
             on_close(ev);
@@ -420,7 +421,7 @@ static wbt_status on_accept(wbt_event_t *ev) {
 
             wbt_event_t *p_ev, tmp_ev;
             tmp_ev.timer.on_timeout = on_timeout;
-            tmp_ev.timer.timeout    = wbt_cur_mtime + 15 * 1000;
+            tmp_ev.timer.timeout    = wbt_cur_mtime + 30 * 1000;
             tmp_ev.on_recv = on_recv;
             tmp_ev.on_send = on_send;
             tmp_ev.events  = WBT_EV_READ | WBT_EV_ET;
@@ -495,7 +496,7 @@ static void* worker(void *args) {
             tmp_ev.on_send = on_send;
             tmp_ev.events  = WBT_EV_READ | WBT_EV_ET;
             tmp_ev.timer.on_timeout = on_timeout;
-            tmp_ev.timer.timeout    = wbt_cur_mtime + 15 * 1000;
+            tmp_ev.timer.timeout    = wbt_cur_mtime + 30 * 1000;
             while (wbt_thread_recv(thread, &tmp_ev.fd) == 0) {
                 if((p_ev = wbt_event_add(vm.events, &tmp_ev)) == NULL) {
                     wbt_close_socket(tmp_ev.fd);

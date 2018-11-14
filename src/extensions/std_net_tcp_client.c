@@ -21,6 +21,7 @@ typedef struct {
     lgx_co_t *co;
     // 是否已写入返回值
     unsigned is_return;
+    wbt_http_upsteam_response_t http;
 } lgx_client_t;
 
 static wbt_status on_connect(wbt_event_t *ev);
@@ -113,13 +114,13 @@ static wbt_status on_connect(wbt_event_t *ev) {
 	socklen_t result_len = sizeof(result);
 	if (getsockopt(ev->fd, SOL_SOCKET, SO_ERROR, &result, &result_len) < 0) {
         on_close(ev);
-        lgx_vm_throw_s(vm, "connect faild");
+        //lgx_vm_throw_s(vm, "connect faild");
         return WBT_OK;
 	}
 
 	if (result != 0) {
         on_close(ev);
-        lgx_vm_throw_s(vm, "connect faild");
+        //lgx_vm_throw_s(vm, "connect faild");
         return WBT_OK;
 	}
 	
@@ -131,7 +132,7 @@ static wbt_status on_connect(wbt_event_t *ev) {
 
     if(wbt_event_mod(vm->events, ev) != WBT_OK) {
         on_close(ev);
-        lgx_vm_throw_s(vm, "mod event faild");
+        //lgx_vm_throw_s(vm, "mod event faild");
         return WBT_OK;
     }
 
@@ -145,13 +146,13 @@ static wbt_status on_close(wbt_event_t *ev) {
 
     wbt_event_del(client->vm->events, ev);
 
-    // 写入返回值
-    if (!client->is_return) {
-        lgx_ext_return_undefined(client->co);
-    }
-
     // 恢复协程执行
     lgx_co_resume(client->vm, client->co);
+
+    // 写入返回值
+    if (!client->is_return) {
+        lgx_vm_throw_s(client->vm, "get failed");
+    }
 
     xfree(client);
 
@@ -162,7 +163,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     wbt_debug("client:on_recv %d", ev->fd);
 
     lgx_client_t *client = (lgx_client_t *)ev->ctx;
-    lgx_vm_t *vm = client->vm;
+    //lgx_vm_t *vm = client->vm;
 
     if (ev->recv.buf == NULL) {
         ev->recv.buf = xmalloc(WBT_MAX_PROTO_BUF_LEN);
@@ -171,7 +172,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
         if( ev->recv.buf == NULL ) {
             /* 内存不足 */
             on_close(ev);
-            lgx_vm_throw_s(vm, "out of memory");
+            //lgx_vm_throw_s(vm, "out of memory");
             return WBT_OK;
         }
     }
@@ -180,13 +181,14 @@ static wbt_status on_recv(wbt_event_t *ev) {
         /* 请求长度超过限制
          */
         on_close(ev);
-        lgx_vm_throw_s(vm, "client %d: request length exceeds limitation", ev->fd);
+        //lgx_vm_throw_s(vm, "client %d: request length exceeds limitation", ev->fd);
         return WBT_OK;
     }
 
     int nread = recv(ev->fd, (unsigned char *)ev->recv.buf + ev->recv.len,
         WBT_MAX_PROTO_BUF_LEN - ev->recv.len, 0);
 
+    int is_close = 0;
     if (nread < 0) {
         wbt_err_t err = wbt_socket_errno;
         if (err == WBT_EAGAIN) {
@@ -194,28 +196,52 @@ static wbt_status on_recv(wbt_event_t *ev) {
         } else if (err == WBT_ECONNRESET) {
             // 对方发送了RST
             on_close(ev);
-            lgx_vm_throw_s(vm, "client %d: connection reset by peer", ev->fd);
+            //lgx_vm_throw_s(vm, "client %d: connection reset by peer", ev->fd);
             return WBT_OK;
         } else {
             // 其他不可弥补的错误
             on_close(ev);
-            lgx_vm_throw_s(vm, "client %d: errno %d", ev->fd, err);
+            //lgx_vm_throw_s(vm, "client %d: errno %d", ev->fd, err);
             return WBT_OK;
         }
     } else if (nread == 0) {
-        on_close(ev);
-        lgx_vm_throw_s(vm, "client %d: connection closed by peer", ev->fd);
-        return WBT_OK;
+        is_close = 1;
+        //on_close(ev);
+        //lgx_vm_throw_s(vm, "client %d: connection closed by peer", ev->fd);
+        //return WBT_OK;
     } else {
         ev->recv.len += nread;
     }
 
-    //printf("%.*s", (int)ev->buff_len, (char *)ev->buff);
+    // HTTP 协议解析
+    //printf("%.*s", ev->recv.len, (char *)ev->recv.buf);
+    client->http.recv.buf = (char *)ev->recv.buf;
+    client->http.recv.length = ev->recv.len;
 
-    // TODO 如果数据读完
+    wbt_status ret = wbt_http_parse_response(&client->http);
+    if (ret == WBT_AGAIN) {
+        if (is_close) {
+            if (client->http.keep_alive) {
+                on_close(ev);
+                //lgx_vm_throw_s(vm, "client %d: connection closed by peer", ev->fd);
+                return WBT_OK;
+            } else {
+                client->http.body.len = client->http.recv.length - client->http.recv.offset;
+                client->http.recv.offset = client->http.recv.length;
+            }
+        } else {
+            return WBT_OK;
+        }
+    } else if (ret == WBT_ERROR) {
+        // 数据不合法，关闭连接
+        on_close(ev);
+        return WBT_OK;
+    }
+
+    wbt_debug("%d", client->http.status);
 
     // 写入返回值
-    lgx_ext_return_string(client->co, lgx_str_new_ref((char *)ev->recv.buf, ev->recv.len));
+    lgx_ext_return_string(client->co, lgx_str_new(client->http.recv.buf + client->http.body.start, client->http.body.len));
     client->is_return = 1;
 
     ev->recv.buf = NULL;
@@ -276,7 +302,7 @@ static wbt_status on_send(wbt_event_t *ev) {
 static wbt_status on_timeout(wbt_timer_t *timer) {
     wbt_event_t *ev = wbt_timer_entry(timer, wbt_event_t, timer);
 
-    wbt_debug("[%lu] client:on_timeout %d \n", pthread_self(), ev->fd);
+    wbt_debug("client:on_timeout %d", ev->fd);
 
     return on_close(ev);
 }
@@ -292,13 +318,11 @@ static int client_get(void *p) {
     lgx_val_t *port = &vm->regs[base+6];
 
     if (ip->type != T_STRING || ip->v.str->length > 15) {
-        // TODO throw exception?
         lgx_vm_throw_s(vm, "invalid param `ip`");
         return 1;
     }
 
     if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
-        // TODO throw exception?
         lgx_vm_throw_s(vm, "invalid param `port`");
         return 1;
     }
@@ -323,6 +347,7 @@ static int client_get(void *p) {
         lgx_client_t *client = (lgx_client_t *)xcalloc(1, sizeof(lgx_client_t));
         client->vm = vm;
         client->co = co;
+        wbt_memset(&client->http, 0, sizeof(wbt_http_upsteam_response_t));
 
         // 添加事件
         wbt_event_t *p_ev, tmp_ev;
@@ -342,9 +367,9 @@ static int client_get(void *p) {
 
         p_ev->ctx = client;
 
-        p_ev->send.len = sizeof("GET / HTTP/1.1\r\nHost: www.fhack.com\r\n\r\n") - 1;
+        p_ev->send.len = sizeof("GET / HTTP/1.1\r\nHost: 58.217.200.15\r\nConnection: close\r\n\r\n") - 1;
         p_ev->send.offset = 0;
-        p_ev->send.buf = strdup("GET / HTTP/1.1\r\nHost: www.fhack.com\r\n\r\n\r\n\r\n");
+        p_ev->send.buf = strdup("GET / HTTP/1.1\r\nHost: 58.217.200.15\r\nConnection: close\r\n\r\n");
 
         lgx_co_suspend(vm);
     } else { // ret == WBT_AGAIN
@@ -370,9 +395,9 @@ static int client_get(void *p) {
 
         p_ev->ctx = client;
 
-        p_ev->send.len = sizeof("GET / HTTP/1.1\r\nHost: www.fhack.com\r\n\r\n\r\n\r\n") - 1;
+        p_ev->send.len = sizeof("GET / HTTP/1.1\r\nHost: 58.217.200.15\r\nConnection: close\r\n\r\n") - 1;
         p_ev->send.offset = 0;
-        p_ev->send.buf = strdup("GET / HTTP/1.1\r\nHost: www.fhack.com\r\n\r\n\r\n\r\n");
+        p_ev->send.buf = strdup("GET / HTTP/1.1\r\nHost: 58.217.200.15\r\nConnection: close\r\n\r\n");
 
         lgx_co_suspend(vm);
     }

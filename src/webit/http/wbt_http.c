@@ -199,9 +199,7 @@ const char *wbt_http_method(wbt_http_method_t method) {
     return REQUEST_METHOD[0].str;
 }
 
-wbt_status wbt_http_parse_body(wbt_http_request_t *req) {
-    req->body.start = req->recv.offset;
-
+wbt_status wbt_http_parse_request_body(wbt_http_request_t *req) {
     if (req->content_length > 0) {
         if (req->recv.length >= req->recv.offset + req->content_length) {
             req->body.len = req->content_length;
@@ -216,7 +214,7 @@ wbt_status wbt_http_parse_body(wbt_http_request_t *req) {
     }
 }
 
-wbt_status wbt_http_parse_header(wbt_http_request_t *req) {
+wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
     while (req->recv.offset < req->recv.length) {
         char ch = req->recv.buf[req->recv.offset];
 
@@ -364,13 +362,16 @@ wbt_status wbt_http_parse_header(wbt_http_request_t *req) {
                 if (ch == '\n') {
                     req->headers.len = req->recv.offset - req->headers.start - 3;
                     req->recv.offset ++;
-
+                    req->body.start = req->recv.offset;
+                    req->state = 10;
                     return WBT_OK;
                 } else {
                     return WBT_ERROR;
                 }
                 break;
             }
+            case 10:
+                 return WBT_OK;
             default:
                 return WBT_ERROR;
         }
@@ -381,28 +382,28 @@ wbt_status wbt_http_parse_header(wbt_http_request_t *req) {
     return WBT_AGAIN; // 数据不完整
 }
 
-wbt_status wbt_http_parse(wbt_http_request_t *req) {
-    wbt_status ret = wbt_http_parse_header(req);
+wbt_status wbt_http_parse_request(wbt_http_request_t *req) {
+    wbt_status ret = wbt_http_parse_request_header(req);
     if (ret != WBT_OK) {
         return ret;
     }
 
-    return wbt_http_parse_body(req);
+    return wbt_http_parse_request_body(req);
 }
 
-wbt_status wbt_http_generate_check_space(wbt_http_response_t *resp, int len) {
-    while (resp->send.size < resp->send.offset + len) {
-        void *buf = wbt_realloc(resp->send.buf, resp->send.size * 2);
+wbt_status wbt_http_generate_response_check_space(wbt_http_response_t *resp, int len) {
+    while (resp->send.length < resp->send.offset + len) {
+        void *buf = wbt_realloc(resp->send.buf, resp->send.length * 2);
         if (!buf) {
             return WBT_ERROR;
         }
         resp->send.buf = (char *)buf;
-        resp->send.size *= 2;
+        resp->send.length *= 2;
     }
     return WBT_OK;
 }
 
-wbt_status _wbt_http_generate_status(wbt_http_response_t *resp) {
+wbt_status _wbt_http_generate_response_status(wbt_http_response_t *resp) {
     wbt_str_t proto = wbt_string("HTTP/1.1 ");
     wbt_memcpy(resp->send.buf + resp->send.offset, proto.str, proto.len);
     resp->send.offset += proto.len;
@@ -430,10 +431,10 @@ wbt_status _wbt_http_generate_status(wbt_http_response_t *resp) {
     }
 }
 
-wbt_status wbt_http_generate_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value) {
+wbt_status wbt_http_generate_response_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value) {
     if (key > 0 && key < HEADER_LENGTH) {
         int len = HTTP_HEADERS[key].len + value->len + 4;
-        if (wbt_http_generate_check_space(resp, len) != WBT_OK) {
+        if (wbt_http_generate_response_check_space(resp, len) != WBT_OK) {
             return WBT_ERROR;
         }
 
@@ -455,7 +456,7 @@ wbt_status wbt_http_generate_header(wbt_http_response_t *resp, wbt_http_line_t k
     }
 }
 
-wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body) {
+wbt_status wbt_http_generate_response_body(wbt_http_response_t *resp, wbt_str_t *body) {
     if (body->len < 0) {
         return WBT_ERROR;
     }
@@ -465,11 +466,11 @@ wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body) {
     content_length.str = len;
     content_length.len = sprintf(len, "%d", body->len);
 
-    if (wbt_http_generate_header(resp, HEADER_CONTENT_LENGTH, &content_length) != WBT_OK) {
+    if (wbt_http_generate_response_header(resp, HEADER_CONTENT_LENGTH, &content_length) != WBT_OK) {
         return WBT_ERROR;
     }
 
-    if (wbt_http_generate_check_space(resp, body->len + 2) != WBT_OK) {
+    if (wbt_http_generate_response_check_space(resp, body->len + 2) != WBT_OK) {
         return WBT_ERROR;
     }
 
@@ -482,13 +483,199 @@ wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body) {
     return WBT_OK;
 }
 
-wbt_status wbt_http_generate_status(wbt_http_response_t *resp) {
+wbt_status wbt_http_generate_response_status(wbt_http_response_t *resp) {
     resp->send.buf = (char *)wbt_malloc(4 * 1024);
     if (!resp->send.buf) {
         return WBT_ERROR;
     }
-    resp->send.size = 4 * 1024;
+    resp->send.length = 4 * 1024;
     resp->send.offset = 0;
 
-    return _wbt_http_generate_status(resp);
+    return _wbt_http_generate_response_status(resp);
+}
+
+wbt_status wbt_http_parse_response_header(wbt_http_upsteam_response_t *resp) {
+    while (resp->recv.offset < resp->recv.length) {
+        char ch = resp->recv.buf[resp->recv.offset];
+
+        switch (resp->state) {
+            case 0: {
+                if (resp->recv.length < resp->recv.offset + 9) {
+                    return WBT_AGAIN;
+                }
+
+                wbt_str_t ver;
+                wbt_str_t http_ver_1_0 = wbt_string("HTTP/1.0 ");
+                wbt_str_t http_ver_1_1 = wbt_string("HTTP/1.1 ");
+
+                ver.str = resp->recv.buf + resp->recv.offset;
+                ver.len = http_ver_1_0.len;
+
+                if (wbt_strcmp(&ver, &http_ver_1_0) == 0) {
+                    resp->version = PROTO_HTTP_1_0;
+                } else if (wbt_strcmp(&ver, &http_ver_1_1) == 0) {
+                    resp->version = PROTO_HTTP_1_1;
+                } else {
+                    resp->version = PROTO_HTTP_UNKNOWN;
+                    return WBT_ERROR;
+                }
+
+                resp->recv.offset += ver.len - 1;
+                resp->state = 1;
+                resp->status = 0;
+                break;
+            }
+            case 1: { // status
+                if (ch == ' ') {
+                    resp->state = 2;
+                    break;
+                }
+
+                if (ch < '0' || ch > '9') {
+                    return WBT_ERROR;
+                }
+
+                resp->status = resp->status * 10 + (ch - '0');
+                break;
+            }
+            case 2: {
+                if (ch == '\r') {
+                    resp->state = 4;
+                }
+                break;
+            }
+            case 4: {
+                if (ch == '\n') {
+                    resp->state = 5;
+                    resp->headers.start = resp->recv.offset + 1;
+                    resp->header_key.start = resp->recv.offset + 1;
+                } else {
+                    return WBT_ERROR;
+                }
+                break;
+            }
+            case 5: {
+                if (ch == ':') {
+                    resp->header_key.len = resp->recv.offset - resp->header_key.start;
+                    resp->state = 6;
+                }
+                break;
+            }
+            case 6: {
+                if (ch != ' ') {
+                    resp->header_value.start = resp->recv.offset;
+                    resp->state = 7;
+                }
+                break;
+            }
+            case 7: {
+                if (ch == '\r') {
+                    resp->header_value.len = resp->recv.offset - resp->header_value.start;
+                    wbt_str_t header_key, header_value;
+                    wbt_offset_to_str(resp->header_key, header_key, resp->recv.buf);
+                    wbt_offset_to_str(resp->header_value, header_value, resp->recv.buf);
+
+                    wbt_debug("%.*s", header_key.len, header_key.str);
+                    
+                    int i;
+                    for( i = 1 ; i < HEADER_LENGTH ; i ++ ) {
+                        if( wbt_strnicmp( &header_key, &HTTP_HEADERS[i], HTTP_HEADERS[i].len ) == 0 ) {
+                            switch (i) {
+                                case HEADER_CONNECTION: {
+                                    wbt_str_t keep_alive = wbt_string("keep-alive");
+                                    if( wbt_strnicmp( &header_value, &keep_alive, keep_alive.len ) == 0 ) {
+                                        /* 声明为 keep-alive 连接 */
+                                        resp->keep_alive = 1;
+                                    } else {
+                                        resp->keep_alive = 0;
+                                    }
+                                    break;
+                                }
+                                case HEADER_CONTENT_LENGTH: {
+                                    resp->content_length = wbt_atoi(&header_value);
+                                    break;
+                                }
+                                case HEADER_TRANSFER_ENCODING: {
+                                    wbt_str_t chunked = wbt_string("chunked");
+                                    if( wbt_strnicmp( &header_value, &chunked, chunked.len ) == 0 ) {
+                                        resp->chunked = 1;
+                                    } else {
+                                        resp->chunked = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    resp->state = 8;
+                }
+                break;
+            }
+            case 8: {
+                if (ch == '\n') {
+                    resp->state = 9;
+                } else {
+                    return WBT_ERROR;
+                }
+                break;
+            }
+            case 9: {
+                if (ch == '\r') {
+                    resp->state = 10;
+                } else {
+                    resp->header_key.start = resp->recv.offset;
+                    resp->state = 5;
+                }
+                break;
+            }
+            case 10: {
+                if (ch == '\n') {
+                    resp->headers.len = resp->recv.offset - resp->headers.start - 3;
+                    resp->recv.offset ++;
+                    resp->body.start = resp->recv.offset;
+                    resp->state = 11;
+                    return WBT_OK;
+                } else {
+                    return WBT_ERROR;
+                }
+                break;
+            }
+            case 11:
+                return WBT_OK;
+            default:
+                return WBT_ERROR;
+        }
+
+        resp->recv.offset ++;
+    }
+
+    return WBT_AGAIN; // 数据不完整
+}
+
+wbt_status wbt_http_parse_response_body(wbt_http_upsteam_response_t *resp) {
+    if (resp->content_length >= 0) {
+        if (resp->recv.length >= resp->recv.offset + resp->content_length) {
+            resp->body.len = resp->content_length;
+            resp->recv.offset += resp->content_length;
+            return WBT_OK;
+        } else {
+            return WBT_AGAIN;
+        }
+    } else if (resp->chunked) {
+        // TODO
+        while (1) {
+            break;
+        }
+        return WBT_OK;
+    } else {
+        return WBT_AGAIN;
+    }
+}
+
+wbt_status wbt_http_parse_response(wbt_http_upsteam_response_t *resp) {
+    if (wbt_http_parse_response_header(resp) != WBT_OK) {
+        return WBT_ERROR;
+    }
+
+    return wbt_http_parse_response_body(resp);
 }
