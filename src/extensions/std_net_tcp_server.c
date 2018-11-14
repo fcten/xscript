@@ -34,7 +34,7 @@ typedef struct {
 
 typedef struct {
     lgx_server_t *server;
-    lgx_http_request_t http;
+    wbt_http_request_t http;
     lgx_request_t req;
 } lgx_conn_t;
 
@@ -124,6 +124,7 @@ static int on_yield(lgx_vm_t *vm) {
     lgx_co_t *co = vm->co_running;
     lgx_request_t *req = (lgx_request_t *)co->ctx;
     wbt_event_t *ev = req->ev;
+    lgx_conn_t *conn = (lgx_conn_t *)ev->ctx;
 
     if (co->status != CO_DIED) {
         return 0;
@@ -145,31 +146,50 @@ static int on_yield(lgx_vm_t *vm) {
         on_close(ev);
         return 1;
     }
-    lgx_str_t *str = vm->regs[1].v.str;
+
+    wbt_http_response_t resp;
+    resp.status = STATUS_200;
+    wbt_http_generate_status(&resp);
+
+    if (conn->http.keep_alive) {
+        wbt_str_t keep_alive = wbt_string("keep-alive");
+        wbt_http_generate_header(&resp, HEADER_CONNECTION, &keep_alive);
+    } else {
+        wbt_str_t close = wbt_string("close");
+        wbt_http_generate_header(&resp, HEADER_CONNECTION, &close);
+    }
+
+    wbt_str_t body;
+    body.str = vm->regs[1].v.str->buffer;
+    body.len = vm->regs[1].v.str->length;
+    wbt_http_generate_body(&resp, &body);
+
+    wbt_debug("%.*s", resp.send.offset, resp.send.buf);
 
     // 生成响应
     // 如果存在未发送完毕的响应，则追加到缓冲区末尾
     if (ev->send.buf) {
-        if (ev->send.size - ev->send.len < str->length) {
-            void *buf = xrealloc(ev->send.buf, ev->send.size + str->length);
+        while (ev->send.size < ev->send.len + resp.send.offset) {
+            void *buf = xrealloc(ev->send.buf, ev->send.size * 2);
             if (!buf) {
                 on_close(ev);
                 return 1;
             }
-            ev->send.size += str->length;
+            ev->send.buf = buf;
+            ev->send.size *= 2;
         }
     } else {
-        ev->send.buf = xmalloc(str->length);
+        ev->send.buf = xmalloc(resp.send.offset);
         if (!ev->send.buf) {
             on_close(ev);
             return 1;
         }
-        ev->send.size = str->length;
+        ev->send.size = resp.send.offset;
         ev->send.len = 0;
         ev->send.offset = 0;
     }
-    memcpy(ev->send.buf + ev->send.len, str->buffer, str->length);
-    ev->send.len += str->length;
+    memcpy(ev->send.buf + ev->send.len, resp.send.buf, resp.send.offset);
+    ev->send.len += resp.send.offset;
 
     // 修改事件，每产生一个响应都会重置超时事件
     ev->events = WBT_EV_WRITE | WBT_EV_READ | WBT_EV_ET;
@@ -350,7 +370,7 @@ static wbt_status on_send(wbt_event_t *ev) {
             return WBT_OK;
         }
 
-        wbt_memset(&conn->http, 0, sizeof(lgx_http_request_t));
+        wbt_memset(&conn->http, 0, sizeof(wbt_http_request_t));
     } else {
         on_close(ev);
     }
@@ -395,7 +415,7 @@ static wbt_status on_accept(wbt_event_t *ev) {
                 continue;
             }
             conn->server = server;
-            wbt_memset(&conn->http, 0, sizeof(lgx_http_request_t));
+            wbt_memset(&conn->http, 0, sizeof(wbt_http_request_t));
             wbt_list_init(&conn->req.head);
 
             wbt_event_t *p_ev, tmp_ev;

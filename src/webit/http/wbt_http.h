@@ -21,13 +21,13 @@ typedef enum {
     METHOD_CONNECT,
     METHOD_OPTIONS,
     METHOD_LENGTH
-} lgx_http_method_t;
+} wbt_http_method_t;
 
 typedef enum {
     PROTO_HTTP_UNKNOWN,
     PROTO_HTTP_1_0,
     PROTO_HTTP_1_1
-} lgx_http_version_t;
+} wbt_http_version_t;
 
 typedef enum {
     HEADER_UNKNOWN,
@@ -89,7 +89,7 @@ typedef enum {
     HEADER_SEC_WEBSOCKET_ACCEPT,
 #endif
     HEADER_LENGTH
-} lgx_http_line_t;
+} wbt_http_line_t;
 
 typedef enum {
     STATUS_UNKNOWN,  // Unknown
@@ -144,7 +144,7 @@ typedef enum {
     STATUS_507,  // Insufficient Storage
     STATUS_510,  // Not Extended
     STATUS_LENGTH
-} lgx_http_status_t;
+} wbt_http_status_t;
 
 typedef struct {
     // 状态机状态
@@ -154,12 +154,12 @@ typedef struct {
         char *buf;
         unsigned length;
         unsigned offset;
-    } recv;  
+    } recv;
     // 保存解析好的请求
-    lgx_http_method_t method;
+    wbt_http_method_t method;
     wbt_str_offset_t uri;
     wbt_str_offset_t params;
-    lgx_http_version_t version;
+    wbt_http_version_t version;
     wbt_str_offset_t headers;
     wbt_str_offset_t body;
 
@@ -167,13 +167,29 @@ typedef struct {
     wbt_str_offset_t header_value;
     unsigned keep_alive;
     int content_length;
-} lgx_http_request_t;
+} wbt_http_request_t;
 
-const char *wbt_http_method(lgx_http_method_t method);
+typedef struct {
+    // 发送缓冲区
+    struct {
+        char *buf;
+        unsigned size;
+        unsigned offset;
+    } send;
+    // 响应属性
+    wbt_http_status_t status;
+    wbt_str_t message;
+    // headers
+    wbt_str_t content_type;
+} wbt_http_response_t;
 
-wbt_status wbt_http_parse(lgx_http_request_t *req);
-wbt_status wbt_http_parse_header(lgx_http_request_t *req);
-wbt_status wbt_http_parse_body(lgx_http_request_t *req);
+const char *wbt_http_method(wbt_http_method_t method);
+
+wbt_status wbt_http_parse(wbt_http_request_t *req);
+
+wbt_status wbt_http_generate_status(wbt_http_response_t *resp);
+wbt_status wbt_http_generate_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value);
+wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body);
 
 #ifdef	__cplusplus
 }

@@ -1,4 +1,5 @@
 #include "../common/wbt_error.h"
+#include "../common/wbt_memory.h"
 #include "wbt_http.h"
 
 wbt_str_t header_server = wbt_string("BitMQ");
@@ -85,76 +86,120 @@ wbt_str_t HTTP_HEADERS[] = {
 
 wbt_str_t STATUS_CODE[] = {
     wbt_null_string,
-    wbt_string("100 Continue"),
-    wbt_string("101 Switching Protocols"), 
-    wbt_string("102 Processing"),
-    wbt_string("200 OK"),
-    wbt_string("201 Created"),
-    wbt_string("202 Accepted"),
-    wbt_string("203 Non-Authoritative Information"),
-    wbt_string("204 No Content"),
-    wbt_string("205 Reset Content"),
-    wbt_string("206 Partial Content"),
-    wbt_string("207 Multi-Status"),
-    wbt_string("300 Multiple Choices"),
-    wbt_string("301 Moved Permanently"),
-    wbt_string("302 Found"),
-    wbt_string("302 Moved Temporarily"), // 注意：这并不是一个标准的 HTTP/1.1 状态码，只是为了兼容而添加
-    wbt_string("303 See Other"),
-    wbt_string("304 Not Modified"),
-    wbt_string("305 Use Proxy"),
-    wbt_string("307 Temporary Redirect"),
-    wbt_string("400 Bad Request"),
-    wbt_string("401 Unauthorized"),
-    wbt_string("402 Payment Required"),
-    wbt_string("403 Forbidden"),
-    wbt_string("404 Not Found"),
-    wbt_string("405 Method Not Allowed"),
-    wbt_string("406 Not Acceptable"),
-    wbt_string("407 Proxy Authentication Required"),
-    wbt_string("408 Request Time-out"),
-    wbt_string("409 Conflict"),
-    wbt_string("410 Gone"),
-    wbt_string("411 Length Required"),
-    wbt_string("412 Precondition Failed"),
-    wbt_string("413 Request Entity Too Large"),
-    wbt_string("414 Request-URI Too Large"),
-    wbt_string("415 Unsupported Media Type"),
-    wbt_string("416 Requested range not satisfiable"),
-    wbt_string("417 Expectation Failed"),
-    wbt_string("422 Unprocessable Entity"),
-    wbt_string("423 Locked"),
-    wbt_string("424 Failed Dependency"),
-    wbt_string("426 Upgrade Required"),
-    wbt_string("500 Internal Server Error"),
-    wbt_string("501 Not Implemented"),
-    wbt_string("502 Bad Gateway"),
-    wbt_string("503 Service Unavailable"),
-    wbt_string("504 Gateway Time-out"),
-    wbt_string("505 HTTP Version not supported"),
-    wbt_string("506 Variant Also Negotiates"),
-    wbt_string("507 Insufficient Storage"),
-    wbt_string("510 Not Extended"),
+    wbt_string("100"),
+    wbt_string("101"), 
+    wbt_string("102"),
+    wbt_string("200"),
+    wbt_string("201"),
+    wbt_string("202"),
+    wbt_string("203"),
+    wbt_string("204"),
+    wbt_string("205"),
+    wbt_string("206"),
+    wbt_string("207"),
+    wbt_string("300"),
+    wbt_string("301"),
+    wbt_string("302"),
+    wbt_string("303"),
+    wbt_string("304"),
+    wbt_string("305"),
+    wbt_string("307"),
+    wbt_string("400"),
+    wbt_string("401"),
+    wbt_string("402"),
+    wbt_string("403"),
+    wbt_string("404"),
+    wbt_string("405"),
+    wbt_string("406"),
+    wbt_string("407"),
+    wbt_string("408"),
+    wbt_string("409"),
+    wbt_string("410"),
+    wbt_string("411"),
+    wbt_string("412"),
+    wbt_string("413"),
+    wbt_string("414"),
+    wbt_string("415"),
+    wbt_string("416"),
+    wbt_string("417"),
+    wbt_string("422"),
+    wbt_string("423"),
+    wbt_string("424"),
+    wbt_string("426"),
+    wbt_string("500"),
+    wbt_string("501"),
+    wbt_string("502"),
+    wbt_string("503"),
+    wbt_string("504"),
+    wbt_string("505"),
+    wbt_string("506"),
+    wbt_string("507"),
+    wbt_string("510"),
     wbt_null_string
 };
 
-const char *wbt_http_method(lgx_http_method_t method) {
+wbt_str_t STATUS_MESSAGE[] = {
+    wbt_null_string,
+    wbt_string("Continue"),
+    wbt_string("Switching Protocols"), 
+    wbt_string("Processing"),
+    wbt_string("OK"),
+    wbt_string("Created"),
+    wbt_string("Accepted"),
+    wbt_string("Non-Authoritative Information"),
+    wbt_string("No Content"),
+    wbt_string("Reset Content"),
+    wbt_string("Partial Content"),
+    wbt_string("Multi-Status"),
+    wbt_string("Multiple Choices"),
+    wbt_string("Moved Permanently"),
+    wbt_string("Found"),
+    wbt_string("See Other"),
+    wbt_string("Not Modified"),
+    wbt_string("Use Proxy"),
+    wbt_string("Temporary Redirect"),
+    wbt_string("Bad Request"),
+    wbt_string("Unauthorized"),
+    wbt_string("Payment Required"),
+    wbt_string("Forbidden"),
+    wbt_string("Not Found"),
+    wbt_string("Method Not Allowed"),
+    wbt_string("Not Acceptable"),
+    wbt_string("Proxy Authentication Required"),
+    wbt_string("Request Time-out"),
+    wbt_string("Conflict"),
+    wbt_string("Gone"),
+    wbt_string("Length Required"),
+    wbt_string("Precondition Failed"),
+    wbt_string("Request Entity Too Large"),
+    wbt_string("Request-URI Too Large"),
+    wbt_string("Unsupported Media Type"),
+    wbt_string("Requested range not satisfiable"),
+    wbt_string("Expectation Failed"),
+    wbt_string("Unprocessable Entity"),
+    wbt_string("Locked"),
+    wbt_string("Failed Dependency"),
+    wbt_string("Upgrade Required"),
+    wbt_string("Internal Server Error"),
+    wbt_string("Not Implemented"),
+    wbt_string("Bad Gateway"),
+    wbt_string("Service Unavailable"),
+    wbt_string("Gateway Time-out"),
+    wbt_string("HTTP Version not supported"),
+    wbt_string("Variant Also Negotiates"),
+    wbt_string("Insufficient Storage"),
+    wbt_string("Not Extended"),
+    wbt_null_string
+};
+
+const char *wbt_http_method(wbt_http_method_t method) {
     if (method > 0 && method < METHOD_LENGTH ) {
         return REQUEST_METHOD[method].str;
     }
     return REQUEST_METHOD[0].str;
 }
 
-wbt_status wbt_http_parse(lgx_http_request_t *req) {
-    wbt_status ret = wbt_http_parse_header(req);
-    if (ret != WBT_OK) {
-        return ret;
-    }
-
-    return wbt_http_parse_body(req);
-}
-
-wbt_status wbt_http_parse_body(lgx_http_request_t *req) {
+wbt_status wbt_http_parse_body(wbt_http_request_t *req) {
     req->body.start = req->recv.offset;
 
     if (req->content_length > 0) {
@@ -171,7 +216,7 @@ wbt_status wbt_http_parse_body(lgx_http_request_t *req) {
     }
 }
 
-wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
+wbt_status wbt_http_parse_header(wbt_http_request_t *req) {
     while (req->recv.offset < req->recv.length) {
         char ch = req->recv.buf[req->recv.offset];
 
@@ -334,4 +379,116 @@ wbt_status wbt_http_parse_header(lgx_http_request_t *req) {
     }
 
     return WBT_AGAIN; // 数据不完整
+}
+
+wbt_status wbt_http_parse(wbt_http_request_t *req) {
+    wbt_status ret = wbt_http_parse_header(req);
+    if (ret != WBT_OK) {
+        return ret;
+    }
+
+    return wbt_http_parse_body(req);
+}
+
+wbt_status wbt_http_generate_check_space(wbt_http_response_t *resp, int len) {
+    while (resp->send.size < resp->send.offset + len) {
+        void *buf = wbt_realloc(resp->send.buf, resp->send.size * 2);
+        if (!buf) {
+            return WBT_ERROR;
+        }
+        resp->send.buf = (char *)buf;
+        resp->send.size *= 2;
+    }
+    return WBT_OK;
+}
+
+wbt_status _wbt_http_generate_status(wbt_http_response_t *resp) {
+    wbt_str_t proto = wbt_string("HTTP/1.1 ");
+    wbt_memcpy(resp->send.buf + resp->send.offset, proto.str, proto.len);
+    resp->send.offset += proto.len;
+
+    if (resp->status > 0 && resp->status < STATUS_LENGTH) {
+        wbt_memcpy(resp->send.buf + resp->send.offset, STATUS_CODE[resp->status].str, STATUS_CODE[resp->status].len);
+        resp->send.offset += STATUS_CODE[resp->status].len;
+
+        resp->send.buf[resp->send.offset++] = ' ';
+
+        if (resp->message.str && resp->message.len > 0 && resp->message.len < 128) {
+            wbt_memcpy(resp->send.buf + resp->send.offset, resp->message.str, resp->message.len);
+            resp->send.offset += resp->message.len;
+        } else {
+            wbt_memcpy(resp->send.buf + resp->send.offset, STATUS_MESSAGE[resp->status].str, STATUS_MESSAGE[resp->status].len);
+            resp->send.offset += STATUS_MESSAGE[resp->status].len;
+        }
+
+        resp->send.buf[resp->send.offset++] = '\r';
+        resp->send.buf[resp->send.offset++] = '\n';
+
+        return WBT_OK;
+    } else {
+        return WBT_ERROR;
+    }
+}
+
+wbt_status wbt_http_generate_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value) {
+    if (key > 0 && key < HEADER_LENGTH) {
+        int len = HTTP_HEADERS[key].len + value->len + 4;
+        if (wbt_http_generate_check_space(resp, len) != WBT_OK) {
+            return WBT_ERROR;
+        }
+
+        wbt_memcpy(resp->send.buf + resp->send.offset, HTTP_HEADERS[key].str, HTTP_HEADERS[key].len);
+        resp->send.offset += HTTP_HEADERS[key].len;
+
+        resp->send.buf[resp->send.offset++] = ':';
+        resp->send.buf[resp->send.offset++] = ' ';
+
+        wbt_memcpy(resp->send.buf + resp->send.offset, value->str, value->len);
+        resp->send.offset += value->len;
+
+        resp->send.buf[resp->send.offset++] = '\r';
+        resp->send.buf[resp->send.offset++] = '\n';
+
+        return WBT_OK;
+    } else {
+        return WBT_ERROR;
+    }
+}
+
+wbt_status wbt_http_generate_body(wbt_http_response_t *resp, wbt_str_t *body) {
+    if (body->len < 0) {
+        return WBT_ERROR;
+    }
+
+    char len[16];
+    wbt_str_t content_length;
+    content_length.str = len;
+    content_length.len = sprintf(len, "%d", body->len);
+
+    if (wbt_http_generate_header(resp, HEADER_CONTENT_LENGTH, &content_length) != WBT_OK) {
+        return WBT_ERROR;
+    }
+
+    if (wbt_http_generate_check_space(resp, body->len + 2) != WBT_OK) {
+        return WBT_ERROR;
+    }
+
+    resp->send.buf[resp->send.offset++] = '\r';
+    resp->send.buf[resp->send.offset++] = '\n';
+
+    wbt_memcpy(resp->send.buf + resp->send.offset, body->str, body->len);
+    resp->send.offset += body->len;
+
+    return WBT_OK;
+}
+
+wbt_status wbt_http_generate_status(wbt_http_response_t *resp) {
+    resp->send.buf = (char *)wbt_malloc(4 * 1024);
+    if (!resp->send.buf) {
+        return WBT_ERROR;
+    }
+    resp->send.size = 4 * 1024;
+    resp->send.offset = 0;
+
+    return _wbt_http_generate_status(resp);
 }
