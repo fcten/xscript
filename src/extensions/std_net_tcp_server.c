@@ -551,7 +551,7 @@ static int server_listen(void *p) {
         return 1;
     }
 
-    lgx_ext_return_undefined(vm->co_running);
+    lgx_co_return_undefined(vm->co_running);
 
     return 0;
 }
@@ -559,7 +559,7 @@ static int server_listen(void *p) {
 static int server_on_request(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
-    return lgx_ext_return_undefined(vm->co_running);
+    return lgx_co_return_undefined(vm->co_running);
 }
 
 static int server_start(void *p) {
@@ -630,7 +630,7 @@ static int server_start(void *p) {
 
     p_ev->ctx = server;
 
-    lgx_ext_return_undefined(vm->co_running);
+    lgx_co_return_undefined(vm->co_running);
 
     lgx_co_suspend(vm);
 

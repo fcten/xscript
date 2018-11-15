@@ -686,6 +686,17 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         if (vm->co_running == NULL) {
                             return 0;
                         }
+                    } else if (fun->modifier.is_async) {
+                        lgx_co_t *co = lgx_co_create(vm, fun);
+                        if (!co) {
+                            lgx_vm_throw_s(vm, "out of memory");
+                        } else {
+                            // TODO 返回一个 Coroutine 对象
+                            lgx_co_return_true(vm->co_running);
+
+                            // 协程切换
+                            lgx_co_resume(vm, co);
+                        }
                     } else {
                         // 切换执行堆栈
                         vm->co_running->stack.base += R(0).v.fun->stack_size;

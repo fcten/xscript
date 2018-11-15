@@ -19,4 +19,12 @@ int lgx_co_died(lgx_vm_t *vm);
 int lgx_co_has_task(lgx_vm_t *vm);
 int lgx_co_has_ready_task(lgx_vm_t *vm);
 
+int lgx_co_return(lgx_co_t *co, lgx_val_t *v);
+int lgx_co_return_long(lgx_co_t *co, long long v);
+int lgx_co_return_double(lgx_co_t *co, double v);
+int lgx_co_return_true(lgx_co_t *co);
+int lgx_co_return_false(lgx_co_t *co);
+int lgx_co_return_undefined(lgx_co_t *co);
+int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str);
+
 #endif // LGX_COROUTINE_H

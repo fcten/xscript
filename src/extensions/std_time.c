@@ -7,7 +7,7 @@
 int std_time(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
-    return lgx_ext_return_long(vm->co_running, time(NULL));
+    return lgx_co_return_long(vm->co_running, time(NULL));
 }
 
 int std_time_load_symbols(lgx_hash_t *hash) {

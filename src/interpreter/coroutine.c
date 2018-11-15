@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "../common/common.h"
 #include "coroutine.h"
+#include "gc.h"
 
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     stack->size = size;
@@ -193,4 +194,66 @@ int lgx_co_died(lgx_vm_t *vm) {
     }
 
     return 0;
+}
+
+int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
+    // 参数起始地址
+    int base = co->stack.buf[0].v.fun->stack_size;
+
+    // 返回值地址
+    int ret = co->stack.buf[base + 1].v.l;
+
+    // 写入返回值
+    lgx_gc_ref_del(&co->stack.buf[ret]);
+    co->stack.buf[ret] = *v;
+    lgx_gc_ref_add(&co->stack.buf[ret]);
+
+    return 0;
+}
+
+int lgx_co_return_long(lgx_co_t *co, long long v) {
+    lgx_val_t ret;
+    ret.type = T_LONG;
+    ret.v.l = v;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_double(lgx_co_t *co, double v) {
+    lgx_val_t ret;
+    ret.type = T_DOUBLE;
+    ret.v.d = v;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_true(lgx_co_t *co) {
+    lgx_val_t ret;
+    ret.type = T_BOOL;
+    ret.v.d = 1;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_false(lgx_co_t *co) {
+    lgx_val_t ret;
+    ret.type = T_BOOL;
+    ret.v.d = 0;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_undefined(lgx_co_t *co) {
+    lgx_val_t ret;
+    ret.type = T_UNDEFINED;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str) {
+    lgx_val_t ret;
+    ret.type = T_STRING;
+    ret.v.str = str;
+
+    return lgx_co_return(co, &ret);
 }

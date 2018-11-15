@@ -241,7 +241,7 @@ static wbt_status on_recv(wbt_event_t *ev) {
     wbt_debug("%d", client->http.status);
 
     // 写入返回值
-    lgx_ext_return_string(client->co, lgx_str_new(client->http.recv.buf + client->http.body.start, client->http.body.len));
+    lgx_co_return_string(client->co, lgx_str_new(client->http.recv.buf + client->http.body.start, client->http.body.len));
     client->is_return = 1;
 
     ev->recv.buf = NULL;

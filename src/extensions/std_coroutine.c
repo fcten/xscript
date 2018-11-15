@@ -11,7 +11,7 @@ int std_co_create(void *p) {
 
     lgx_co_t *co = lgx_co_create(vm, fun);
     if (!co) {
-        return lgx_ext_return_false(vm->co_running);
+        return lgx_co_return_false(vm->co_running);
     }
 
     // 写入参数
@@ -19,7 +19,7 @@ int std_co_create(void *p) {
     co->stack.buf[4].v.l = l;
 
     // 在协程切换前写入返回值
-    lgx_ext_return_true(vm->co_running);
+    lgx_co_return_true(vm->co_running);
 
     return lgx_co_resume(vm, co);
 }
@@ -28,7 +28,7 @@ int std_co_yield(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
     // 在协程切换前写入返回值
-    lgx_ext_return_true(vm->co_running);
+    lgx_co_return_true(vm->co_running);
 
     return lgx_co_yield(vm);
 }
@@ -58,7 +58,7 @@ int std_co_sleep(void *p) {
     if (sleep > 0) {
         co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
         if (!ctx) {
-            return lgx_ext_return_false(vm->co_running);
+            return lgx_co_return_false(vm->co_running);
         }
         ctx->timer.on_timeout = timer_wakeup;
         ctx->timer.timeout = wbt_cur_mtime + sleep;
@@ -67,11 +67,11 @@ int std_co_sleep(void *p) {
 
         if (wbt_timer_add(&vm->events->timer, &ctx->timer) != WBT_OK) {
             xfree(ctx);
-            return lgx_ext_return_false(vm->co_running);
+            return lgx_co_return_false(vm->co_running);
         }
 
         // 在协程切换前写入返回值
-        lgx_ext_return_true(vm->co_running);
+        lgx_co_return_true(vm->co_running);
 
         return lgx_co_suspend(vm);
     } else {

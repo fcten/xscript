@@ -8,7 +8,7 @@
 int std_rand(void *p) {
     lgx_vm_t *vm = (lgx_vm_t *)p;
 
-    return lgx_ext_return_long(vm->co_running, rand());
+    return lgx_co_return_long(vm->co_running, rand());
 }
 
 int std_math_load_symbols(lgx_hash_t *hash) {

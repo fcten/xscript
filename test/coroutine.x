@@ -3,7 +3,7 @@ async function co_1() {
     for (i = 0; i < 10; i = i + 1) {
         echo i;
         echo "\n";
-        co_sleep(0);
+        co_sleep(97);
     }
 }
 
@@ -12,7 +12,7 @@ async function co_2() {
     for (i = 10; i < 20; i = i + 1) {
         echo i;
         echo "\n";
-        co_sleep(0);
+        co_sleep(71);
     }
 }
 
