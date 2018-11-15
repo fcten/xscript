@@ -895,6 +895,18 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 lgx_vm_throw(vm, &R(PA(i)));
                 break;
             }
+            case OP_AWAIT: {
+                if (R(PB(i)).type == T_OBJECT && 1) {
+                    // 参数为 Coroutine 对象
+                } else {
+                    lgx_gc_ref_del(&R(PA(i)));
+                    lgx_gc_ref_add(&R(PB(i)));
+
+                    R(PA(i)).type = R(PB(i)).type;
+                    R(PA(i)).v = R(PB(i)).v;
+                }
+                break;
+            }
             case OP_NOP: break;
             case OP_HLT: {
                 // 释放所有局部变量和临时变量
@@ -919,7 +931,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             default:
-                lgx_vm_throw_s(vm, "unknown op %d @ %d", OP(i), vm->co_running->pc);
+                lgx_vm_throw_s(vm, "unknown op %d @ %d", OP(i), vm->co_running->pc - 1);
         }
     }
 

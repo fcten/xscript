@@ -348,6 +348,13 @@ int lgx_op_index(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     return 0;
 }
 
+int lgx_op_await(lgx_val_t *ret, lgx_val_t *right) {
+    ret->type = right->type;
+    ret->v = right->v;
+
+    return 0;
+}
+
 int lgx_op_binary(int op, lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     switch (op) {
         case '+': return lgx_op_add(ret, left, right);
@@ -391,6 +398,7 @@ int lgx_op_unary(int op, lgx_val_t *ret, lgx_val_t *right) {
         case '~': return lgx_op_not(ret, right);
         case '-': return lgx_op_neg(ret, right);
         case TK_TYPEOF: return lgx_op_typeof(ret, right);
+        case TK_AWAIT: return lgx_op_await(ret, right);
         default:
             // error
             return E_OP_UNKNOWN;

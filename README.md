@@ -84,6 +84,17 @@ echo "Hello World";
 - catch
 - throw
 
+异步
+
+- async
+- await
+
+保留字
+
+- delete
+- final
+- finally
+
 # 基本数据类型 (data type)
 
 ## undefined
@@ -584,6 +595,12 @@ throw 3; // uncaught exception 3
 ## 抛出异常 (throw)
 
 ## 捕获异常 (catch)
+
+# 异步
+
+## 协程
+
+## async/await
 
 # 垃圾回收 (garbage collection)
 

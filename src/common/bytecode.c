@@ -53,6 +53,7 @@ const char* op_name[] = {
     "OBJECT_GET",
     "OBJECT_SET",
     "THROW",
+    "AWAIT",
     "HLT",
     "ECHO"
 };
@@ -98,6 +99,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_CALL_SET:
         case OP_TYPEOF:
         case OP_CALL:
+        case OP_AWAIT:
             printf("%4d %11s R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i));
             break;
         case OP_GLOBAL_GET:

@@ -24,15 +24,11 @@ class MyClass {
 echo "main start\n";
 
 print(100, 110);
-print(200, 210);
+await print(200, 210);
 
 MyClass obj = new MyClass;
-obj->print(300, 310);
-obj->print(400, 410);
 
-/*
-await co_1();
-await co_2();
-*/
+obj->print(300, 310);
+await obj->print(400, 410);
 
 echo "main end\n";

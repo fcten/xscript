@@ -84,6 +84,9 @@ enum {
     // 异常处理
     OP_THROW,
 
+    // 异步
+    OP_AWAIT,     // AWAIT  R R         R = await R
+
     // 终止执行
     OP_HLT,
 

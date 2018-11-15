@@ -648,3 +648,13 @@ void bc_throw(lgx_bc_t *bc, lgx_val_t *a) {
         bc_append(bc, I1(OP_THROW, a->u.c.reg));
     }
 }
+
+void bc_await(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
+    if (0) {
+        // 如果 b 是 Coroutine 对象，则 a 的类型等于函数返回值类型
+    } else {
+        a->type = b->type;
+    }
+
+    bc_append(bc, I2(OP_AWAIT, a->u.c.reg, b->u.c.reg));
+}

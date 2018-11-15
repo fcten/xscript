@@ -180,6 +180,7 @@ static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_v
         case '~': bc_not(bc, e, e1); break;
         case '-': bc_neg(bc, e, e1); break;
         case TK_TYPEOF: bc_typeof(bc, e, e1); break;
+        case TK_AWAIT: bc_await(bc, e, e1); break;
         default:
             bc_error(bc, "[Error] [Line:%d] unknown unary operation\n", node->line);
             return 1;
@@ -916,6 +917,27 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     return 0;
 }
 
+static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    lgx_val_t e1;
+    lgx_val_init(&e1);
+    if (bc_expr(bc, node->child[0], &e1)) {
+        return 1;
+    }
+
+    if (!is_register(&e1)) {
+        if (lgx_op_unary(node->u.op, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_unary(bc, node, e, &e1)) {
+            return 1;
+        }
+    }
+
+    reg_free(bc, &e1);
+    return 0;
+}
+
 static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_str_t s;
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
@@ -1155,6 +1177,11 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     break;
                 case TK_TYPEOF:
                     if (bc_expr_unary_typeof(bc, node, e)) {
+                        return 1;
+                    }
+                    break;
+                case TK_AWAIT:
+                    if (bc_expr_unary_await(bc, node, e)) {
                         return 1;
                     }
                     break;
