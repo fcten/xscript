@@ -419,7 +419,7 @@ static int std_net_tcp_client_load_symbols(lgx_hash_t *hash) {
     symbol_fd.k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1);
     symbol_fd.v.type = T_LONG;
     symbol_fd.v.v.l = 0;
-    symbol_fd.v.u.c.access = P_PRIVATE;
+    symbol_fd.v.u.c.modifier.access = P_PRIVATE;
 
     if (lgx_obj_add_property(symbol.v.obj, &symbol_fd)) {
         return 1;

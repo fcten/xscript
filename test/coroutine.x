@@ -1,24 +1,28 @@
-function co_1() {
+async function co_1() {
     int i;
     for (i = 0; i < 10; i = i + 1) {
         echo i;
         echo "\n";
-        co_yield();
+        co_sleep(0);
     }
 }
 
-function co_2() {
+async function co_2() {
     int i;
     for (i = 10; i < 20; i = i + 1) {
         echo i;
         echo "\n";
-        co_yield();
+        co_sleep(0);
     }
 }
 
 echo "main start\n";
 
-co_create(co_1);
-co_create(co_2);
+co_1();
+co_2();
+/*
+await co_1();
+await co_2();
+*/
 
 echo "main end\n";

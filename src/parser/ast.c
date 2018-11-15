@@ -15,8 +15,8 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
 void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int precedence);
 void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
 
-void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
-void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
+void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
+void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
 void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
 
@@ -1013,6 +1013,67 @@ void ast_parse_expression_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_parse_expression(ast, assign_statement);
 }
 
+void ast_parse_modifier(lgx_ast_t* ast, lgx_modifier_t *modifier) {
+    modifier->access = P_PACKAGE;
+    modifier->is_const = 0;
+    modifier->is_async = 0;
+    modifier->is_static = 0;
+
+    while (1) {
+        if (ast->cur_token == TK_PUBLIC) {
+            if (modifier->access) {
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->access = P_PUBLIC;
+                ast_step(ast);
+            }
+        } else if (ast->cur_token == TK_PROTECTED) {
+            if (modifier->access) {
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->access = P_PROTECTED;
+                ast_step(ast);
+            }
+        } else if (ast->cur_token == TK_PRIVATE) {
+            if (modifier->access) {
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->access = P_PRIVATE;
+                ast_step(ast);
+            }
+        } else if (ast->cur_token == TK_STATIC) {
+            if (modifier->is_static) {
+                ast_error(ast, "[Error] [Line:%d] static modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->is_static = 1;
+                ast_step(ast);
+            }
+        } else if (ast->cur_token == TK_CONST) {
+            if (modifier->is_const) {
+                ast_error(ast, "[Error] [Line:%d] const modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->is_const = 1;
+                ast_step(ast);
+            }
+        } else if (ast->cur_token == TK_ASYNC) {
+            if (modifier->is_async) {
+                ast_error(ast, "[Error] [Line:%d] async modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            } else {
+                modifier->is_async = 1;
+                ast_step(ast);
+            }
+        } else {
+            break;
+        }
+    }
+}
+
 void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while(1) {
         switch (ast->cur_token) {
@@ -1056,23 +1117,57 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 ast_parse_throw_statement(ast, parent);
                 break;
             case TK_AUTO: case TK_INT: case TK_FLOAT:
-            case TK_BOOL: case TK_STR: case TK_ARR:
-                ast_parse_variable_declaration(ast, parent);
+            case TK_BOOL: case TK_STR: case TK_ARR: {
+                lgx_modifier_t modifier;
+                ast_parse_modifier(ast, &modifier);
+                ast_parse_variable_declaration(ast, parent, &modifier);
                 break;
-            case TK_ID:
+            }
+            case TK_ID: {
                 if (ast_is_class(ast)) {
-                    ast_parse_variable_declaration(ast, parent);
+                    lgx_modifier_t modifier;
+                    ast_parse_modifier(ast, &modifier);
+                    ast_parse_variable_declaration(ast, parent, &modifier);
                 } else {
                     ast_parse_expression_statement(ast, parent);
                 }
                 break;
+            }
             case TK_FUNCTION:
-                if (parent->parent) {
-                    ast_error(ast, "[Error] [Line:%d] functions can only be defined in top-level scope\n", ast->cur_line);
+            case TK_ASYNC:
+            case TK_STATIC:
+            case TK_CONST:
+            case TK_PUBLIC:
+            case TK_PROTECTED:
+            case TK_PRIVATE: {
+                lgx_modifier_t modifier;
+                ast_parse_modifier(ast, &modifier);
+
+                if (modifier.access) {
+                    ast_error(ast, "[Error] [Line:%d] unexpected access modifier before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
                     return;
                 }
-                ast_parse_function_declaration(ast, parent);
-                continue;
+
+                if (ast->cur_token == TK_FUNCTION) {
+                    if (modifier.is_const) {
+                        ast_error(ast, "[Error] [Line:%d] function could not be defined as const\n", ast->cur_line);
+                        return;
+                    }
+                    if (parent->parent) {
+                        ast_error(ast, "[Error] [Line:%d] functions can only be defined in top-level scope\n", ast->cur_line);
+                        return;
+                    }
+                    ast_parse_function_declaration(ast, parent, &modifier);
+                    continue;
+                } else {
+                    if (modifier.is_async) {
+                        ast_error(ast, "[Error] [Line:%d] variable could not be defined as async\n", ast->cur_line);
+                        return;
+                    }
+                    ast_parse_variable_declaration(ast, parent, &modifier);
+                    break;
+                }
+            }
             case TK_CLASS:
                 ast_parse_class_declaration(ast, parent);
                 continue;
@@ -1092,7 +1187,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
     lgx_ast_node_t* variable_declaration;
 
     int var_type = ast->cur_token;
@@ -1136,6 +1231,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             ast_set_variable_type(t, variable_declaration);
             // TODO 只检查局部变量
             t->u.c.used = 1;
+            t->u.c.modifier = *modifier;
         } else {
             ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
             return;
@@ -1151,7 +1247,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
     lgx_ast_node_t* function_declaration = ast_node_new(ast, 3);
     function_declaration->type = FUNCTION_DECLARATION;
     ast_node_append_child(parent, function_declaration);
@@ -1175,6 +1271,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     if ((f = lgx_scope_val_add(function_declaration, &s))) {
         f->type = T_FUNCTION;
         f->u.c.used = 1;
+        f->u.c.modifier = *modifier;
     } else {
         ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
         return;
@@ -1196,6 +1293,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     // 根据参数数量创建函数
     f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
+    f->v.fun->modifier = *modifier;
     int i;
     for (i = 0; i < function_declaration->child[1]->children; i++) {
         lgx_ast_node_t *n = function_declaration->child[1]->child[i];
@@ -1231,68 +1329,6 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_set_variable_type(&f->v.fun->ret, function_declaration);
 
     ast_parse_block_statement_with_braces(ast, function_declaration);
-}
-
-void ast_parse_modifer(lgx_ast_t* ast, char *is_static, char *is_const, char *access) {
-    *is_static = -1;
-    *is_const = -1;
-    *access = -1;
-
-    while (1) {
-        if (ast->cur_token == TK_PUBLIC) {
-            if (*access >= 0) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
-            } else {
-                *access = P_PUBLIC;
-                ast_step(ast);
-            }
-        } else if (ast->cur_token == TK_PROTECTED) {
-            if (*access >= 0) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
-            } else {
-                *access = P_PROTECTED;
-                ast_step(ast);
-            }
-        } else if (ast->cur_token == TK_PRIVATE) {
-            if (*access >= 0) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
-            } else {
-                *access = P_PRIVATE;
-                ast_step(ast);
-            }
-        } else if (ast->cur_token == TK_STATIC) {
-            if (*is_static >= 0) {
-                ast_error(ast, "[Error] [Line:%d] static modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
-            } else {
-                *is_static = 1;
-                ast_step(ast);
-            }
-        } else if (ast->cur_token == TK_CONST) {
-            if (*is_const >= 0) {
-                ast_error(ast, "[Error] [Line:%d] const modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
-                return;
-            } else {
-                *is_const = 1;
-                ast_step(ast);
-            }
-        } else {
-            break;
-        }
-    }
-
-    if (*access < 0) {
-        *access = P_PACKAGE;
-    }
-    if (*is_static < 0) {
-        *is_static = 0;
-    }
-    if (*is_const < 0) {
-        *is_const = 0;
-    }
 }
 
 // 根据变量类型初始化变量的值
@@ -1408,23 +1444,21 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
     int endloop = 0;
     while (!endloop) {
-        char is_static, is_const, access;
-        ast_parse_modifer(ast, &is_static, &is_const, &access);
+        lgx_modifier_t modifier;
+        ast_parse_modifier(ast, &modifier);
 
         if (ast->cur_token == TK_FUNCTION) {
-            if (is_const) {
+            if (modifier.is_const) {
                 ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", ast->cur_line);
                 return;
             }
 
             lgx_ast_node_t* method_declaration = ast_node_new(ast, 1);
             method_declaration->type = METHOD_DECLARATION;
-            method_declaration->u.modifier.is_static = is_static;
-            method_declaration->u.modifier.is_const = is_const;
-            method_declaration->u.modifier.access = access;
+            method_declaration->u.modifier = modifier;
             ast_node_append_child(block_statement, method_declaration);
 
-            ast_parse_function_declaration(ast, method_declaration);
+            ast_parse_function_declaration(ast, method_declaration, &modifier);
             if (ast->err_no) {
                 return;
             }
@@ -1435,11 +1469,13 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
             n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
 
-            n.v.v.fun->is_static = is_static;
-            n.v.v.fun->access = access;
-
             lgx_obj_add_method(f->v.obj, &n);
         } else {
+            if (modifier.is_async) {
+                ast_error(ast, "[Error] [Line:%d] propery could not be defined as async\n", ast->cur_line);
+                return;
+            }
+
             switch (ast->cur_token) {
                 case TK_AUTO: case TK_INT: case TK_FLOAT:
                 case TK_BOOL: case TK_STR: case TK_ARR: case TK_ID: {
@@ -1452,12 +1488,10 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
                     lgx_ast_node_t* property_declaration = ast_node_new(ast, 1);
                     property_declaration->type = PROPERTY_DECLARATION;
-                    property_declaration->u.modifier.is_static = is_static;
-                    property_declaration->u.modifier.is_const = is_const;
-                    property_declaration->u.modifier.access = access;
+                    property_declaration->u.modifier = modifier;
                     ast_node_append_child(block_statement, property_declaration);
 
-                    ast_parse_variable_declaration(ast, property_declaration);
+                    ast_parse_variable_declaration(ast, property_declaration, &modifier);
                     if (ast->err_no) {
                         return;
                     }
@@ -1470,10 +1504,6 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
                     n.v.type = v->type;
                     ast_init_value(&n.v);
-
-                    n.v.u.c.is_static = is_static;
-                    n.v.u.c.is_const = is_const;
-                    n.v.u.c.access = access;
 
                     lgx_obj_add_property(f->v.obj, &n);
 

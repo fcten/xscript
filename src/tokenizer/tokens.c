@@ -67,6 +67,9 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     {TK_CATCH, "catch"},
     {TK_FINALLY, "finally"},
     {TK_THROW, "throw"},
+    // 异步
+    {TK_ASYNC, "async"},
+    {TK_AWAIT, "await"},
     // 模块
     {TK_IMPORT, "import"},
     {TK_EXPORT, "export"},

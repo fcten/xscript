@@ -55,24 +55,28 @@ int std_co_sleep(void *p) {
     unsigned base = vm->regs[0].v.fun->stack_size;
     long long sleep = vm->regs[base+4].v.l;
 
-    co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
-    if (!ctx) {
-        return lgx_ext_return_false(vm->co_running);
+    if (sleep > 0) {
+        co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
+        if (!ctx) {
+            return lgx_ext_return_false(vm->co_running);
+        }
+        ctx->timer.on_timeout = timer_wakeup;
+        ctx->timer.timeout = wbt_cur_mtime + sleep;
+        ctx->vm = vm;
+        ctx->co = vm->co_running;
+
+        if (wbt_timer_add(&vm->events->timer, &ctx->timer) != WBT_OK) {
+            xfree(ctx);
+            return lgx_ext_return_false(vm->co_running);
+        }
+
+        // 在协程切换前写入返回值
+        lgx_ext_return_true(vm->co_running);
+
+        return lgx_co_suspend(vm);
+    } else {
+        return std_co_yield(p);
     }
-    ctx->timer.on_timeout = timer_wakeup;
-    ctx->timer.timeout = wbt_cur_mtime + sleep;
-    ctx->vm = vm;
-    ctx->co = vm->co_running;
-
-    if (wbt_timer_add(&vm->events->timer, &ctx->timer) != WBT_OK) {
-        xfree(ctx);
-        return lgx_ext_return_false(vm->co_running);
-    }
-
-    // 在协程切换前写入返回值
-    lgx_ext_return_true(vm->co_running);
-
-    return lgx_co_suspend(vm);
 }
 
 int std_coroutine_load_symbols(lgx_hash_t *hash) {

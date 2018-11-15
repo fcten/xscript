@@ -37,6 +37,17 @@ enum {
     P_PRIVATE
 };
 
+typedef struct {
+    // 是否为静态
+    char is_static:1;
+    // 是否为常量
+    char is_const:1;
+    // 是否为 async
+    char is_async:1;
+    // 访问权限
+    char access:2;
+} lgx_modifier_t;
+
 typedef struct lgx_val_s  lgx_val_t;
 typedef struct lgx_str_s  lgx_str_t;
 typedef struct lgx_hash_s lgx_hash_t;
@@ -71,12 +82,8 @@ struct lgx_val_s {
             unsigned char used:1;
             // 是否有默认值(作为函数参数)
             unsigned char init:1;
-            // 是否为静态变量
-            unsigned char is_static:1;
-            // 是否为常量
-            unsigned char is_const:1;
-            // 访问权限
-            unsigned char access:2;
+            // 修饰符
+            lgx_modifier_t modifier;
         } c;
         // 仅运行时使用
     } u;
@@ -119,13 +126,8 @@ struct lgx_fun_s {
     lgx_gc_t gc;
     // 函数名称
     lgx_str_t name;
-
-    // 仅用于类方法
-    // - 是否为静态方法
-    unsigned char is_static;
-    // - 访问权限
-    unsigned char access;
-
+    // 修饰符
+    lgx_modifier_t modifier;
     // 需求的堆栈空间
     unsigned stack_size;
     // 入口地址

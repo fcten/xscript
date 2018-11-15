@@ -82,6 +82,9 @@ enum {
     TK_FINALLY,
     TK_THROW,
 
+    TK_ASYNC,
+    TK_AWAIT,
+
     TK_IMPORT,
     TK_EXPORT,
 

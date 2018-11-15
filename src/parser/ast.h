@@ -85,11 +85,7 @@ typedef struct lgx_ast_node_s {
         } type;
 
         // 当节点类型为 PROPERTY_DECLARATION、METHOD_DECLARATION 时，保存 modifier
-        struct {
-            char is_static;
-            char is_const;
-            char access;
-        } modifier;
+        lgx_modifier_t modifier;
     } u;
 
     int children;          // 子节点数量
