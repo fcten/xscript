@@ -691,6 +691,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         if (!co) {
                             lgx_vm_throw_s(vm, "out of memory");
                         } else {
+                            // 复制参数到新的 coroutine 中
+                            int n;
+                            for (n = 4; n < fun->stack_size; n ++) {
+                                co->stack.buf[n] = R(base + n);
+                                R(base + n).type = T_UNDEFINED;
+                            }
+
                             // TODO 返回一个 Coroutine 对象
                             lgx_co_return_true(vm->co_running);
 

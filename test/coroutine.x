@@ -1,25 +1,35 @@
-async function co_1() {
+async function print(int from, int to) {
     int i;
-    for (i = 0; i < 10; i = i + 1) {
+    for (i = from; i <= to; i = i + 1) {
         echo i;
         echo "\n";
-        co_sleep(97);
+        co_sleep(100);
     }
 }
 
-async function co_2() {
-    int i;
-    for (i = 10; i < 20; i = i + 1) {
-        echo i;
-        echo "\n";
-        co_sleep(71);
+class MyClass {
+    public string name = "MyClass: ";
+
+    async public function print(int from, int to) {
+        int i;
+        for (i = from; i <= to; i = i + 1) {
+            echo this->name;
+            echo i;
+            echo "\n";
+            co_sleep(100);
+        }
     }
 }
 
 echo "main start\n";
 
-co_1();
-co_2();
+print(100, 110);
+print(200, 210);
+
+MyClass obj = new MyClass;
+obj->print(300, 310);
+obj->print(400, 410);
+
 /*
 await co_1();
 await co_2();
