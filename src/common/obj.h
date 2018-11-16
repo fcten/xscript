@@ -8,6 +8,8 @@ int lgx_obj_delete(lgx_obj_t *obj);
 
 lgx_obj_t* lgx_obj_new(lgx_obj_t *obj);
 
+lgx_obj_t* lgx_obj_copy(lgx_obj_t *obj);
+
 int lgx_obj_set(lgx_obj_t *obj, lgx_val_t *k, lgx_val_t *v);
 lgx_val_t* lgx_obj_get(lgx_obj_t *obj, lgx_val_t *k);
 

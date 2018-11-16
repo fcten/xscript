@@ -14,6 +14,8 @@ lgx_obj_t* lgx_obj_create(lgx_str_t *name) {
     obj->properties = lgx_hash_new(4);
     obj->methods = lgx_hash_new(4);
 
+    wbt_list_init(&obj->gc.head);
+
     if (!obj->name || !obj->properties || !obj->methods) {
         lgx_obj_delete(obj);
         return NULL;

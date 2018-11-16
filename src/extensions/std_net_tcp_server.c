@@ -464,6 +464,17 @@ static void* worker(void *args) {
     wbt_thread_t *thread = (wbt_thread_t *)args;
     lgx_server_t *master = (lgx_server_t *)thread->ctx;
 
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	if (pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) == 0) {
+        int i;
+		for (i = 0; i < master->pool->size; i++) {
+			if (CPU_ISSET(i, &cpuset)) {
+				wbt_debug("CPU %d", i);
+            }
+        }
+    }
+
     lgx_vm_t vm;
     lgx_vm_init(&vm, master->vm->bc);
 
@@ -473,6 +484,7 @@ static void* worker(void *args) {
     server.vm = &vm;
     server.on_request = master->on_request;
     server.pool = NULL;
+    server.obj = lgx_obj_new(master->obj->parent);
 
     time_t timeout = 0;
 
@@ -503,10 +515,21 @@ static void* worker(void *args) {
                     continue;
                 }
 
-                p_ev->ctx = &server;
+                lgx_conn_t *conn = (lgx_conn_t *)xmalloc(sizeof(lgx_conn_t));
+                if (!conn) {
+                    wbt_close_socket(tmp_ev.fd);
+                    continue;
+                }
+                conn->server = &server;
+                wbt_memset(&conn->http, 0, sizeof(wbt_http_request_t));
+                wbt_list_init(&conn->req.head);
+
+                p_ev->ctx = conn;
             }
         }
     }
+
+    lgx_obj_delete(server.obj);
 
     lgx_vm_cleanup(&vm);
 
@@ -623,7 +646,7 @@ static int server_start(void *p) {
     server->obj = obj->v.obj;
     server->on_request = on_req->v.fun;
     if (worker_num->v.l) {
-        server->pool = wbt_thread_create_pool(worker_num->v.l, worker, server); // TODO 读取参数决定线程数量
+        server->pool = wbt_thread_create_pool(worker_num->v.l, worker, server);
     } else {
         server->pool = NULL;
     }

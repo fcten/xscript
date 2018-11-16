@@ -598,9 +598,13 @@ throw 3; // uncaught exception 3
 
 # 异步
 
+xscript 使用协程处理异步。
+
 ## 协程
 
-## async/await
+## async
+
+## await
 
 # 垃圾回收 (garbage collection)
 
