@@ -896,7 +896,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_AWAIT: {
-                if (R(PB(i)).type == T_OBJECT && 1) {
+                lgx_str_t name;
+                lgx_str_set(name, "Coroutine");
+
+                if (R(PB(i)).type == T_OBJECT && lgx_obj_is_instanceof(R(PB(i)).v.obj, &name)) {
                     // 参数为 Coroutine 对象
                 } else {
                     lgx_gc_ref_del(&R(PA(i)));

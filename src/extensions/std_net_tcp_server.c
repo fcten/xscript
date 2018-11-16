@@ -464,18 +464,19 @@ static void* worker(void *args) {
     wbt_thread_t *thread = (wbt_thread_t *)args;
     lgx_server_t *master = (lgx_server_t *)thread->ctx;
 
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	if (pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) == 0) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    if (pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset) == 0) {
         int i;
-		for (i = 0; i < master->pool->size; i++) {
-			if (CPU_ISSET(i, &cpuset)) {
-				wbt_debug("CPU %d", i);
+        for (i = 0; i < master->pool->size; i++) {
+            if (CPU_ISSET(i, &cpuset)) {
+                wbt_debug("CPU %d", i);
             }
         }
     }
 
     lgx_vm_t vm;
+    // TODO 常量表、异常表、字节码缓存是共享的，这可能会导致问题
     lgx_vm_init(&vm, master->vm->bc);
 
     lgx_co_suspend(&vm);
@@ -484,6 +485,7 @@ static void* worker(void *args) {
     server.vm = &vm;
     server.on_request = master->on_request;
     server.pool = NULL;
+    // TODO 这里需要完整复制对象，否则多线程访问会出错
     server.obj = lgx_obj_new(master->obj->parent);
 
     time_t timeout = 0;

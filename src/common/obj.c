@@ -117,6 +117,18 @@ int lgx_obj_is_same_class(lgx_obj_t *obj1, lgx_obj_t *obj2) {
     return lgx_str_cmp(n1, n2);
 }
 
+int lgx_obj_is_instanceof(lgx_obj_t *obj, lgx_str_t *name) {
+    while (obj) {
+        if (obj->name && lgx_str_cmp(obj->name, name) == 0) {
+            return 1;
+        } else {
+            obj = obj->parent;
+        }
+    }
+
+    return 0;
+}
+
 int lgx_obj_print(lgx_obj_t *obj) {
     printf("\n{\n\t\"properties\":");
     lgx_hash_print(obj->properties);

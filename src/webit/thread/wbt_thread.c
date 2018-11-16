@@ -5,26 +5,26 @@
 
 static long get_cpu_num() {
 #ifdef _SC_NPROCESSORS_ONLN
-	long nprocs       = -1;
-	long nprocs_max   = -1;
+    long nprocs       = -1;
+    long nprocs_max   = -1;
 
-	nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	if (nprocs < 1) {
-		wbt_debug("Could not determine number of CPUs on line, %s",
-			strerror(errno));
-		return 0;
-	}
-	nprocs_max = sysconf(_SC_NPROCESSORS_CONF);
-	if (nprocs_max < 1) {
-		wbt_debug("Could not determine number of CPUs in host, %s",
-			strerror(errno));
-		return 0;
-	}
-	wbt_debug("%d of %d CPUs online", nprocs, nprocs_max);
-	return nprocs;
+    nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+    if (nprocs < 1) {
+        wbt_debug("Could not determine number of CPUs on line, %s",
+            strerror(errno));
+        return 0;
+    }
+    nprocs_max = sysconf(_SC_NPROCESSORS_CONF);
+    if (nprocs_max < 1) {
+        wbt_debug("Could not determine number of CPUs in host, %s",
+            strerror(errno));
+        return 0;
+    }
+    wbt_debug("%d of %d CPUs online", nprocs, nprocs_max);
+    return nprocs;
 #else
-	wbt_debug("Could not determine number of CPUs");
-	return 0;
+    wbt_debug("Could not determine number of CPUs");
+    return 0;
 #endif
 }
 
@@ -89,11 +89,11 @@ wbt_thread_pool_t * wbt_thread_create_pool(unsigned size, void* (*fn)(void *thre
             }
         }
         cpu_set_t cpuset;
-		CPU_ZERO(&cpuset);
-		CPU_SET(i, &cpuset);
-		if (pthread_setaffinity_np(pool->threads[i].ntid, sizeof(cpu_set_t), &cpuset) != 0) {
-			wbt_debug("can not set thread %d affinity, %s\n", i, strerror(errno));
-		}
+        CPU_ZERO(&cpuset);
+        CPU_SET(i, &cpuset);
+        if (pthread_setaffinity_np(pool->threads[i].ntid, sizeof(cpu_set_t), &cpuset) != 0) {
+            wbt_debug("can not set thread %d affinity, %s\n", i, strerror(errno));
+        }
     }
 
     return pool;

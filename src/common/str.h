@@ -3,6 +3,9 @@
 
 #include "typedef.h"
 
+#define lgx_str_set(stri, text)  (stri).length = sizeof(text) - 1; (stri).buffer = (char *) text
+#define lgx_str_set_null(stri)   (stri).length = 0; (stri).buffer = NULL
+
 lgx_str_t* lgx_str_new(char *str, unsigned len);
 lgx_str_t* lgx_str_new_ref(char *str, unsigned len);
 lgx_str_t* lgx_str_new_with_esc(char *str, unsigned len);
