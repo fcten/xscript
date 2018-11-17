@@ -147,6 +147,7 @@ static int on_yield(lgx_vm_t *vm) {
     }
 
     wbt_http_response_t resp;
+    wbt_memset(&resp, 0, sizeof(wbt_http_response_t));
     resp.status = STATUS_200;
     wbt_http_generate_response_status(&resp);
 
