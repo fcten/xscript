@@ -26,5 +26,9 @@ int lgx_co_return_true(lgx_co_t *co);
 int lgx_co_return_false(lgx_co_t *co);
 int lgx_co_return_undefined(lgx_co_t *co);
 int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str);
+int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj);
+
+lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm);
+int lgx_co_await(lgx_vm_t *vm);
 
 #endif // LGX_COROUTINE_H

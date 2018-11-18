@@ -206,6 +206,10 @@ struct lgx_obj_s {
 struct lgx_res_s {
     // GC 信息
     lgx_gc_t gc;
+    // 资源类型
+    unsigned type;
+    // 资源具体数据
+    void *buf;
 };
 
 #endif // LGX_TYPEDEF_H

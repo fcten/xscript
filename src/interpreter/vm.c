@@ -698,11 +698,21 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                                 R(base + n).type = T_UNDEFINED;
                             }
 
-                            // TODO 返回一个 Coroutine 对象
-                            lgx_co_return_true(vm->co_running);
+                            lgx_val_t ret;
+                            ret.type = T_OBJECT;
+                            ret.v.obj = lgx_co_obj_create(vm);
+                            if (!ret.v.obj) {
+                                lgx_vm_throw_s(vm, "out of memory");
+                            } else {
+                                lgx_gc_ref_add(&ret);
+                                lgx_gc_trace(vm, &ret);
 
-                            // 协程切换
-                            lgx_co_resume(vm, co);
+                                co->on_yield = lgx_co_await;
+                                co->ctx = ret.v.obj;
+
+                                lgx_co_return_object(vm->co_running, ret.v.obj);
+                                lgx_co_resume(vm, co);
+                            }
                         }
                     } else {
                         // 切换执行堆栈
@@ -901,6 +911,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                 if (R(PB(i)).type == T_OBJECT && lgx_obj_is_instanceof(R(PB(i)).v.obj, &name)) {
                     // 参数为 Coroutine 对象
+                    lgx_gc_ref_del(&R(PA(i)));
+                    R(PA(i)).type = T_UNDEFINED;
+
+                    lgx_co_suspend(vm);
+                    return 0;
                 } else {
                     lgx_gc_ref_del(&R(PA(i)));
                     lgx_gc_ref_add(&R(PB(i)));
@@ -954,7 +969,9 @@ int lgx_vm_start(lgx_vm_t *vm) {
             break;
         }
 
-        if (lgx_co_has_ready_task(vm)) {
+        if (vm->co_running) {
+            continue;
+        } else if (lgx_co_has_ready_task(vm)) {
             lgx_co_schedule(vm);
         } else {
             timeout = wbt_timer_process(&vm->events->timer);

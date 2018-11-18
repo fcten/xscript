@@ -1,5 +1,8 @@
 #include <assert.h>
 #include "../common/common.h"
+#include "../common/str.h"
+#include "../common/obj.h"
+#include "../common/res.h"
 #include "coroutine.h"
 #include "gc.h"
 
@@ -69,6 +72,10 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
 }
 
 int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co) {
+    if (!wbt_list_empty(&co->head)) {
+        wbt_list_del(&co->head);
+    }
+
     lgx_co_stack_cleanup(&co->stack);
     xfree(co);
 
@@ -148,7 +155,9 @@ int lgx_co_yield(lgx_vm_t *vm) {
         co->on_yield(vm);
     }
 
-    vm->co_running = NULL;
+    if (vm->co_running == co) {
+        vm->co_running = NULL;
+    }
     wbt_list_add_tail(&co->head, &vm->co_ready);
 
     return 0;
@@ -166,7 +175,9 @@ int lgx_co_suspend(lgx_vm_t *vm) {
         co->on_yield(vm);
     }
 
-    vm->co_running = NULL;
+    if (vm->co_running == co) {
+        vm->co_running = NULL;
+    }
     wbt_list_add_tail(&co->head, &vm->co_suspend);
 
     return 0;
@@ -184,7 +195,9 @@ int lgx_co_died(lgx_vm_t *vm) {
         co->on_yield(vm);
     }
 
-    vm->co_running = NULL;
+    if (vm->co_running == co) {
+        vm->co_running = NULL;
+    }
 
     if (0) {
         // 如果协程暂时不能删除
@@ -256,4 +269,99 @@ int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str) {
     ret.v.str = str;
 
     return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj) {
+    lgx_val_t ret;
+    ret.type = T_OBJECT;
+    ret.v.obj = obj;
+
+    return lgx_co_return(co, &ret);
+}
+
+#define LGX_CO_RES_TYPE 0x20181117
+
+typedef struct {
+    lgx_co_t *parent;
+
+} lgx_co_res_t;
+
+lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm) {
+    lgx_str_t name, *property_res;
+    lgx_str_set(name, "Coroutine");
+
+    // TODO MEM LEAK
+    property_res = lgx_str_new_ref("res", sizeof("res")-1);
+    if (!property_res) {
+        return NULL;
+    }
+
+    lgx_obj_t *obj = lgx_obj_create(&name);
+    if (!obj) {
+        return NULL;
+    }
+
+    lgx_co_res_t *co_res = (lgx_co_res_t *)xcalloc(1, sizeof(lgx_co_res_t));
+    if (!co_res) {
+        lgx_obj_delete(obj);
+        return NULL;
+    }
+
+    co_res->parent = vm->co_running;
+
+    lgx_res_t *res = lgx_res_new(LGX_CO_RES_TYPE, co_res);
+    if (!res) {
+        xfree(co_res);
+        lgx_obj_delete(obj);
+        return NULL;
+    }
+
+    lgx_hash_node_t node;
+    node.k.type = T_STRING;
+    node.k.v.str = property_res;
+    node.v.type = T_RESOURCE;
+    node.v.v.res = res;
+    if (lgx_obj_add_property(obj, &node) != 0) {
+        lgx_res_delete(res);
+        lgx_obj_delete(obj);
+        return NULL;
+    }
+
+    return obj;
+}
+
+int lgx_co_await(lgx_vm_t *vm) {
+    lgx_co_t *co = vm->co_running;
+    lgx_obj_t *obj = (lgx_obj_t *)co->ctx;
+
+    if (co->status != CO_DIED) {
+        return 0;
+    }
+
+    lgx_str_t s;
+    lgx_str_set(s, "res");
+    lgx_val_t k, *v;
+    k.type = T_STRING;
+    k.v.str = &s;
+    v = lgx_obj_get(obj, &k);
+    if (!v || v->type != T_RESOURCE || v->v.res->type != LGX_CO_RES_TYPE) {
+        return 1;
+    }
+
+    lgx_co_res_t *co_res = (lgx_co_res_t *)v->v.res->buf;
+
+    // TODO 写入返回值
+
+    // 恢复父协程执行
+    // TODO 父协程可能在子协程结束之前结束
+    if (co_res->parent) {
+        lgx_co_resume(vm, co_res->parent);
+    }
+
+    lgx_val_t ret;
+    ret.type = T_OBJECT;
+    ret.v.obj = obj;
+    lgx_gc_ref_del(&ret);
+
+    return 0;
 }

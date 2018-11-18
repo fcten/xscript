@@ -499,7 +499,9 @@ static void* worker(void *args) {
             break;
         }
 
-        if (lgx_co_has_ready_task(&vm)) {
+        if (vm.co_running) {
+            continue;
+        } else if (lgx_co_has_ready_task(&vm)) {
             lgx_co_schedule(&vm);
         } else {
             timeout = wbt_timer_process(&vm.events->timer);
