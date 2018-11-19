@@ -2,6 +2,8 @@
 #include "val.h"
 #include "str.h"
 #include "fun.h"
+#include "obj.h"
+#include "res.h"
 #include "hash.h"
 
 struct type {
@@ -121,27 +123,15 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
 }
 
 void lgx_val_free(lgx_val_t *src) {
-    switch (src->type) {
-        case T_STRING:
-            if (src->v.gc->ref_cnt == 0) {
-                lgx_str_delete(src->v.str);
-            } else {
-                src->v.gc->ref_cnt --;
-            }
-            break;
-        case T_ARRAY:
-            if (src->v.gc->ref_cnt == 0) {
-                lgx_hash_delete(src->v.arr);
-            } else {
-                src->v.gc->ref_cnt --;
-            }
-            break;
-        case T_FUNCTION:
-            if (src->v.gc->ref_cnt == 0) {
-                lgx_fun_delete(src->v.fun);
-            } else {
-                src->v.gc->ref_cnt --;
-            }
-            break;
+    if (src->v.gc->ref_cnt == 0) {
+        switch (src->type) {
+            case T_STRING:   lgx_str_delete(src->v.str); break;
+            case T_ARRAY:    lgx_hash_delete(src->v.arr); break;
+            case T_FUNCTION: lgx_fun_delete(src->v.fun); break;
+            case T_OBJECT:   lgx_obj_delete(src->v.obj); break;
+            case T_RESOURCE: lgx_res_delete(src->v.res); break;
+        }
+    } else {
+        src->v.gc->ref_cnt --;
     }
 }

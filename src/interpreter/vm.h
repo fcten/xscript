@@ -34,6 +34,14 @@ typedef struct lgx_co_s {
     // 协程 yield 时触发的回调函数
     int (*on_yield)(lgx_vm_t *vm);
     void *ctx;
+    // 所属的虚拟机对象
+    lgx_vm_t *vm;
+    // 父协程
+    struct lgx_co_s *parent;
+    // 当前阻塞等待的子协程
+    struct lgx_co_s *child;
+    // 引用计数
+    unsigned ref_cnt;
 } lgx_co_t;
 
 struct lgx_vm_s {

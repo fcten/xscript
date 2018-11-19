@@ -19,9 +19,7 @@ int std_co_create(void *p) {
     co->stack.buf[4].v.l = l;
 
     // 在协程切换前写入返回值
-    lgx_co_return_true(vm->co_running);
-
-    return lgx_co_resume(vm, co);
+    return lgx_co_return_true(vm->co_running);
 }
 
 int std_co_yield(void *p) {

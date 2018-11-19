@@ -12,6 +12,7 @@ int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co);
 
 int lgx_co_schedule(lgx_vm_t *vm);
 int lgx_co_yield(lgx_vm_t *vm);
+int lgx_co_run(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_suspend(lgx_vm_t *vm);
 int lgx_co_died(lgx_vm_t *vm);
@@ -28,7 +29,7 @@ int lgx_co_return_undefined(lgx_co_t *co);
 int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str);
 int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj);
 
-lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm);
+lgx_obj_t* lgx_co_obj_new(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_await(lgx_vm_t *vm);
 
 #endif // LGX_COROUTINE_H

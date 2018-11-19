@@ -31,6 +31,10 @@ lgx_obj_t* lgx_obj_new(lgx_obj_t *obj) {
 }
 
 int lgx_obj_delete(lgx_obj_t *obj) {
+    if (!wbt_list_empty(&obj->gc.head)) {
+        wbt_list_del(&obj->gc.head);
+    }
+
     if (obj->name) {
         lgx_str_delete(obj->name);
     }

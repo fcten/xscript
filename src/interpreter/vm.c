@@ -4,6 +4,7 @@
 #include "../common/fun.h"
 #include "../common/obj.h"
 #include "../common/str.h"
+#include "../common/res.h"
 #include "../common/exception.h"
 #include "vm.h"
 #include "gc.h"
@@ -152,7 +153,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
         return 1;
     }
 
-    lgx_co_resume(vm, vm->co_main);
+    lgx_co_run(vm, vm->co_main);
 
     return 0;
 }
@@ -692,15 +693,16 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             lgx_vm_throw_s(vm, "out of memory");
                         } else {
                             // 复制参数到新的 coroutine 中
+                            // 由于类方法有隐藏参数 this，所以这里复制的参数数量为 fun->args_num + 1
                             int n;
-                            for (n = 4; n < fun->stack_size; n ++) {
+                            for (n = 4; n < 4 + fun->args_num + 1; n ++) {
                                 co->stack.buf[n] = R(base + n);
                                 R(base + n).type = T_UNDEFINED;
                             }
 
                             lgx_val_t ret;
                             ret.type = T_OBJECT;
-                            ret.v.obj = lgx_co_obj_create(vm);
+                            ret.v.obj = lgx_co_obj_new(vm, co);
                             if (!ret.v.obj) {
                                 lgx_vm_throw_s(vm, "out of memory");
                             } else {
@@ -711,7 +713,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                                 co->ctx = ret.v.obj;
 
                                 lgx_co_return_object(vm->co_running, ret.v.obj);
-                                lgx_co_resume(vm, co);
                             }
                         }
                     } else {
@@ -860,6 +861,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     lgx_gc_ref_del(&R(PA(i)));
                     R(PA(i)).type = T_OBJECT;
                     R(PA(i)).v.obj = lgx_obj_new(C(PD(i)).v.obj);
+                    lgx_gc_ref_add(&R(PA(i)));
+                    lgx_gc_trace(vm, &R(PA(i)));
                 } else {
                     lgx_vm_throw_s(vm, "attempt to new a %s value, object expected", lgx_val_typeof(&C(PD(i))));
                 }
@@ -914,8 +917,26 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     lgx_gc_ref_del(&R(PA(i)));
                     R(PA(i)).type = T_UNDEFINED;
 
-                    lgx_co_suspend(vm);
-                    return 0;
+                    lgx_str_t s;
+                    lgx_str_set(s, "res");
+                    lgx_val_t k, *v;
+                    k.type = T_STRING;
+                    k.v.str = &s;
+                    v = lgx_obj_get(R(PB(i)).v.obj, &k);
+                    if (!v || v->type != T_RESOURCE || v->v.res->type != LGX_CO_RES_TYPE) {
+                        lgx_vm_throw_s(vm, "invalid `Coroutine` object");
+                    } else {
+                        lgx_co_t *co = (lgx_co_t *)v->v.res->buf;
+
+                        if (co->status != CO_DIED) {
+                            vm->co_running->child = co;
+                            lgx_co_suspend(vm);
+                            return 0;
+                        } else {
+                            // 该 Coroutine 已经退出
+                            // TODO 读取返回值
+                        }
+                    }
                 } else {
                     lgx_gc_ref_del(&R(PA(i)));
                     lgx_gc_ref_add(&R(PB(i)));
@@ -959,6 +980,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 extern wbt_atomic_t wbt_wating_to_exit;
 
 int lgx_vm_start(lgx_vm_t *vm) {
+    assert(vm->co_running);
+
     time_t timeout = 0;
 
     while (!wbt_wating_to_exit) {

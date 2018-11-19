@@ -16,6 +16,14 @@ lgx_res_t* lgx_res_new(unsigned type, void *buf) {
 }
 
 int lgx_res_delete(lgx_res_t *res) {
+    if (!wbt_list_empty(&res->gc.head)) {
+        wbt_list_del(&res->gc.head);
+    }
+
+    if (res->on_delete) {
+        res->on_delete(res);
+    }
+
     if (res->buf) {
         xfree(res->buf);
     }

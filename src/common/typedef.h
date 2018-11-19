@@ -39,13 +39,13 @@ enum {
 
 typedef struct {
     // 是否为静态
-    char is_static:1;
+    unsigned char is_static:1;
     // 是否为常量
-    char is_const:1;
+    unsigned char is_const:1;
     // 是否为 async
-    char is_async:1;
+    unsigned char is_async:1;
     // 访问权限
-    char access:2;
+    unsigned char access:2;
 } lgx_modifier_t;
 
 typedef struct lgx_val_s  lgx_val_t;
@@ -210,6 +210,8 @@ struct lgx_res_s {
     unsigned type;
     // 资源具体数据
     void *buf;
+    // 资源释放方法
+    void (*on_delete)(lgx_res_t *res);
 };
 
 #endif // LGX_TYPEDEF_H

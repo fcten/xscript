@@ -45,8 +45,14 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
         return NULL;
     }
 
+    if (vm->co_running) {
+        vm->co_running->ref_cnt ++;
+        co->parent = vm->co_running;
+    }
     co->pc = fun->addr;
     co->on_yield = NULL;
+
+    co->vm = vm;
 
     co->status = CO_READY;
     wbt_list_add_tail(&co->head, &vm->co_ready);
@@ -122,19 +128,19 @@ int lgx_co_schedule(lgx_vm_t *vm) {
 
     lgx_co_t *co = wbt_list_first_entry(&vm->co_ready, lgx_co_t, head);
 
-    return lgx_co_resume(vm, co);
+    return lgx_co_run(vm, co);
 }
 
-int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
-    if (vm->co_running) {
-        lgx_co_yield(vm);
-    }
+int lgx_co_run(lgx_vm_t *vm, lgx_co_t *co) {
+    assert(vm->co_running == NULL);
+    assert(co->status == CO_READY);
 
     if (!wbt_list_empty(&co->head)) {
         wbt_list_del(&co->head);
     }
     wbt_list_init(&co->head);
 
+    co->child = NULL;
     co->status = CO_RUNNING;
     vm->co_running = co;
 
@@ -143,10 +149,24 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     return 0;
 }
 
-int lgx_co_yield(lgx_vm_t *vm) {
-    if (!vm->co_running) {
-        return 1;
+int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
+    assert(co->status == CO_SUSPEND);
+
+    if (!wbt_list_empty(&co->head)) {
+        wbt_list_del(&co->head);
     }
+    wbt_list_init(&co->head);
+
+    co->child = NULL;
+    co->status = CO_READY;
+
+    wbt_list_add_tail(&co->head, &vm->co_ready);
+
+    return 0;
+}
+
+int lgx_co_yield(lgx_vm_t *vm) {
+    assert(vm->co_running);
 
     lgx_co_t *co = vm->co_running;
     co->status = CO_READY;
@@ -164,9 +184,7 @@ int lgx_co_yield(lgx_vm_t *vm) {
 }
 
 int lgx_co_suspend(lgx_vm_t *vm) {
-    if (!vm->co_running) {
-        return 1;
-    }
+    assert(vm->co_running);
 
     lgx_co_t *co = vm->co_running;
     co->status = CO_SUSPEND;
@@ -184,9 +202,7 @@ int lgx_co_suspend(lgx_vm_t *vm) {
 }
 
 int lgx_co_died(lgx_vm_t *vm) {
-    if (!vm->co_running) {
-        return 1;
-    }
+    assert(vm->co_running);
 
     lgx_co_t *co = vm->co_running;
     co->status = CO_DIED;
@@ -199,9 +215,16 @@ int lgx_co_died(lgx_vm_t *vm) {
         vm->co_running = NULL;
     }
 
-    if (0) {
-        // 如果协程暂时不能删除
-        wbt_list_add_tail(&co->head, &vm->co_died);
+    if (co->parent) {
+        co->parent->ref_cnt --;
+        if (co->parent->ref_cnt == 0 && co->parent->status == CO_DIED) {
+            lgx_co_delete(vm, co->parent);
+        }
+    }
+
+    if (co->ref_cnt) {
+        // 暂时不能删除
+        wbt_list_move_tail(&co->head, &vm->co_died);
     } else {
         lgx_co_delete(vm, co);
     }
@@ -279,14 +302,15 @@ int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj) {
     return lgx_co_return(co, &ret);
 }
 
-#define LGX_CO_RES_TYPE 0x20181117
+void lgx_co_obj_on_delete(lgx_res_t *res) {
+    lgx_co_t *co = res->buf;
 
-typedef struct {
-    lgx_co_t *parent;
+    co->ref_cnt --;
 
-} lgx_co_res_t;
+    res->buf = NULL;
+}
 
-lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm) {
+lgx_obj_t* lgx_co_obj_new(lgx_vm_t *vm, lgx_co_t *co) {
     lgx_str_t name, *property_res;
     lgx_str_set(name, "Coroutine");
 
@@ -301,20 +325,13 @@ lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm) {
         return NULL;
     }
 
-    lgx_co_res_t *co_res = (lgx_co_res_t *)xcalloc(1, sizeof(lgx_co_res_t));
-    if (!co_res) {
-        lgx_obj_delete(obj);
-        return NULL;
-    }
-
-    co_res->parent = vm->co_running;
-
-    lgx_res_t *res = lgx_res_new(LGX_CO_RES_TYPE, co_res);
+    lgx_res_t *res = lgx_res_new(LGX_CO_RES_TYPE, co);
     if (!res) {
-        xfree(co_res);
         lgx_obj_delete(obj);
         return NULL;
     }
+
+    res->on_delete = lgx_co_obj_on_delete;
 
     lgx_hash_node_t node;
     node.k.type = T_STRING;
@@ -327,6 +344,8 @@ lgx_obj_t* lgx_co_obj_create(lgx_vm_t *vm) {
         return NULL;
     }
 
+    co->ref_cnt ++;
+
     return obj;
 }
 
@@ -338,25 +357,15 @@ int lgx_co_await(lgx_vm_t *vm) {
         return 0;
     }
 
-    lgx_str_t s;
-    lgx_str_set(s, "res");
-    lgx_val_t k, *v;
-    k.type = T_STRING;
-    k.v.str = &s;
-    v = lgx_obj_get(obj, &k);
-    if (!v || v->type != T_RESOURCE || v->v.res->type != LGX_CO_RES_TYPE) {
-        return 1;
-    }
-
-    lgx_co_res_t *co_res = (lgx_co_res_t *)v->v.res->buf;
-
     // TODO 写入返回值
 
     // 恢复父协程执行
-    // TODO 父协程可能在子协程结束之前结束
-    if (co_res->parent) {
-        lgx_co_resume(vm, co_res->parent);
+    if (co->parent && co->parent->status == CO_SUSPEND && co->parent->child == co) {
+        lgx_co_resume(vm, co->parent);
     }
+
+    co->on_yield = NULL;
+    co->ctx = NULL;
 
     lgx_val_t ret;
     ret.type = T_OBJECT;
