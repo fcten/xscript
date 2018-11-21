@@ -1648,7 +1648,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     block->start = bc->bc_top;
                     // TODO 处理参数
                     // 编译 catch block
-                    bc_stat(bc, node->child[i]->child[1]);
+                    bc_stat(bc, n->child[1]);
                     block->end = bc->bc_top;
 
                     if (block->start == block->end) {
@@ -1661,6 +1661,13 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     bc_set_pe(bc, pos, bc->bc_top);
 
                     wbt_list_add_tail(&block->head, &exception->catch_blocks);
+
+                    // 保存该 catch block 的参数
+                    lgx_str_t s;
+                    s.buffer = ((lgx_ast_node_token_t *)n->child[0]->child[0]->child[0])->tk_start;
+                    s.length = ((lgx_ast_node_token_t *)n->child[0]->child[0]->child[0])->tk_length;
+                    block->e = lgx_scope_local_val_get(n->child[1], &s);
+                    assert(block->e);
                 } else {
                     bc_error(bc, "[Error] [Line:%d] finally block is not supported\n", n->line);
                     return 1;

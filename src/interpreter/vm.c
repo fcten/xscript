@@ -49,8 +49,24 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
     if (n) {
         exception = (lgx_exception_t *)n->value.str;
         if (pc >= exception->try_block.start && pc <= exception->try_block.end) {
-            // TODO 匹配参数类型符合的 catch block
-            block = wbt_list_first_entry(&exception->catch_blocks, lgx_exception_block_t, head);
+            // 匹配参数类型符合的 catch block
+            lgx_exception_block_t *b;
+            wbt_list_for_each_entry(b, lgx_exception_block_t, &exception->catch_blocks, head) {
+                if (b->e->type == T_UNDEFINED) {
+                    block = b;
+                    break;
+                } else if (b->e->type == e->type) {
+                    if (b->e->type == T_OBJECT) {
+                        if (lgx_obj_is_same_class(b->e->v.obj, e->v.obj) == 0) {
+                            block = b;
+                            break;
+                        }
+                    } else {
+                        block = b;
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -58,7 +74,10 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
         // 跳转到指定的 catch block
         vm->co_running->pc = block->start;
 
-        // TODO 把异常变量写入到 catch block 的参数中，并释放原位置变量
+        // 把异常变量写入到 catch block 的参数中
+        //printf("%d\n",block->e->u.c.reg);
+        lgx_gc_ref_del(&vm->regs[block->e->u.c.reg]);
+        vm->regs[block->e->u.c.reg] = *e;
     } else {
         // 没有匹配的 catch 块，递归向上寻找
         unsigned base = vm->co_running->stack.base;
@@ -72,10 +91,6 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
             // 释放所有局部变量和临时变量
             int n;
             for (n = 4; n < regs[0].v.fun->stack_size; n ++) {
-                if (e == &regs[n]) {
-                    // 不要释放抛出的异常
-                    continue;
-                }
                 lgx_gc_ref_del(&regs[n]);
                 regs[n].type = T_UNDEFINED;
             }
@@ -114,6 +129,16 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     e.v.str = lgx_str_new_ref(buf, 128);
     e.v.str->length = len;
     e.v.str->is_ref = 0;
+
+    lgx_vm_throw(vm, &e);
+}
+
+void lgx_vm_throw_v(lgx_vm_t *vm, lgx_val_t *v) {
+    lgx_val_t e;
+    e = *v;
+
+    // 把原始变量标记为 undefined，避免 exception 值被释放
+    v->type = T_UNDEFINED;
 
     lgx_vm_throw(vm, &e);
 }
@@ -905,7 +930,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_THROW: {
-                lgx_vm_throw(vm, &R(PA(i)));
+                lgx_vm_throw_v(vm, &R(PA(i)));
                 break;
             }
             case OP_AWAIT: {

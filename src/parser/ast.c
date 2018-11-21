@@ -646,17 +646,23 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // 创建新的作用域
     block_statement->u.symbols = lgx_hash_new(32);
 
-    // 优先把函数参数添加到符号表
-    if (parent->type == FUNCTION_DECLARATION) {
+    // 把 函数/catch block 的参数添加到符号表
+    if (parent->type == FUNCTION_DECLARATION ||
+        parent->type == CATCH_STATEMENT) {
+        lgx_ast_node_t *n = NULL;
+        switch (parent->type) {
+            case FUNCTION_DECLARATION: n = parent->child[1]; break;
+            case CATCH_STATEMENT: n = parent->child[0]; break;
+        }
         lgx_str_t s;
         int i;
-        for (i = 0; i < parent->child[1]->children; i++) {
-            s.buffer = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_start;
-            s.length = ((lgx_ast_node_token_t *)parent->child[1]->child[i]->child[0])->tk_length;
+        for (i = 0; i < n->children; i++) {
+            s.buffer = ((lgx_ast_node_token_t *)n->child[i]->child[0])->tk_start;
+            s.length = ((lgx_ast_node_token_t *)n->child[i]->child[0])->tk_length;
 
             lgx_val_t *t;
-            if ((t = lgx_scope_val_add(parent->child[2], &s))) {
-                ast_set_variable_type(t, parent->child[1]->child[i]);
+            if ((t = lgx_scope_val_add(block_statement, &s))) {
+                ast_set_variable_type(t, n->child[i]);
                 // 函数参数不检查是否使用
                 t->u.c.used = 1;
             } else {

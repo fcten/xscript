@@ -2,12 +2,15 @@
 #define LGX_EXCEPTION_H
 
 #include "../webit/common/wbt_list.h"
+#include "val.h"
 
 typedef struct {
     wbt_list_t head;
     // block position
     unsigned start;
     unsigned end;
+    // catch params
+    lgx_val_t *e;
 } lgx_exception_block_t;
 
 typedef struct {
