@@ -234,7 +234,7 @@ int lgx_co_died(lgx_vm_t *vm) {
 
 int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
     // 参数起始地址
-    int base = co->stack.buf[0].v.fun->stack_size;
+    int base = co->stack.base + co->stack.buf[co->stack.base].v.fun->stack_size;
 
     // 返回值地址
     int ret = co->stack.buf[base + 1].v.l;
@@ -243,6 +243,13 @@ int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
     lgx_gc_ref_del(&co->stack.buf[ret]);
     co->stack.buf[ret] = *v;
     lgx_gc_ref_add(&co->stack.buf[ret]);
+
+    // 释放函数栈
+    int n;
+    for (n = 4; n < co->stack.buf[base].v.fun->stack_size; n ++) {
+        lgx_gc_ref_del(&co->stack.buf[base + n]);
+        co->stack.buf[base + n].type = T_UNDEFINED;
+    }
 
     return 0;
 }

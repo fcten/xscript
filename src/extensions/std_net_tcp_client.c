@@ -246,9 +246,6 @@ static wbt_status on_recv(wbt_event_t *ev) {
 
     ev->recv.buf = NULL;
 
-    // 恢复协程执行
-    lgx_co_resume(client->vm, client->co);
-
     // 关闭连接
     on_close(ev);
 

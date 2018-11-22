@@ -683,7 +683,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_SET:{
+                lgx_gc_ref_del(&R(R(0).v.fun->stack_size + PA(i)));
                 R(R(0).v.fun->stack_size + PA(i)) = R(PB(i));
+                lgx_gc_ref_add(&R(R(0).v.fun->stack_size + PA(i)));
                 break;
             }
             case OP_CALL:{
