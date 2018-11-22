@@ -18,7 +18,7 @@ extern "C" {
 #include <stdio.h>
 #include <errno.h>
 
-#include <openssl/ssl.h>
+//#include <openssl/ssl.h>
 
 #include "../webit.h"
 #include "../common/wbt_list.h"
