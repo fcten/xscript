@@ -35,7 +35,7 @@ endif (WIN32 OR CYGWIN)
 add_executable(xscript ${XSCRIPT_SRCS})
 
 if (UNIX)
-	set (XSCRIPT_LIBS ${XSCRIPT_LIBS} dl z pthread)
+	set (XSCRIPT_LIBS ${XSCRIPT_LIBS} dl pthread)
 endif (UNIX)
 
 if (WIN32)
