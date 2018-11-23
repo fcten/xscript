@@ -44,6 +44,8 @@ typedef struct {
     unsigned char is_const:1;
     // 是否为 async
     unsigned char is_async:1;
+    // 是否为 abstract
+    unsigned char is_abstract:1;
     // 访问权限
     unsigned char access:2;
 } lgx_modifier_t;
@@ -190,9 +192,11 @@ struct lgx_obj_s {
     // 类名称
     lgx_str_t *name;
     // 是否为内置（否则为用户定义）
-    char is_buildin;
+    unsigned char is_buildin:1;
     // 是否为接口（否则为类）
-    char is_interface;
+    unsigned char is_interface:1;
+    // 是否为抽象类（否则为普通类）
+    unsigned char is_abstract:1;
     // 继承的父类
     lgx_obj_t *parent;
     // 属性

@@ -48,6 +48,7 @@ const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     {TK_FINAL, "final"},
     {TK_INTERFACE, "interface"},
     {TK_IMPLEMENTS, "implements"},
+    {TK_ABSTRACT, "abstract"},
     // 流程控制
     {TK_IF, "if"},
     {TK_ELSE, "else"},

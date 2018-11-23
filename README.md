@@ -93,6 +93,7 @@ echo "Hello World";
 
 - delete
 - final
+- abstract
 - finally
 
 # 基本数据类型 (data type)

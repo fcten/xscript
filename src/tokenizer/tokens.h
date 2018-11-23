@@ -62,6 +62,7 @@ enum {
     TK_FINAL,
     TK_INTERFACE,
     TK_IMPLEMENTS,
+    TK_ABSTRACT,
 
     TK_IF,
     TK_ELSE,

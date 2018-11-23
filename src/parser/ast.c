@@ -1025,6 +1025,7 @@ void ast_parse_modifier(lgx_ast_t* ast, lgx_modifier_t *modifier) {
     modifier->is_const = 0;
     modifier->is_async = 0;
     modifier->is_static = 0;
+    modifier->is_abstract = 0;
 
     while (1) {
         if (ast->cur_token == TK_PUBLIC) {
@@ -1335,7 +1336,23 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
     }
     ast_set_variable_type(&f->v.fun->ret, function_declaration);
 
-    ast_parse_block_statement_with_braces(ast, function_declaration);
+    if (parent->type == BLOCK_STATEMENT) {
+        ast_parse_block_statement_with_braces(ast, function_declaration);
+    } else if (parent->type == METHOD_DECLARATION) {
+        if (parent->u.modifier.is_abstract) {
+            if (ast->cur_token == ';') {
+                ast_step(ast);
+            } else {
+                ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                return;
+            }
+        } else {
+            ast_parse_block_statement_with_braces(ast, function_declaration);
+        }
+    } else {
+        ast_error(ast, "[Error] [Line:%d] invalid function declaration before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        return;
+    }
 }
 
 // 根据变量类型初始化变量的值
@@ -1550,11 +1567,78 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
     ast_parse_id_token(ast, interface_declaration);
 
+    // 创建接口加入作用域
+    lgx_str_t s;
+    lgx_ast_node_token_t *n = (lgx_ast_node_token_t *)interface_declaration->child[0];
+    s.buffer = n->tk_start;
+    s.length = n->tk_length;
+
+    lgx_val_t *f;
+    if ((f = lgx_scope_val_add(interface_declaration, &s))) {
+        f->type = T_OBJECT;
+        f->v.obj = lgx_obj_create(&s);
+        f->u.c.used = 1;
+        f->v.obj->is_interface = 1;
+    } else {
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        return;
+    }
+
     if (ast->cur_token != '{') {
         ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
         return;
     }
     ast_step(ast);
+
+    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
+    block_statement->type = BLOCK_STATEMENT;
+    ast_node_append_child(interface_declaration, block_statement);
+
+    // 创建新的作用域
+    block_statement->u.symbols = lgx_hash_new(32);
+
+    int endloop = 0;
+    while (!endloop) {
+        lgx_modifier_t modifier;
+        ast_parse_modifier(ast, &modifier);
+
+        // interface 中的方法一定是 abstract 的
+        modifier.is_abstract = 1;
+
+        if (ast->cur_token == TK_FUNCTION) {
+            if (modifier.is_const) {
+                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", ast->cur_line);
+                return;
+            } else if (modifier.is_static) {
+                ast_error(ast, "[Error] [Line:%d] static method is not allowed in interface\n", ast->cur_line);
+                return;
+            } else if (modifier.access != P_PUBLIC) {
+                ast_error(ast, "[Error] [Line:%d] method must be public in interface\n", ast->cur_line);
+                return;
+            }
+
+            lgx_ast_node_t* method_declaration = ast_node_new(ast, 1);
+            method_declaration->type = METHOD_DECLARATION;
+            method_declaration->u.modifier = modifier;
+            ast_node_append_child(block_statement, method_declaration);
+
+            ast_parse_function_declaration(ast, method_declaration, &modifier);
+            if (ast->err_no) {
+                return;
+            }
+
+            lgx_hash_node_t n;
+            lgx_ast_node_token_t *method_name = (lgx_ast_node_token_t *)method_declaration->child[0]->child[0];
+            n.k.type = T_STRING;
+            n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
+            n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
+
+            lgx_obj_add_method(f->v.obj, &n);
+        } else {
+            ast_error(ast, "[Error] [Line:%d] propery is not allowed in interface\n", ast->cur_line);
+            return;
+        }
+    }
 
     if (ast->cur_token != '}') {
         ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
