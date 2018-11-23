@@ -1635,8 +1635,7 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
             lgx_obj_add_method(f->v.obj, &n);
         } else {
-            ast_error(ast, "[Error] [Line:%d] propery is not allowed in interface\n", ast->cur_line);
-            return;
+            endloop = 1;
         }
     }
 
@@ -1741,7 +1740,9 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "FUNCTION_DECLARATION");
             lgx_ast_print(node->child[0], indent+2);
             lgx_ast_print(node->child[1], indent+2);
-            lgx_ast_print(node->child[2], indent+2);
+            if (node->child[2]) {
+                lgx_ast_print(node->child[2], indent+2);
+            }
             break;
         case VARIABLE_DECLARATION:
             printf("%*s%s\n", indent, "", "VARIABLE_DECLARATION");

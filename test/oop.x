@@ -1,4 +1,3 @@
-/*
 interface A {
     public function m1();
 }
@@ -10,7 +9,7 @@ interface B {
 class C implements A, B {
     private int i;
 }
-*/
+
 class C1 {
     public string msg = "C1:print\n";
 
