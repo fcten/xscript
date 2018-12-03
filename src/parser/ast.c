@@ -1658,6 +1658,12 @@ int lgx_ast_parser(lgx_ast_t* ast) {
 
     ast_step(ast);
 
+    // TODO 解析 package 语句
+    //ast_parse_package(ast);
+
+    // TODO 解析 import 语句
+    //ast_parse_import(ast);
+
     ast_parse_statement(ast, ast->root);
 
     switch (ast->cur_token) {
