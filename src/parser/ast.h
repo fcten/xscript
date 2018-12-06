@@ -105,24 +105,20 @@ typedef struct lgx_ast_node_token_s {
 
 typedef struct {
     wbt_list_t head;
+
     lgx_lex_t lex;
+
     int cur_token;
     char* cur_start;
     int cur_length;
     int cur_line;
+
+    int finished;
 } lgx_package_t;
 
 typedef struct lgx_ast {
-    // 入口文件
-    lgx_lex_t lex;
-
-    int cur_token;
-    char* cur_start;
-    int cur_length;
-    int cur_line;
-    
     // package
-    wbt_list_t imported;
+    lgx_package_t imported;
 
     // ast
     lgx_ast_node_t* root;
@@ -135,7 +131,7 @@ typedef struct lgx_ast {
 
 int lgx_ast_init(lgx_ast_t* ast);
 int lgx_ast_parser(lgx_ast_t* ast, char *file);
-int lgx_ast_import(lgx_ast_t* ast, char *file);
+int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file);
 
 int lgx_ast_optimizer(lgx_ast_t* ast);
 int lgx_ast_cleanup(lgx_ast_t* ast);

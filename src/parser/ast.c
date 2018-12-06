@@ -1,3 +1,6 @@
+#include <linux/limits.h>
+#include <unistd.h>
+
 #include "../common/common.h"
 #include "../common/val.h"
 #include "../common/fun.h"
@@ -7,37 +10,37 @@
 #include "scope.h"
 #include "ast.h"
 
-void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent);
+void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
 
-void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
-void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
-void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
-void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int precedence);
-void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent);
+void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
+void ast_parse_pri_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
+void ast_parse_suf_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
+void ast_parse_sub_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, int precedence);
+void ast_parse_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
 
-void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
-void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
-void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
-void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent);
+void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
+void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, lgx_modifier_t *modifier);
+void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
+void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent);
 
-lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, int n) {
+lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_package_t *pkg, int n) {
     lgx_ast_node_t* node = (lgx_ast_node_t*)xcalloc(1, sizeof(lgx_ast_node_t) + n * sizeof(lgx_ast_node_t*));
     // TODO ERROR CHECK
     node->children = 0;
     node->size = n;
 
-    node->line = ast->cur_line;
+    node->line = pkg->cur_line;
 
     return node;
 }
 
-lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast) {
+lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast, lgx_package_t *pkg) {
     lgx_ast_node_token_t* node = (lgx_ast_node_token_t*)xcalloc(1, sizeof(lgx_ast_node_token_t));
 
-    node->tk_start = ast->cur_start;
-    node->tk_length = ast->cur_length;
+    node->tk_start = pkg->cur_start;
+    node->tk_length = pkg->cur_length;
 
-    node->line = ast->cur_line;
+    node->line = pkg->cur_line;
     
     return node;
 }
@@ -58,19 +61,16 @@ lgx_ast_node_t* ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* ch
 int lgx_ast_init(lgx_ast_t* ast) {
     memset(ast, 0, sizeof(lgx_ast_t));
 
-    ast->lex.line = 1;
-    ast->cur_line = 1;
-
     ast->err_info = (char *)xmalloc(256);
     ast->err_len = 0;
 
     return 0;
 }
 
-int ast_is_class(lgx_ast_t* ast) {
+int ast_is_class(lgx_ast_t* ast, lgx_package_t *pkg) {
     lgx_str_t s;
-    s.buffer = ast->cur_start;
-    s.length = ast->cur_length;
+    s.buffer = pkg->cur_start;
+    s.length = pkg->cur_length;
 
     lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
     if (!v) {
@@ -172,7 +172,8 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
 
 int lgx_ast_cleanup(lgx_ast_t* ast) {
     xfree(ast->err_info);
-    xfree(ast->lex.source);
+    // TODO 释放所有源文件
+    //xfree(ast->lex.source);
 
     ast_node_cleanup(ast->root);
 
@@ -193,10 +194,10 @@ void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
     ast->err_no = 1;
 }
 
-int ast_next(lgx_ast_t* ast) {
+int ast_next(lgx_package_t* pkg) {
     unsigned int token;
     while(1) {
-        token = lgx_lex(&ast->lex);
+        token = lgx_lex(&pkg->lex);
         switch (token) {
             case TK_SPACE:
             case TK_COMMENT:
@@ -208,155 +209,155 @@ int ast_next(lgx_ast_t* ast) {
     }
 }
 
-void ast_step(lgx_ast_t* ast) {
-    ast->cur_token = ast_next(ast);
-    ast->cur_start = ast->lex.source + ast->lex.milestone;
-    ast->cur_length = ast->lex.offset - ast->lex.milestone;
-    ast->cur_line = ast->lex.line;
+void ast_step(lgx_package_t* pkg) {
+    pkg->cur_token = ast_next(pkg);
+    pkg->cur_start = pkg->lex.source + pkg->lex.milestone;
+    pkg->cur_length = pkg->lex.offset - pkg->lex.milestone;
+    pkg->cur_line = pkg->lex.line;
 }
 
-void ast_parse_id_token(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_token_t* id = ast_node_token_new(ast);
+void ast_parse_id_token(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_token_t* id = ast_node_token_new(ast, pkg);
     id->type = IDENTIFIER_TOKEN;
     ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-    ast_step(ast);
+    ast_step(pkg);
 }
 
-void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* param_list = ast_node_new(ast, 128);
+void ast_parse_decl_parameter(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* param_list = ast_node_new(ast, pkg, 128);
     param_list->type = FUNCTION_DECL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
-    if (ast->cur_token == ')') {
+    if (pkg->cur_token == ')') {
         // 参数为空
         return;
     }
 
     while (1) {
-        lgx_ast_node_t* variable_declaration = ast_node_new(ast, 2);
+        lgx_ast_node_t* variable_declaration = ast_node_new(ast, pkg, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
         ast_node_append_child(param_list, variable_declaration);
 
-        switch (ast->cur_token) {
+        switch (pkg->cur_token) {
             case TK_AUTO: case TK_INT: case TK_FLOAT:
             case TK_BOOL: case TK_STR: case TK_ARR:
-                variable_declaration->u.type.type = ast->cur_token;
+                variable_declaration->u.type.type = pkg->cur_token;
                 break;
             case TK_ID:
-                if (ast_is_class(ast)) {
+                if (ast_is_class(ast, pkg)) {
                     variable_declaration->u.type.type = TK_ID;
-                    variable_declaration->u.type.obj_name = lgx_str_new_ref(ast->cur_start, ast->cur_length);
+                    variable_declaration->u.type.obj_name = lgx_str_new_ref(pkg->cur_start, pkg->cur_length);
                     break;
                 }
             default:
-                ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
         }
-        ast_step(ast);
+        ast_step(pkg);
 
-        if (ast->cur_token != TK_ID) {
-            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        if (pkg->cur_token != TK_ID) {
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         } else {
-            ast_parse_id_token(ast, variable_declaration);
+            ast_parse_id_token(ast, pkg, variable_declaration);
         }
         
-        if (ast->cur_token == '=') {
-            ast_step(ast);
+        if (pkg->cur_token == '=') {
+            ast_step(pkg);
 
-            ast_parse_expression(ast, variable_declaration);
+            ast_parse_expression(ast, pkg, variable_declaration);
             if (variable_declaration->children == 1) {
-                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
         }
 
-        if (ast->cur_token != ',') {
+        if (pkg->cur_token != ',') {
             return;
         }
-        ast_step(ast);
+        ast_step(pkg);
     }
 }
 
-void ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* param_list = ast_node_new(ast, 128);
+void ast_parse_call_parameter(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* param_list = ast_node_new(ast, pkg, 128);
     param_list->type = FUNCTION_CALL_PARAMETER;
     ast_node_append_child(parent, param_list);
 
     int children = param_list->children;
     while (1) {
-        ast_parse_expression(ast, param_list);
-        if (param_list->children == children && ast->cur_token != ')') {
-            ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_parse_expression(ast, pkg, param_list);
+        if (param_list->children == children && pkg->cur_token != ')') {
+            ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
 
-        if (ast->cur_token != ',') {
+        if (pkg->cur_token != ',') {
             return;
         }
-        ast_step(ast);
+        ast_step(pkg);
     }
 }
 
-void ast_parse_array_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* array = ast_node_new(ast, 128);
+void ast_parse_array_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* array = ast_node_new(ast, pkg, 128);
     array->type = ARRAY_TOKEN;
     ast_node_append_child(parent, array);
 
-    // ast->cur_token == '['
-    ast_step(ast);
+    // pkg->cur_token == '['
+    ast_step(pkg);
 
     int children = array->children;
     while (1) {
-        ast_parse_expression(ast, array);
-        if (array->children == children && ast->cur_token != ']') {
-            ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_parse_expression(ast, pkg, array);
+        if (array->children == children && pkg->cur_token != ']') {
+            ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
 
-        if (ast->cur_token != ',') {
+        if (pkg->cur_token != ',') {
             break;
         }
-        ast_step(ast);
+        ast_step(pkg);
     }
 
-    if (ast->cur_token != ']') {
-        ast_error(ast, "[Error] [Line:%d] ']' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ']') {
+        ast_error(ast, "[Error] [Line:%d] ']' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 }
 
 // pri_expr -> ID | '(' sub_expr ')'
-void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_pri_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     int children = parent->children;
 
-    switch (ast->cur_token) {
+    switch (pkg->cur_token) {
         case '(':
-            ast_step(ast);
+            ast_step(pkg);
 
-            ast_parse_expression(ast, parent);
+            ast_parse_expression(ast, pkg, parent);
             if (parent->children == children) {
-                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
 
-            if (ast->cur_token != ')') {
-                ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            if (pkg->cur_token != ')') {
+                ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_ID:
-            ast_parse_id_token(ast, parent);
+            ast_parse_id_token(ast, pkg, parent);
             break;
         case TK_THIS:{
-            lgx_ast_node_token_t *id = ast_node_token_new(ast);
+            lgx_ast_node_token_t *id = ast_node_token_new(ast, pkg);
             id->type = THIS_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         }
         default:
@@ -365,12 +366,12 @@ void ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 // suf_expr -> pri_expr { '->' ID | '.' ID | '[' sub_expr ']' | funcargs }
-void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    ast_parse_pri_expression(ast, parent);
+void ast_parse_suf_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    ast_parse_pri_expression(ast, pkg, parent);
 
     lgx_ast_node_t* binary_expression;
     while (1) {
-        switch (ast->cur_token) {
+        switch (pkg->cur_token) {
             case TK_PTR:
             case '.':
             case '[':
@@ -380,115 +381,115 @@ void ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 return;
         }
 
-        binary_expression = ast_node_new(ast, 2);
+        binary_expression = ast_node_new(ast, pkg, 2);
         binary_expression->type = BINARY_EXPRESSION;
         binary_expression->parent = parent;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
         parent->child[parent->children-1] = binary_expression;
 
-        switch (ast->cur_token) {
+        switch (pkg->cur_token) {
             case TK_PTR:
                 binary_expression->u.op = TK_PTR;
-                ast_step(ast);
+                ast_step(pkg);
 
-                if (ast->cur_token != TK_ID) {
-                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                if (pkg->cur_token != TK_ID) {
+                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                     return;
                 }
-                ast_parse_id_token(ast, binary_expression);
+                ast_parse_id_token(ast, pkg, binary_expression);
                 break;
             case '.':
                 binary_expression->u.op = TK_ATTR;
-                ast_step(ast);
+                ast_step(pkg);
 
-                if (ast->cur_token != TK_ID) {
-                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                if (pkg->cur_token != TK_ID) {
+                    ast_error(ast, "[Error] [Line:%d] ']' <identifier> expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                     return;
                 }
-                ast_parse_id_token(ast, binary_expression);
+                ast_parse_id_token(ast, pkg, binary_expression);
                 break;
             case '[':
                 // 数组访问操作符
                 binary_expression->u.op = TK_INDEX;
-                ast_step(ast);
+                ast_step(pkg);
 
-                ast_parse_expression(ast, binary_expression);
+                ast_parse_expression(ast, pkg, binary_expression);
 
-                if (ast->cur_token != ']') {
-                    ast_error(ast, "[Error] [Line:%d] ']' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                if (pkg->cur_token != ']') {
+                    ast_error(ast, "[Error] [Line:%d] ']' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                     return;
                 }
-                ast_step(ast);
+                ast_step(pkg);
                 break;
             case '(':
                 // 函数调用操作符
                 binary_expression->u.op = TK_CALL;
-                ast_step(ast);
+                ast_step(pkg);
 
-                ast_parse_call_parameter(ast, binary_expression);
+                ast_parse_call_parameter(ast, pkg, binary_expression);
 
-                if (ast->cur_token != ')') {
-                    ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                if (pkg->cur_token != ')') {
+                    ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                     return;
                 }
-                ast_step(ast);
+                ast_step(pkg);
                 break;
         }
     }
 }
 
 // bsc_expr -> NUMBER | STRING | ARRAY | OBJECT | true | false | suf_expr
-void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     lgx_ast_node_token_t* id;
-    switch (ast->cur_token) {
+    switch (pkg->cur_token) {
         case TK_LONG:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = LONG_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_DOUBLE:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = DOUBLE_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_STRING:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = STRING_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_TRUE:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = TRUE_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_FALSE:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = FALSE_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case TK_UNDEFINED:
-            id = ast_node_token_new(ast);
+            id = ast_node_token_new(ast, pkg);
             id->type = UNDEFINED_TOKEN;
             ast_node_append_child(parent, (lgx_ast_node_t*)id);
 
-            ast_step(ast);
+            ast_step(pkg);
             break;
         case '[':
             // 数组字面量
-            ast_parse_array_expression(ast, parent);
+            ast_parse_array_expression(ast, pkg, parent);
             break;
         default:
-            ast_parse_suf_expression(ast, parent);
+            ast_parse_suf_expression(ast, pkg, parent);
     }
 }
 
@@ -543,9 +544,9 @@ int ast_operator_precedence(int token) {
 }
 
 // sub_expr -> (bsc_expr | unary_op sub_expr) { binary_op sub_expr }
-void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int precedence) {
+void ast_parse_sub_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, int precedence) {
     lgx_ast_node_t* unary_expression;
-    switch (ast->cur_token) {
+    switch (pkg->cur_token) {
         case '!': // 逻辑非运算符
         case '~': // 按位取反运算符
         case '-': // 负号运算符
@@ -553,30 +554,30 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
         case TK_NEW: // new 运算符
         case TK_AWAIT: // await 运算符
             // 单目运算符
-            unary_expression = ast_node_new(ast, 1);
+            unary_expression = ast_node_new(ast, pkg, 1);
             unary_expression->type = UNARY_EXPRESSION;
-            unary_expression->u.op = ast->cur_token;
+            unary_expression->u.op = pkg->cur_token;
             ast_node_append_child(parent, unary_expression);
 
-            ast_step(ast);
+            ast_step(pkg);
 
-            ast_parse_sub_expression(ast, unary_expression, 2);
+            ast_parse_sub_expression(ast, pkg, unary_expression, 2);
             break;    
         default:
-            ast_parse_bsc_expression(ast, parent);
+            ast_parse_bsc_expression(ast, pkg, parent);
     }
 
     if (parent->children == 0) {
         return;
     }
 
-    int p = ast_operator_precedence(ast->cur_token);
+    int p = ast_operator_precedence(pkg->cur_token);
     lgx_ast_node_t* binary_expression;
     while (1) {
         if (p < 0) {
             return;
         } else {
-            switch (ast->cur_token) {
+            switch (pkg->cur_token) {
                 case TK_AND: case TK_OR: case '=':
                 case TK_ASSIGN_ADD:
                 case TK_ASSIGN_SUB:
@@ -599,47 +600,47 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int preced
             }
         }
 
-        binary_expression = ast_node_new(ast, 2);
+        binary_expression = ast_node_new(ast, pkg, 2);
         binary_expression->type = BINARY_EXPRESSION;
         binary_expression->parent = parent;
-        binary_expression->u.op = ast->cur_token;
+        binary_expression->u.op = pkg->cur_token;
         ast_node_append_child(binary_expression, parent->child[parent->children-1]);
         parent->child[parent->children-1] = binary_expression;
 
-        ast_step(ast);
+        ast_step(pkg);
 
-        ast_parse_sub_expression(ast, binary_expression, p);
+        ast_parse_sub_expression(ast, pkg, binary_expression, p);
         if (binary_expression->children == 1) {
-            ast_error(ast, "[Error] [Line:%d] unexpected right value for binary operation near `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] unexpected right value for binary operation near `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
 
-        p = ast_operator_precedence(ast->cur_token);
+        p = ast_operator_precedence(pkg->cur_token);
     }
 }
 
-void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    if (pkg->cur_token != '(') {
+        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_sub_expression(ast, parent, 15);
+    ast_parse_sub_expression(ast, pkg, parent, 15);
 
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ')') {
+        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 }
 
-void ast_parse_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    ast_parse_sub_expression(ast, parent, 15);
+void ast_parse_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    ast_parse_sub_expression(ast, pkg, parent, 15);
 }
 
-void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
+void ast_parse_block_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* block_statement = ast_node_new(ast, pkg, 128);
     block_statement->type = BLOCK_STATEMENT;
     ast_node_append_child(parent, block_statement);
 
@@ -666,361 +667,361 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 // 函数参数不检查是否使用
                 t->u.c.used = 1;
             } else {
-                ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
+                ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", pkg->cur_line, s.length, s.buffer);
                 return;
             }
         }
     }
     
-    ast_parse_statement(ast, block_statement);
+    ast_parse_statement(ast, pkg, block_statement);
 }
 
-void ast_parse_block_statement_with_braces(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    if (ast->cur_token != '{') {
-        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+void ast_parse_block_statement_with_braces(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    if (pkg->cur_token != '{') {
+        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_block_statement(ast, parent);
+    ast_parse_block_statement(ast, pkg, parent);
 
-    if (ast->cur_token != '}') {
-        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '}') {
+        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 }
 
-void ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* if_statement = ast_node_new(ast, 3);
+void ast_parse_if_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* if_statement = ast_node_new(ast, pkg, 3);
     if_statement->type = IF_STATEMENT;
     ast_node_append_child(parent, if_statement);
 
-    // ast->cur_token == TK_IF
-    ast_step(ast);
+    // pkg->cur_token == TK_IF
+    ast_step(pkg);
     
-    ast_parse_expression_with_parentheses(ast, if_statement);
+    ast_parse_expression_with_parentheses(ast, pkg, if_statement);
     if (if_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
     
-    ast_parse_block_statement_with_braces(ast, if_statement);
+    ast_parse_block_statement_with_braces(ast, pkg, if_statement);
     
-    if (ast->cur_token != TK_ELSE) {
+    if (pkg->cur_token != TK_ELSE) {
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
     
     if_statement->type = IF_ELSE_STATEMENT;
 
-    if (ast->cur_token == TK_IF) {
-        ast_parse_if_statement(ast, if_statement);
+    if (pkg->cur_token == TK_IF) {
+        ast_parse_if_statement(ast, pkg, if_statement);
     } else {
-        ast_parse_block_statement_with_braces(ast, if_statement);
+        ast_parse_block_statement_with_braces(ast, pkg, if_statement);
     }
 }
 
-void ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* for_statement = ast_node_new(ast, 4);
+void ast_parse_for_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* for_statement = ast_node_new(ast, pkg, 4);
     for_statement->type = FOR_STATEMENT;
     ast_node_append_child(parent, for_statement);
 
-    // ast->cur_token == TK_FOR
-    ast_step(ast);
+    // pkg->cur_token == TK_FOR
+    ast_step(pkg);
 
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '(') {
+        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_expression(ast, for_statement);
+    ast_parse_expression(ast, pkg, for_statement);
     if (for_statement->children == 0) {
         for_statement->children ++;
     }
 
-    if (ast->cur_token != ';') {
-        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ';') {
+        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_expression(ast, for_statement);
+    ast_parse_expression(ast, pkg, for_statement);
     if (for_statement->children == 1) {
         for_statement->children ++;
     }
 
-    if (ast->cur_token != ';') {
-        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ';') {
+        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_expression(ast, for_statement);
+    ast_parse_expression(ast, pkg, for_statement);
     if (for_statement->children == 2) {
         for_statement->children ++;
     }
 
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ')') {
+        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_block_statement_with_braces(ast, for_statement);
+    ast_parse_block_statement_with_braces(ast, pkg, for_statement);
 }
 
-void ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* while_statement = ast_node_new(ast, 2);
+void ast_parse_while_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* while_statement = ast_node_new(ast, pkg, 2);
     while_statement->type = WHILE_STATEMENT;
     ast_node_append_child(parent, while_statement);
 
-    // ast->cur_token == TK_WHILE
-    ast_step(ast);
+    // pkg->cur_token == TK_WHILE
+    ast_step(pkg);
     
-    ast_parse_expression_with_parentheses(ast, while_statement);
+    ast_parse_expression_with_parentheses(ast, pkg, while_statement);
     if (while_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
     
-    ast_parse_block_statement_with_braces(ast, while_statement);
+    ast_parse_block_statement_with_braces(ast, pkg, while_statement);
 }
 
-void ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* do_statement = ast_node_new(ast, 2);
+void ast_parse_do_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* do_statement = ast_node_new(ast, pkg, 2);
     do_statement->type = DO_WHILE_STATEMENT;
     ast_node_append_child(parent, do_statement);
 
-    // ast->cur_token == TK_DO
-    ast_step(ast);
+    // pkg->cur_token == TK_DO
+    ast_step(pkg);
     
-    ast_parse_block_statement_with_braces(ast, do_statement);
+    ast_parse_block_statement_with_braces(ast, pkg, do_statement);
 
-    if (ast->cur_token != TK_WHILE) {
-        ast_error(ast, "[Error] [Line:%d] 'while' expected, not `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != TK_WHILE) {
+        ast_error(ast, "[Error] [Line:%d] 'while' expected, not `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
     
-    ast_parse_expression_with_parentheses(ast, do_statement);
+    ast_parse_expression_with_parentheses(ast, pkg, do_statement);
     if (do_statement->children == 1) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 }
 
-void ast_parse_break_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* break_statement = ast_node_new(ast, 0);
+void ast_parse_break_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* break_statement = ast_node_new(ast, pkg, 0);
     break_statement->type = BREAK_STATEMENT;
     ast_node_append_child(parent, break_statement);
 
-    // ast->cur_token == TK_BREAK
-    ast_step(ast);
+    // pkg->cur_token == TK_BREAK
+    ast_step(pkg);
 }
 
-void ast_parse_continue_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* continue_statement = ast_node_new(ast, 0);
+void ast_parse_continue_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* continue_statement = ast_node_new(ast, pkg, 0);
     continue_statement->type = CONTINUE_STATEMENT;
     ast_node_append_child(parent, continue_statement);
 
-    // ast->cur_token == TK_CONTINUE
-    ast_step(ast);
+    // pkg->cur_token == TK_CONTINUE
+    ast_step(pkg);
 }
 
-void ast_parse_case_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* case_statement = ast_node_new(ast, 2);
+void ast_parse_case_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* case_statement = ast_node_new(ast, pkg, 2);
     case_statement->type = CASE_STATEMENT;
     ast_node_append_child(parent, case_statement);
 
-    // ast->cur_token == TK_CASE
-    ast_step(ast);
+    // pkg->cur_token == TK_CASE
+    ast_step(pkg);
 
-    ast_parse_expression(ast, case_statement);
+    ast_parse_expression(ast, pkg, case_statement);
     if (case_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 
-    if (ast->cur_token != ':') {
-        ast_error(ast, "[Error] [Line:%d] ':' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ':') {
+        ast_error(ast, "[Error] [Line:%d] ':' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    if (ast->cur_token == '{') {
-        ast_parse_block_statement_with_braces(ast, case_statement);
+    if (pkg->cur_token == '{') {
+        ast_parse_block_statement_with_braces(ast, pkg, case_statement);
     } else {
-        ast_parse_block_statement(ast, case_statement);
+        ast_parse_block_statement(ast, pkg, case_statement);
     }
 }
 
-void ast_parse_default_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* default_statement = ast_node_new(ast, 1);
+void ast_parse_default_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* default_statement = ast_node_new(ast, pkg, 1);
     default_statement->type = DEFAULT_STATEMENT;
     ast_node_append_child(parent, default_statement);
 
-    // ast->cur_token == TK_DEFAULT
-    ast_step(ast);
+    // pkg->cur_token == TK_DEFAULT
+    ast_step(pkg);
 
-    if (ast->cur_token != ':') {
-        ast_error(ast, "[Error] [Line:%d] ':' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ':') {
+        ast_error(ast, "[Error] [Line:%d] ':' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    if (ast->cur_token == '{') {
-        ast_parse_block_statement_with_braces(ast, default_statement);
+    if (pkg->cur_token == '{') {
+        ast_parse_block_statement_with_braces(ast, pkg, default_statement);
     } else {
-        ast_parse_block_statement(ast, default_statement);
+        ast_parse_block_statement(ast, pkg, default_statement);
     }
 }
 
-void ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* switch_statement = ast_node_new(ast, 128);
+void ast_parse_switch_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* switch_statement = ast_node_new(ast, pkg, 128);
     switch_statement->type = SWITCH_STATEMENT;
     ast_node_append_child(parent, switch_statement);
 
-    // ast->cur_token == TK_SWITCH
-    ast_step(ast);
+    // pkg->cur_token == TK_SWITCH
+    ast_step(pkg);
 
-    ast_parse_expression_with_parentheses(ast, switch_statement);
+    ast_parse_expression_with_parentheses(ast, pkg, switch_statement);
     if (switch_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 
-    if (ast->cur_token != '{') {
-        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '{') {
+        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
     // 解析所有 case 和 default
     int has_default = 0;
     while (1) {
-        if (ast->cur_token == TK_CASE) {
-            ast_parse_case_statement(ast, switch_statement);
-        } else if (ast->cur_token == TK_DEFAULT) {
+        if (pkg->cur_token == TK_CASE) {
+            ast_parse_case_statement(ast, pkg, switch_statement);
+        } else if (pkg->cur_token == TK_DEFAULT) {
             if (has_default) {
-                ast_error(ast, "[Error] [Line:%d] switch statement should only contain one default label\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] switch statement should only contain one default label\n", pkg->cur_line);
                 return;
             }
             has_default = 1;
 
-            ast_parse_default_statement(ast, switch_statement);
+            ast_parse_default_statement(ast, pkg, switch_statement);
         } else {
             break;
         }
     }
 
-    if (ast->cur_token != '}') {
-        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '}') {
+        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 }
 
-void ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* try_statement = ast_node_new(ast, 128);
+void ast_parse_try_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* try_statement = ast_node_new(ast, pkg, 128);
     try_statement->type = TRY_STATEMENT;
     ast_node_append_child(parent, try_statement);
 
-    // ast->cur_token == TK_TRY
-    ast_step(ast);
+    // pkg->cur_token == TK_TRY
+    ast_step(pkg);
 
-    ast_parse_block_statement_with_braces(ast, try_statement);
+    ast_parse_block_statement_with_braces(ast, pkg, try_statement);
 
-    while (ast->cur_token == TK_CATCH) {
-        ast_step(ast);
+    while (pkg->cur_token == TK_CATCH) {
+        ast_step(pkg);
 
-        lgx_ast_node_t* catch_statement = ast_node_new(ast, 2);
+        lgx_ast_node_t* catch_statement = ast_node_new(ast, pkg, 2);
         catch_statement->type = CATCH_STATEMENT;
         ast_node_append_child(try_statement, catch_statement);
 
-        if (ast->cur_token != '(') {
-            ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        if (pkg->cur_token != '(') {
+            ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
-        ast_step(ast);
+        ast_step(pkg);
 
-        ast_parse_decl_parameter(ast, catch_statement);
+        ast_parse_decl_parameter(ast, pkg, catch_statement);
         if (catch_statement->child[0]->children != 1) {
-            ast_error(ast, "[Error] [Line:%d] there must be one and only one parameter in catch statements\n", ast->cur_line);
+            ast_error(ast, "[Error] [Line:%d] there must be one and only one parameter in catch statements\n", pkg->cur_line);
             return;
         }
 
-        if (ast->cur_token != ')') {
-            ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        if (pkg->cur_token != ')') {
+            ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
-        ast_step(ast);
+        ast_step(pkg);
 
-        ast_parse_block_statement_with_braces(ast, catch_statement);
+        ast_parse_block_statement_with_braces(ast, pkg, catch_statement);
     }
 
-    if (ast->cur_token == TK_FINALLY) {
-        ast_step(ast);
+    if (pkg->cur_token == TK_FINALLY) {
+        ast_step(pkg);
 
-        lgx_ast_node_t* finally_statement = ast_node_new(ast, 1);
+        lgx_ast_node_t* finally_statement = ast_node_new(ast, pkg, 1);
         finally_statement->type = FINALLY_STATEMENT;
         ast_node_append_child(try_statement, finally_statement);
 
-        ast_parse_block_statement_with_braces(ast, finally_statement);
+        ast_parse_block_statement_with_braces(ast, pkg, finally_statement);
     }
 }
 
-void ast_parse_throw_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* throw_statement = ast_node_new(ast, 1);
+void ast_parse_throw_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* throw_statement = ast_node_new(ast, pkg, 1);
     throw_statement->type = THROW_STATEMENT;
     ast_node_append_child(parent, throw_statement);
 
-    // ast->cur_token == TK_THROW
-    ast_step(ast);
+    // pkg->cur_token == TK_THROW
+    ast_step(pkg);
 
-    ast_parse_expression(ast, throw_statement);
+    ast_parse_expression(ast, pkg, throw_statement);
     if (throw_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 }
 
-void ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* return_statement = ast_node_new(ast, 1);
+void ast_parse_return_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* return_statement = ast_node_new(ast, pkg, 1);
     return_statement->type = RETURN_STATEMENT;;
     ast_node_append_child(parent, return_statement);
 
-    // ast->cur_token == TK_RETURN
-    ast_step(ast);
+    // pkg->cur_token == TK_RETURN
+    ast_step(pkg);
 
-    ast_parse_expression(ast, return_statement);
+    ast_parse_expression(ast, pkg, return_statement);
 }
 
-void ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* echo_statement = ast_node_new(ast, 1);
+void ast_parse_echo_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* echo_statement = ast_node_new(ast, pkg, 1);
     echo_statement->type = ECHO_STATEMENT;;
     ast_node_append_child(parent, echo_statement);
 
-    // ast->cur_token == TK_ECHO
-    ast_step(ast);
+    // pkg->cur_token == TK_ECHO
+    ast_step(pkg);
     
-    ast_parse_expression(ast, echo_statement);
+    ast_parse_expression(ast, pkg, echo_statement);
     if (echo_statement->children == 0) {
-        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 }
 
-void ast_parse_expression_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* assign_statement = ast_node_new(ast, 1);
+void ast_parse_expression_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* assign_statement = ast_node_new(ast, pkg, 1);
     assign_statement->type = EXPRESSION_STATEMENT;
     ast_node_append_child(parent, assign_statement);
     
-    ast_parse_expression(ast, assign_statement);
+    ast_parse_expression(ast, pkg, assign_statement);
 }
 
-void ast_parse_modifier(lgx_ast_t* ast, lgx_modifier_t *modifier) {
+void ast_parse_modifier(lgx_ast_t* ast, lgx_package_t *pkg, lgx_modifier_t *modifier) {
     modifier->access = P_PACKAGE;
     modifier->is_const = 0;
     modifier->is_async = 0;
@@ -1028,53 +1029,53 @@ void ast_parse_modifier(lgx_ast_t* ast, lgx_modifier_t *modifier) {
     modifier->is_abstract = 0;
 
     while (1) {
-        if (ast->cur_token == TK_PUBLIC) {
+        if (pkg->cur_token == TK_PUBLIC) {
             if (modifier->access) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->access = P_PUBLIC;
-                ast_step(ast);
+                ast_step(pkg);
             }
-        } else if (ast->cur_token == TK_PROTECTED) {
+        } else if (pkg->cur_token == TK_PROTECTED) {
             if (modifier->access) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->access = P_PROTECTED;
-                ast_step(ast);
+                ast_step(pkg);
             }
-        } else if (ast->cur_token == TK_PRIVATE) {
+        } else if (pkg->cur_token == TK_PRIVATE) {
             if (modifier->access) {
-                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] access modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->access = P_PRIVATE;
-                ast_step(ast);
+                ast_step(pkg);
             }
-        } else if (ast->cur_token == TK_STATIC) {
+        } else if (pkg->cur_token == TK_STATIC) {
             if (modifier->is_static) {
-                ast_error(ast, "[Error] [Line:%d] static modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] static modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->is_static = 1;
-                ast_step(ast);
+                ast_step(pkg);
             }
-        } else if (ast->cur_token == TK_CONST) {
+        } else if (pkg->cur_token == TK_CONST) {
             if (modifier->is_const) {
-                ast_error(ast, "[Error] [Line:%d] const modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] const modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->is_const = 1;
-                ast_step(ast);
+                ast_step(pkg);
             }
-        } else if (ast->cur_token == TK_ASYNC) {
+        } else if (pkg->cur_token == TK_ASYNC) {
             if (modifier->is_async) {
-                ast_error(ast, "[Error] [Line:%d] async modifier already seen before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] async modifier already seen before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             } else {
                 modifier->is_async = 1;
-                ast_step(ast);
+                ast_step(pkg);
             }
         } else {
             break;
@@ -1082,62 +1083,62 @@ void ast_parse_modifier(lgx_ast_t* ast, lgx_modifier_t *modifier) {
     }
 }
 
-void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     while(1) {
-        switch (ast->cur_token) {
+        switch (pkg->cur_token) {
             case ';':
                 // null statement
-                ast_step(ast);
+                ast_step(pkg);
                 break;
             case '}': case TK_EOF: case TK_CASE: case TK_DEFAULT:
                 return;
             case TK_IF:
-                ast_parse_if_statement(ast, parent);
+                ast_parse_if_statement(ast, pkg, parent);
                 continue;
             case TK_FOR:
-                ast_parse_for_statement(ast, parent);
+                ast_parse_for_statement(ast, pkg, parent);
                 continue;
             case TK_WHILE:
-                ast_parse_while_statement(ast, parent);
+                ast_parse_while_statement(ast, pkg, parent);
                 continue;
             case TK_DO:
-                ast_parse_do_statement(ast, parent);
+                ast_parse_do_statement(ast, pkg, parent);
                 break;
             case TK_BREAK:
-                ast_parse_break_statement(ast, parent);
+                ast_parse_break_statement(ast, pkg, parent);
                 break;
             case TK_CONTINUE:
-                ast_parse_continue_statement(ast, parent);
+                ast_parse_continue_statement(ast, pkg, parent);
                 break;
             case TK_SWITCH:
-                ast_parse_switch_statement(ast, parent);
+                ast_parse_switch_statement(ast, pkg, parent);
                 continue;
             case TK_RETURN:
-                ast_parse_return_statement(ast, parent);
+                ast_parse_return_statement(ast, pkg, parent);
                 break;
             case TK_ECHO:
-                ast_parse_echo_statement(ast, parent);
+                ast_parse_echo_statement(ast, pkg, parent);
                 break;
             case TK_TRY:
-                ast_parse_try_statement(ast, parent);
+                ast_parse_try_statement(ast, pkg, parent);
                 continue;
             case TK_THROW:
-                ast_parse_throw_statement(ast, parent);
+                ast_parse_throw_statement(ast, pkg, parent);
                 break;
             case TK_AUTO: case TK_INT: case TK_FLOAT:
             case TK_BOOL: case TK_STR: case TK_ARR: {
                 lgx_modifier_t modifier;
-                ast_parse_modifier(ast, &modifier);
-                ast_parse_variable_declaration(ast, parent, &modifier);
+                ast_parse_modifier(ast, pkg, &modifier);
+                ast_parse_variable_declaration(ast, pkg, parent, &modifier);
                 break;
             }
             case TK_ID: {
-                if (ast_is_class(ast)) {
+                if (ast_is_class(ast, pkg)) {
                     lgx_modifier_t modifier;
-                    ast_parse_modifier(ast, &modifier);
-                    ast_parse_variable_declaration(ast, parent, &modifier);
+                    ast_parse_modifier(ast, pkg, &modifier);
+                    ast_parse_variable_declaration(ast, pkg, parent, &modifier);
                 } else {
-                    ast_parse_expression_statement(ast, parent);
+                    ast_parse_expression_statement(ast, pkg, parent);
                 }
                 break;
             }
@@ -1149,82 +1150,82 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             case TK_PROTECTED:
             case TK_PRIVATE: {
                 lgx_modifier_t modifier;
-                ast_parse_modifier(ast, &modifier);
+                ast_parse_modifier(ast, pkg, &modifier);
 
                 if (modifier.access) {
-                    ast_error(ast, "[Error] [Line:%d] unexpected access modifier before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                    ast_error(ast, "[Error] [Line:%d] unexpected access modifier before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                     return;
                 }
 
-                if (ast->cur_token == TK_FUNCTION) {
+                if (pkg->cur_token == TK_FUNCTION) {
                     if (modifier.is_const) {
-                        ast_error(ast, "[Error] [Line:%d] function could not be defined as const\n", ast->cur_line);
+                        ast_error(ast, "[Error] [Line:%d] function could not be defined as const\n", pkg->cur_line);
                         return;
                     }
                     if (parent->parent) {
-                        ast_error(ast, "[Error] [Line:%d] functions can only be defined in top-level scope\n", ast->cur_line);
+                        ast_error(ast, "[Error] [Line:%d] functions can only be defined in top-level scope\n", pkg->cur_line);
                         return;
                     }
-                    ast_parse_function_declaration(ast, parent, &modifier);
+                    ast_parse_function_declaration(ast, pkg, parent, &modifier);
                     continue;
                 } else {
                     if (modifier.is_async) {
-                        ast_error(ast, "[Error] [Line:%d] variable could not be defined as async\n", ast->cur_line);
+                        ast_error(ast, "[Error] [Line:%d] variable could not be defined as async\n", pkg->cur_line);
                         return;
                     }
-                    ast_parse_variable_declaration(ast, parent, &modifier);
+                    ast_parse_variable_declaration(ast, pkg, parent, &modifier);
                     break;
                 }
             }
             case TK_CLASS:
-                ast_parse_class_declaration(ast, parent);
+                ast_parse_class_declaration(ast, pkg, parent);
                 continue;
             case TK_INTERFACE:
-                ast_parse_interface_declaration(ast, parent);
+                ast_parse_interface_declaration(ast, pkg, parent);
                 continue;
             default:
-                ast_parse_expression_statement(ast, parent);
+                ast_parse_expression_statement(ast, pkg, parent);
         }
 
-        if (ast->cur_token != ';') {
+        if (pkg->cur_token != ';') {
             // 语句应当以分号结尾。以花括号结尾的语句可以省略分号。
-            ast_error(ast, "[Error] [Line:%d] ';' expected before '%.*s'\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] ';' expected before '%.*s'\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
-        ast_step(ast);
+        ast_step(pkg);
     }
 }
 
-void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
+void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
     lgx_ast_node_t* variable_declaration;
 
-    int var_type = ast->cur_token;
-    char *type_str = ast->cur_start;
-    int type_len = ast->cur_length;
-    ast_step(ast);
+    int var_type = pkg->cur_token;
+    char *type_str = pkg->cur_start;
+    int type_len = pkg->cur_length;
+    ast_step(pkg);
 
     while (1) {
-        variable_declaration = ast_node_new(ast, 2);
+        variable_declaration = ast_node_new(ast, pkg, 2);
         variable_declaration->type = VARIABLE_DECLARATION;
         variable_declaration->u.type.type = var_type;
         variable_declaration->u.type.obj_name = lgx_str_new_ref(type_str, type_len);
         ast_node_append_child(parent, variable_declaration);
 
-        if (ast->cur_token != TK_ID) {
-            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        if (pkg->cur_token != TK_ID) {
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a <identifier>\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         } else {
-            //printf("[Info] [Line:%d] variable `%.*s` declared\n", ast->cur_line, ast->cur_length, ast->cur_start);
-            ast_parse_id_token(ast, variable_declaration);
+            //printf("[Info] [Line:%d] variable `%.*s` declared\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
+            ast_parse_id_token(ast, pkg, variable_declaration);
         }
         
-        if (ast->cur_token == '=') {
-            ast_step(ast);
+        if (pkg->cur_token == '=') {
+            ast_step(pkg);
             
-            //printf("[Info] [Line:%d] variable initialized\n", ast->cur_line);
-            ast_parse_expression(ast, variable_declaration);
+            //printf("[Info] [Line:%d] variable initialized\n", pkg->cur_line);
+            ast_parse_expression(ast, pkg, variable_declaration);
             if (variable_declaration->children == 1) {
-                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] expression expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
         }
@@ -1241,13 +1242,13 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
             t->u.c.used = 1;
             t->u.c.modifier = *modifier;
         } else {
-            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, s.length, s.buffer);
+            ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", pkg->cur_line, s.length, s.buffer);
             return;
         }
 
-        switch (ast->cur_token) {
+        switch (pkg->cur_token) {
             case ',':
-                ast_step(ast);
+                ast_step(pkg);
                 break;
             default:
                 return;
@@ -1255,19 +1256,19 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
     }
 }
 
-void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
-    lgx_ast_node_t* function_declaration = ast_node_new(ast, 3);
+void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, lgx_modifier_t *modifier) {
+    lgx_ast_node_t* function_declaration = ast_node_new(ast, pkg, 3);
     function_declaration->type = FUNCTION_DECLARATION;
     ast_node_append_child(parent, function_declaration);
 
-    // ast->cur_token == TK_FUNCTION
-    ast_step(ast);
+    // pkg->cur_token == TK_FUNCTION
+    ast_step(pkg);
 
-    if (ast->cur_token != TK_ID) {
-        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != TK_ID) {
+        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_parse_id_token(ast, function_declaration);
+    ast_parse_id_token(ast, pkg, function_declaration);
 
     // 创建函数加入作用域
     lgx_str_t s;
@@ -1281,23 +1282,23 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
         f->u.c.used = 1;
         f->u.c.modifier = *modifier;
     } else {
-        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", pkg->cur_line, n->tk_length, n->tk_start);
         return;
     }
 
-    if (ast->cur_token != '(') {
-        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '(') {
+        ast_error(ast, "[Error] [Line:%d] '(' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    ast_parse_decl_parameter(ast, function_declaration);
+    ast_parse_decl_parameter(ast, pkg, function_declaration);
 
-    if (ast->cur_token != ')') {
-        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != ')') {
+        ast_error(ast, "[Error] [Line:%d] ')' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
     // 根据参数数量创建函数
     f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
@@ -1314,22 +1315,22 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
     }
 
     // 解析返回值
-    switch (ast->cur_token) {
+    switch (pkg->cur_token) {
         case TK_AUTO: case TK_INT: case TK_FLOAT:
         case TK_BOOL: case TK_STR: case TK_ARR: {
-            function_declaration->u.type.type = ast->cur_token;
-            ast_step(ast);
+            function_declaration->u.type.type = pkg->cur_token;
+            ast_step(pkg);
             break;
         }
         case TK_ID:
-            if (ast_is_class(ast)) {
-                function_declaration->u.type.type = ast->cur_token;
-                function_declaration->u.type.obj_name = lgx_str_new_ref(ast->cur_start, ast->cur_length);
+            if (ast_is_class(ast, pkg)) {
+                function_declaration->u.type.type = pkg->cur_token;
+                function_declaration->u.type.obj_name = lgx_str_new_ref(pkg->cur_start, pkg->cur_length);
             } else {
-                ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
-            ast_step(ast);
+            ast_step(pkg);
             break;
         default:
             function_declaration->u.type.type = TK_AUTO;
@@ -1337,20 +1338,20 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent, lgx_
     ast_set_variable_type(&f->v.fun->ret, function_declaration);
 
     if (parent->type == BLOCK_STATEMENT) {
-        ast_parse_block_statement_with_braces(ast, function_declaration);
+        ast_parse_block_statement_with_braces(ast, pkg, function_declaration);
     } else if (parent->type == METHOD_DECLARATION) {
         if (parent->u.modifier.is_abstract) {
-            if (ast->cur_token == ';') {
-                ast_step(ast);
+            if (pkg->cur_token == ';') {
+                ast_step(pkg);
             } else {
-                ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
         } else {
-            ast_parse_block_statement_with_braces(ast, function_declaration);
+            ast_parse_block_statement_with_braces(ast, pkg, function_declaration);
         }
     } else {
-        ast_error(ast, "[Error] [Line:%d] invalid function declaration before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+        ast_error(ast, "[Error] [Line:%d] invalid function declaration before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
 }
@@ -1372,19 +1373,19 @@ void ast_init_value(lgx_val_t *v) {
     }
 }
 
-void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* class_declaration = ast_node_new(ast, 2);
+void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* class_declaration = ast_node_new(ast, pkg, 2);
     class_declaration->type = CLASS_DECLARATION;
     ast_node_append_child(parent, class_declaration);
 
-    // ast->cur_token == TK_CLASS
-    ast_step(ast);
+    // pkg->cur_token == TK_CLASS
+    ast_step(pkg);
 
-    if (ast->cur_token != TK_ID) {
-        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != TK_ID) {
+        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_parse_id_token(ast, class_declaration);
+    ast_parse_id_token(ast, pkg, class_declaration);
 
     // 创建类加入作用域
     lgx_str_t s;
@@ -1398,68 +1399,68 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         f->v.obj = lgx_obj_create(&s);
         f->u.c.used = 1;
     } else {
-        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", pkg->cur_line, n->tk_length, n->tk_start);
         return;
     }
 
     // 处理继承。只支持单继承。
-    if (ast->cur_token == TK_EXTENDS) {
-        ast_step(ast);
-        if (ast->cur_token != TK_ID) {
-            ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token == TK_EXTENDS) {
+        ast_step(pkg);
+        if (pkg->cur_token != TK_ID) {
+            ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
 
-        s.buffer = ast->cur_start;
-        s.length = ast->cur_length;
+        s.buffer = pkg->cur_start;
+        s.length = pkg->cur_length;
 
         lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
         if (!v || v->type != T_OBJECT || v->v.obj->is_interface) {
-            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a class\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            ast_error(ast, "[Error] [Line:%d] `%.*s` is not a class\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
             return;
         }
 
         f->v.obj->parent = v->v.obj;
 
-        ast_step(ast);
+        ast_step(pkg);
     }
 
-    if (ast->cur_token == TK_IMPLEMENTS) {
-        ast_step(ast);
+    if (pkg->cur_token == TK_IMPLEMENTS) {
+        ast_step(pkg);
 
         while (1) {
-            if (ast->cur_token != TK_ID) {
-                ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+            if (pkg->cur_token != TK_ID) {
+                ast_error(ast, "[Error] [Line:%d] `identifier` expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
 
-            s.buffer = ast->cur_start;
-            s.length = ast->cur_length;
+            s.buffer = pkg->cur_start;
+            s.length = pkg->cur_length;
 
             lgx_val_t *v = lgx_scope_global_val_get(ast->root, &s);
             if (!v || v->type != T_OBJECT || !v->v.obj->is_interface) {
-                ast_error(ast, "[Error] [Line:%d] `%.*s` is not a interface\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                ast_error(ast, "[Error] [Line:%d] `%.*s` is not a interface\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                 return;
             }
 
             // TODO 处理 interface
 
-            ast_step(ast);
+            ast_step(pkg);
 
-            if (ast->cur_token != ',') {
+            if (pkg->cur_token != ',') {
                 break;
             }
-            ast_step(ast);
+            ast_step(pkg);
         }
     }
 
-    if (ast->cur_token != '{') {
-        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '{') {
+        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
+    lgx_ast_node_t* block_statement = ast_node_new(ast, pkg, 128);
     block_statement->type = BLOCK_STATEMENT;
     ast_node_append_child(class_declaration, block_statement);
 
@@ -1469,20 +1470,20 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     int endloop = 0;
     while (!endloop) {
         lgx_modifier_t modifier;
-        ast_parse_modifier(ast, &modifier);
+        ast_parse_modifier(ast, pkg, &modifier);
 
-        if (ast->cur_token == TK_FUNCTION) {
+        if (pkg->cur_token == TK_FUNCTION) {
             if (modifier.is_const) {
-                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", pkg->cur_line);
                 return;
             }
 
-            lgx_ast_node_t* method_declaration = ast_node_new(ast, 1);
+            lgx_ast_node_t* method_declaration = ast_node_new(ast, pkg, 1);
             method_declaration->type = METHOD_DECLARATION;
             method_declaration->u.modifier = modifier;
             ast_node_append_child(block_statement, method_declaration);
 
-            ast_parse_function_declaration(ast, method_declaration, &modifier);
+            ast_parse_function_declaration(ast, pkg, method_declaration, &modifier);
             if (ast->err_no) {
                 return;
             }
@@ -1496,26 +1497,26 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             lgx_obj_add_method(f->v.obj, &n);
         } else {
             if (modifier.is_async) {
-                ast_error(ast, "[Error] [Line:%d] propery could not be defined as async\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] propery could not be defined as async\n", pkg->cur_line);
                 return;
             }
 
-            switch (ast->cur_token) {
+            switch (pkg->cur_token) {
                 case TK_AUTO: case TK_INT: case TK_FLOAT:
                 case TK_BOOL: case TK_STR: case TK_ARR: case TK_ID: {
-                    if (ast->cur_token == TK_ID) {
-                        if (!ast_is_class(ast)) {
-                            ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                    if (pkg->cur_token == TK_ID) {
+                        if (!ast_is_class(ast, pkg)) {
+                            ast_error(ast, "[Error] [Line:%d] type declaration expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                             return;
                         }
                     }
 
-                    lgx_ast_node_t* property_declaration = ast_node_new(ast, 1);
+                    lgx_ast_node_t* property_declaration = ast_node_new(ast, pkg, 1);
                     property_declaration->type = PROPERTY_DECLARATION;
                     property_declaration->u.modifier = modifier;
                     ast_node_append_child(block_statement, property_declaration);
 
-                    ast_parse_variable_declaration(ast, property_declaration, &modifier);
+                    ast_parse_variable_declaration(ast, pkg, property_declaration, &modifier);
                     if (ast->err_no) {
                         return;
                     }
@@ -1531,11 +1532,11 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
                     lgx_obj_add_property(f->v.obj, &n);
 
-                    if (ast->cur_token != ';') {
-                        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+                    if (pkg->cur_token != ';') {
+                        ast_error(ast, "[Error] [Line:%d] ';' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
                         return;
                     }
-                    ast_step(ast);
+                    ast_step(pkg);
                     break;
                 }
                 default:
@@ -1544,28 +1545,28 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
     }
 
-    if (ast->cur_token != '}') {
-        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '}') {
+        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
     // TODO 检查 implements
 }
 
-void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* interface_declaration = ast_node_new(ast, 128);
+void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* interface_declaration = ast_node_new(ast, pkg, 128);
     interface_declaration->type = INTERFACE_DECLARATION;
     ast_node_append_child(parent, interface_declaration);
 
-    // ast->cur_token == TK_INTERFACE
-    ast_step(ast);
+    // pkg->cur_token == TK_INTERFACE
+    ast_step(pkg);
 
-    if (ast->cur_token != TK_ID) {
-        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != TK_ID) {
+        ast_error(ast, "[Error] [Line:%d] `<identifier>` expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_parse_id_token(ast, interface_declaration);
+    ast_parse_id_token(ast, pkg, interface_declaration);
 
     // 创建接口加入作用域
     lgx_str_t s;
@@ -1580,17 +1581,17 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         f->u.c.used = 1;
         f->v.obj->is_interface = 1;
     } else {
-        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", ast->cur_line, n->tk_length, n->tk_start);
+        ast_error(ast, "[Error] [Line:%d] identifier `%.*s` has already been declared\n", pkg->cur_line, n->tk_length, n->tk_start);
         return;
     }
 
-    if (ast->cur_token != '{') {
-        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '{') {
+        ast_error(ast, "[Error] [Line:%d] '{' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 
-    lgx_ast_node_t* block_statement = ast_node_new(ast, 128);
+    lgx_ast_node_t* block_statement = ast_node_new(ast, pkg, 128);
     block_statement->type = BLOCK_STATEMENT;
     ast_node_append_child(interface_declaration, block_statement);
 
@@ -1600,29 +1601,29 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     int endloop = 0;
     while (!endloop) {
         lgx_modifier_t modifier;
-        ast_parse_modifier(ast, &modifier);
+        ast_parse_modifier(ast, pkg, &modifier);
 
         // interface 中的方法一定是 abstract 的
         modifier.is_abstract = 1;
 
-        if (ast->cur_token == TK_FUNCTION) {
+        if (pkg->cur_token == TK_FUNCTION) {
             if (modifier.is_const) {
-                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] method could not be defined as const\n", pkg->cur_line);
                 return;
             } else if (modifier.is_static) {
-                ast_error(ast, "[Error] [Line:%d] static method is not allowed in interface\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] static method is not allowed in interface\n", pkg->cur_line);
                 return;
             } else if (modifier.access != P_PUBLIC) {
-                ast_error(ast, "[Error] [Line:%d] method must be public in interface\n", ast->cur_line);
+                ast_error(ast, "[Error] [Line:%d] method must be public in interface\n", pkg->cur_line);
                 return;
             }
 
-            lgx_ast_node_t* method_declaration = ast_node_new(ast, 1);
+            lgx_ast_node_t* method_declaration = ast_node_new(ast, pkg, 1);
             method_declaration->type = METHOD_DECLARATION;
             method_declaration->u.modifier = modifier;
             ast_node_append_child(block_statement, method_declaration);
 
-            ast_parse_function_declaration(ast, method_declaration, &modifier);
+            ast_parse_function_declaration(ast, pkg, method_declaration, &modifier);
             if (ast->err_no) {
                 return;
             }
@@ -1639,14 +1640,14 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         }
     }
 
-    if (ast->cur_token != '}') {
-        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+    if (pkg->cur_token != '}') {
+        ast_error(ast, "[Error] [Line:%d] '}' expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
         return;
     }
-    ast_step(ast);
+    ast_step(pkg);
 }
 
-int ast_lex_init(lgx_ast_t* ast, char *file) {
+int ast_lex_init(lgx_ast_t *ast, lgx_lex_t* lex, char *file) {
     FILE* fp;
     fp = fopen(file, "rb");
     if (!fp) {
@@ -1654,14 +1655,22 @@ int ast_lex_init(lgx_ast_t* ast, char *file) {
         return 1;
     }
 
+    /* 读取绝对路径 */
+    char resolved_path[PATH_MAX];
+    if (realpath(file, resolved_path) == NULL) {
+        ast_error(ast, "[Error] can't get realpath of file `%s`\n", file);
+        return 1;
+    }
+    lex->file = strdup(resolved_path);
+
     /* 定位到文件末尾 */
     fseek(fp, 0L, SEEK_END);
     /* 得到文件大小 */
     int flen = ftell(fp);
 
     /* 根据文件大小动态分配内存空间 */
-    ast->lex.source = (char*)xmalloc(flen);
-    if (ast->lex.source == NULL) {
+    lex->source = (char*)xmalloc(flen);
+    if (lex->source == NULL) {
         fclose(fp);
         ast_error(ast, "[Error] malloc %d bytes failed\n", flen);
         return 1;
@@ -1670,11 +1679,11 @@ int ast_lex_init(lgx_ast_t* ast, char *file) {
     /* 定位到文件开头 */
     fseek(fp, 0L, SEEK_SET);
     /* 一次性读取全部文件内容 */
-    ast->lex.length = fread(ast->lex.source, 1, flen, fp);
+    lex->length = fread(lex->source, 1, flen, fp);
 
     fclose(fp);
 
-    if (ast->lex.length != flen) {
+    if (lex->length != flen) {
         ast_error(ast, "[Error] read file `%s` failed\n", file);
         return 1;
     }
@@ -1682,13 +1691,33 @@ int ast_lex_init(lgx_ast_t* ast, char *file) {
     return 0;
 }
 
+void lgx_ast_parse(lgx_ast_t* ast, lgx_package_t *pkg) {
+    // TODO 解析 package 语句
+    //ast_parse_package(ast);
+
+    // TODO 解析 import 语句
+    //ast_parse_import(ast);
+
+    ast_parse_statement(ast, pkg, ast->root);
+
+    switch (pkg->cur_token) {
+        case TK_EOF:
+            break;
+        default:
+            ast_error(ast, "[Error] [Line:%d] unexpected `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
+    }
+}
+
 int lgx_ast_parser(lgx_ast_t* ast, char *file) {
+    memset(&ast->imported, 0, sizeof(lgx_package_t));
+    wbt_list_init(&ast->imported.head);
+
     // 读取源文件
-    if (ast_lex_init(ast, file) != 0) {
-        return 0;
+    if (ast_lex_init(ast, &ast->imported.lex, file) != 0) {
+        return 1;
     }
 
-    ast->root = ast_node_new(ast, 128);
+    ast->root = ast_node_new(ast, &ast->imported, 128);
     ast->root->type = BLOCK_STATEMENT;
 
     // 全局作用域
@@ -1697,22 +1726,59 @@ int lgx_ast_parser(lgx_ast_t* ast, char *file) {
     // 扩展接口
     lgx_ext_load_symbols(ast->root->u.symbols);
 
-    ast_step(ast);
+    ast_step(&ast->imported);
+    lgx_ast_parse(ast, &ast->imported);
 
-    // TODO 解析 package 语句
-    //ast_parse_package(ast);
+    ast->imported.finished = 1;
 
-    // TODO 解析 import 语句
-    //ast_parse_import(ast);
+    return 0;
+}
 
-    ast_parse_statement(ast, ast->root);
-
-    switch (ast->cur_token) {
-        case TK_EOF:
-            break;
-        default:
-            ast_error(ast, "[Error] [Line:%d] unexpected `%.*s`\n", ast->cur_line, ast->cur_length, ast->cur_start);
+int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file) {
+    /* 读取绝对路径 */
+    char resolved_path[PATH_MAX];
+    if (realpath(file, resolved_path) == NULL) {
+        ast_error(ast, "[Error] [Line:%d] can't get realpath of file `%s`\n", pkg->cur_line, file);
+        return 1;
     }
+
+    // 不能 import 入口文件
+    if (strcmp(resolved_path, ast->imported.lex.file) == 0) {
+        ast_error(ast, "[Error] [Line:%d] can't import file `%s`\n", pkg->cur_line, file);
+        return 1;
+    }
+
+    lgx_package_t *package;
+    wbt_list_for_each_entry(package, lgx_package_t, &ast->imported.head, head) {
+        if (strcmp(resolved_path, package->lex.file) == 0) {
+            if (package->finished) {
+                // 已经加载过了，不需要重复加载
+                return 0;
+            } else {
+                // 循环 import 是被禁止的
+                ast_error(ast, "[Error] [Line:%d] import cycle not allowed for file `%s`\n", pkg->cur_line, file);
+                return 1;
+            }
+        }
+    }
+
+    // 新的 import package
+    lgx_package_t *import_pkg = xcalloc(1, sizeof(lgx_package_t));
+    if (import_pkg == NULL) {
+        return 1;
+    }
+    wbt_list_init(&import_pkg->head);
+
+    if (ast_lex_init(ast, &import_pkg->lex, file) != 0) {
+        return 1;
+    }
+
+    wbt_list_add_tail(&import_pkg->head, &ast->imported.head);
+
+    ast_step(import_pkg);
+    lgx_ast_parse(ast, import_pkg);
+
+    import_pkg->finished = 1;
 
     return 0;
 }

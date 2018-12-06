@@ -9,6 +9,11 @@
 #include "./compiler/compiler.h"
 
 int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s [source.x]\n", argv[0]);
+        return 1;
+    }
+
     wbt_init();
 
     lgx_lex_init();

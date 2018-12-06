@@ -4,6 +4,7 @@
 #include "tokens.h"
 
 typedef struct {
+    char *file;
     char *source;
     int length;
     int offset;
