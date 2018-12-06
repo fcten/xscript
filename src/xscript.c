@@ -8,21 +8,6 @@
 #include "./interpreter/vm.h"
 #include "./compiler/compiler.h"
 
-int read_file(const char* file, char** p) {
-    FILE* fp;
-    fp = fopen(file, "rb");  // localfile文件名
-
-    fseek(fp, 0L, SEEK_END);  /* 定位到文件末尾 */
-    int flen = ftell(fp);     /* 得到文件大小 */
-    *p = (char*)xmalloc(flen); /* 根据文件大小动态分配内存空间 */
-    if (*p == NULL) {
-        fclose(fp);
-        return 0;
-    }
-    fseek(fp, 0L, SEEK_SET);       /* 定位到文件开头 */
-    return fread(*p, 1, flen, fp); /* 一次性读取全部文件内容 */
-}
-
 int main(int argc, char* argv[]) {
     wbt_init();
 
@@ -30,10 +15,7 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_t ast;
     lgx_ast_init(&ast);
-    ast.lex.length = read_file(argv[1], &ast.lex.source);
-    //ast.lex.length = read_file("./test.x", &ast.lex.source);
-
-    lgx_ast_parser(&ast);
+    lgx_ast_parser(&ast, argv[1]);
     if (ast.err_no) {
         printf("%.*s\n", ast.err_len, ast.err_info);
         return 1;

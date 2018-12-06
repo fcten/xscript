@@ -1646,7 +1646,48 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     ast_step(ast);
 }
 
-int lgx_ast_parser(lgx_ast_t* ast) {
+int ast_lex_init(lgx_ast_t* ast, char *file) {
+    FILE* fp;
+    fp = fopen(file, "rb");
+    if (!fp) {
+        ast_error(ast, "[Error] can't open file `%s`\n", file);
+        return 1;
+    }
+
+    /* 定位到文件末尾 */
+    fseek(fp, 0L, SEEK_END);
+    /* 得到文件大小 */
+    int flen = ftell(fp);
+
+    /* 根据文件大小动态分配内存空间 */
+    ast->lex.source = (char*)xmalloc(flen);
+    if (ast->lex.source == NULL) {
+        fclose(fp);
+        ast_error(ast, "[Error] malloc %d bytes failed\n", flen);
+        return 1;
+    }
+
+    /* 定位到文件开头 */
+    fseek(fp, 0L, SEEK_SET);
+    /* 一次性读取全部文件内容 */
+    ast->lex.length = fread(ast->lex.source, 1, flen, fp);
+
+    fclose(fp);
+
+    if (ast->lex.length != flen) {
+        ast_error(ast, "[Error] read file `%s` failed\n", file);
+        return 1;
+    }
+
+    return 0;
+}
+
+int lgx_ast_parser(lgx_ast_t* ast, char *file) {
+    // 读取源文件
+    if (ast_lex_init(ast, file) != 0) {
+        return 0;
+    }
+
     ast->root = ast_node_new(ast, 128);
     ast->root->type = BLOCK_STATEMENT;
 

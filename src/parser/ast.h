@@ -103,7 +103,17 @@ typedef struct lgx_ast_node_token_s {
     int tk_length;
 } lgx_ast_node_token_t;
 
+typedef struct {
+    wbt_list_t head;
+    lgx_lex_t lex;
+    int cur_token;
+    char* cur_start;
+    int cur_length;
+    int cur_line;
+} lgx_package_t;
+
 typedef struct lgx_ast {
+    // 入口文件
     lgx_lex_t lex;
 
     int cur_token;
@@ -111,15 +121,22 @@ typedef struct lgx_ast {
     int cur_length;
     int cur_line;
     
+    // package
+    wbt_list_t imported;
+
+    // ast
     lgx_ast_node_t* root;
 
+    // 错误信息
     int err_no;
     char *err_info;
     int err_len;
 } lgx_ast_t;
 
 int lgx_ast_init(lgx_ast_t* ast);
-int lgx_ast_parser(lgx_ast_t* ast);
+int lgx_ast_parser(lgx_ast_t* ast, char *file);
+int lgx_ast_import(lgx_ast_t* ast, char *file);
+
 int lgx_ast_optimizer(lgx_ast_t* ast);
 int lgx_ast_cleanup(lgx_ast_t* ast);
 void lgx_ast_print(lgx_ast_node_t* node, int indent);
