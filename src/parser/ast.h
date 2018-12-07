@@ -131,7 +131,7 @@ typedef struct lgx_ast {
 
 int lgx_ast_init(lgx_ast_t* ast);
 int lgx_ast_parser(lgx_ast_t* ast, char *file);
-int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file);
+int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, char *file);
 
 int lgx_ast_optimizer(lgx_ast_t* ast);
 int lgx_ast_cleanup(lgx_ast_t* ast);

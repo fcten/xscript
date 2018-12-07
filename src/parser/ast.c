@@ -1083,6 +1083,24 @@ void ast_parse_modifier(lgx_ast_t* ast, lgx_package_t *pkg, lgx_modifier_t *modi
     }
 }
 
+void ast_parse_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    // pkg->cur_token == TK_IMPORT
+    ast_step(pkg);
+
+    if (pkg->cur_token == TK_STRING) {
+        char path[PATH_MAX];
+        memcpy(path, pkg->cur_start + 1, pkg->cur_length - 2);
+        path[pkg->cur_length - 2] = '\0';
+
+        lgx_ast_import(ast, pkg, parent, path);
+
+        ast_step(pkg);
+    } else {
+        ast_error(ast, "[Error] [Line:%d] string expected before `%.*s`\n", pkg->cur_line, pkg->cur_length, pkg->cur_start);
+        return;
+    }
+}
+
 void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     while(1) {
         switch (pkg->cur_token) {
@@ -1183,6 +1201,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
             case TK_INTERFACE:
                 ast_parse_interface_declaration(ast, pkg, parent);
                 continue;
+            case TK_IMPORT:
+                ast_parse_import(ast, pkg, parent);
+                break;
             default:
                 ast_parse_expression_statement(ast, pkg, parent);
         }
@@ -1691,14 +1712,11 @@ int ast_lex_init(lgx_ast_t *ast, lgx_lex_t* lex, char *file) {
     return 0;
 }
 
-void lgx_ast_parse(lgx_ast_t* ast, lgx_package_t *pkg) {
+void lgx_ast_parse(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     // TODO 解析 package 语句
     //ast_parse_package(ast);
 
-    // TODO 解析 import 语句
-    //ast_parse_import(ast);
-
-    ast_parse_statement(ast, pkg, ast->root);
+    ast_parse_statement(ast, pkg, parent);
 
     switch (pkg->cur_token) {
         case TK_EOF:
@@ -1727,14 +1745,14 @@ int lgx_ast_parser(lgx_ast_t* ast, char *file) {
     lgx_ext_load_symbols(ast->root->u.symbols);
 
     ast_step(&ast->imported);
-    lgx_ast_parse(ast, &ast->imported);
+    lgx_ast_parse(ast, &ast->imported, ast->root);
 
     ast->imported.finished = 1;
 
     return 0;
 }
 
-int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file) {
+int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, char *file) {
     /* 读取绝对路径 */
     char resolved_path[PATH_MAX];
     if (realpath(file, resolved_path) == NULL) {
@@ -1753,6 +1771,7 @@ int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file) {
         if (strcmp(resolved_path, package->lex.file) == 0) {
             if (package->finished) {
                 // 已经加载过了，不需要重复加载
+                wbt_debug("file `%s` already imported", resolved_path);
                 return 0;
             } else {
                 // 循环 import 是被禁止的
@@ -1761,6 +1780,8 @@ int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file) {
             }
         }
     }
+
+    wbt_debug("import file `%s`", resolved_path);
 
     // 新的 import package
     lgx_package_t *import_pkg = xcalloc(1, sizeof(lgx_package_t));
@@ -1776,7 +1797,7 @@ int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, char *file) {
     wbt_list_add_tail(&import_pkg->head, &ast->imported.head);
 
     ast_step(import_pkg);
-    lgx_ast_parse(ast, import_pkg);
+    lgx_ast_parse(ast, import_pkg, parent);
 
     import_pkg->finished = 1;
 
