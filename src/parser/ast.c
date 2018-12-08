@@ -187,21 +187,27 @@ void ast_error(lgx_ast_t* ast, lgx_package_t* pkg, const char *fmt, ...) {
         return;
     }
 
-    char *file;
+    char *file = NULL;
 
+    if (pkg->lex.file) {
     #ifndef WIN32
         file = strrchr (pkg->lex.file, '/');
     #else
         file = strrchr (pkg->lex.file, '\\');
     #endif
-
-    if (file == NULL) {
-        file = pkg->lex.file;
-    } else {
-        file += 1;
     }
 
-    ast->err_len = snprintf(ast->err_info, 256, "[ERROR] [%s:%d] ", file, pkg->cur_line + 1);
+    if (file) {
+        file += 1;
+    } else {
+        file = pkg->lex.file;
+    }
+
+    if (file) {
+        ast->err_len = snprintf(ast->err_info, 256, "[ERROR] [%s:%d] ", file, pkg->cur_line + 1);
+    } else {
+        ast->err_len = snprintf(ast->err_info, 256, "[ERROR] ");
+    }
 
     va_start(args, fmt);
     ast->err_len += vsnprintf(ast->err_info + ast->err_len, 256 - ast->err_len, fmt, args);
