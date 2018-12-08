@@ -1123,6 +1123,13 @@ void ast_parse_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent
     }
 }
 
+void ast_parse_package(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
+    // pkg->cur_token == TK_PACKAGE
+    ast_step(pkg);
+
+    // TODO
+}
+
 void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     while(1) {
         switch (pkg->cur_token) {
@@ -1225,6 +1232,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
                 continue;
             case TK_IMPORT:
                 ast_parse_import(ast, pkg, parent);
+                break;
+            case TK_PACKAGE:
+                ast_parse_package(ast, pkg, parent);
                 break;
             default:
                 ast_parse_expression_statement(ast, pkg, parent);

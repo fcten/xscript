@@ -88,6 +88,7 @@ enum {
 
     TK_IMPORT,
     TK_EXPORT,
+    TK_PACKAGE,
 
     TK_ECHO,
 
