@@ -1549,6 +1549,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
             n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
             n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
 
+            // TODO 检查继承关系
             lgx_obj_add_method(f->v.obj, &n);
         } else {
             if (modifier.is_async) {
@@ -1585,6 +1586,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
                     n.v.type = v->type;
                     ast_init_value(&n.v);
 
+                    // TODO 检查继承关系
                     lgx_obj_add_property(f->v.obj, &n);
 
                     if (pkg->cur_token != ';') {

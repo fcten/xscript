@@ -538,9 +538,7 @@ static void* worker(void *args) {
     return NULL;
 }
 
-static int server_listen(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
+static int server_listen(lgx_vm_t *vm) {
     unsigned base = vm->regs[0].v.fun->stack_size;
 
     lgx_val_t *obj = &vm->regs[base+4];
@@ -581,15 +579,11 @@ static int server_listen(void *p) {
     return 0;
 }
 
-static int server_on_request(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
+static int server_on_request(lgx_vm_t *vm) {
     return lgx_co_return_undefined(vm->co_running);
 }
 
-static int server_start(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
+static int server_start(lgx_vm_t *vm) {
     unsigned base = vm->regs[0].v.fun->stack_size;
 
     lgx_val_t *obj = &vm->regs[base+4];
@@ -661,8 +655,19 @@ static int server_start(void *p) {
 
     return 0;
 }
+/*
+LGX_METHOD(Server, listen) {
 
+}
+
+LGX_CLASS(Server) {
+    LGX_PROPERTY_INIT(fd, LONG, PROTECTED, DYNAMIC);
+    LGX_METHOD_INIT(listen, BOOL, PUBLIC, DYNAMIC);
+}
+*/
 static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
+    //LGX_CLASS_INIT(Server, NULL);
+
     lgx_str_t name;
     name.buffer = "Server";
     name.length = sizeof("Server")-1;
@@ -698,10 +703,9 @@ static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
     symbol_on_request.k.type = T_STRING;
     symbol_on_request.k.v.str = lgx_str_new_ref("onRequest", sizeof("onRequest")-1);
     symbol_on_request.v.type = T_FUNCTION;
-    symbol_on_request.v.v.fun = lgx_fun_new(2);
+    symbol_on_request.v.v.fun = lgx_fun_new(1);
     symbol_on_request.v.v.fun->buildin = server_on_request;
-    symbol_on_request.v.v.fun->args[0].type = T_OBJECT; // TODO 编译时需要能够检查函数原型
-    symbol_on_request.v.v.fun->args[1].type = T_STRING;
+    symbol_on_request.v.v.fun->args[0].type = T_STRING; // TODO 编译时需要能够检查函数原型
 
     if (lgx_obj_add_method(symbol.v.obj, &symbol_on_request)) {
         return 1;

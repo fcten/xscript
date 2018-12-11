@@ -2,31 +2,9 @@
 #include "../common/fun.h"
 #include "std_coroutine.h"
 
-int std_co_create(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
-    unsigned base = vm->regs[0].v.fun->stack_size;
-    lgx_fun_t *fun = vm->regs[base+4].v.fun;
-    long long l = vm->regs[base+5].v.l;
-
-    lgx_co_t *co = lgx_co_create(vm, fun);
-    if (!co) {
-        return lgx_co_return_false(vm->co_running);
-    }
-
-    // 写入参数
-    co->stack.buf[4].type = T_LONG;
-    co->stack.buf[4].v.l = l;
-
+LGX_FUNCTION(co_yield) {
     // 在协程切换前写入返回值
-    return lgx_co_return_true(vm->co_running);
-}
-
-int std_co_yield(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
-    // 在协程切换前写入返回值
-    lgx_co_return_true(vm->co_running);
+    LGX_RETURN_TRUE();
 
     return lgx_co_yield(vm);
 }
@@ -47,9 +25,7 @@ static wbt_status timer_wakeup(wbt_timer_t *timer) {
 
 extern time_t wbt_cur_mtime;
 
-int std_co_sleep(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
+int std_co_sleep(lgx_vm_t *vm) {
     unsigned base = vm->regs[0].v.fun->stack_size;
     long long sleep = vm->regs[base+4].v.l;
 
@@ -73,33 +49,15 @@ int std_co_sleep(void *p) {
 
         return lgx_co_suspend(vm);
     } else {
-        return std_co_yield(p);
+        LGX_RETURN_TRUE();
+        return lgx_co_yield(vm);
     }
 }
 
 int std_coroutine_load_symbols(lgx_hash_t *hash) {
+    LGX_FUNCTION_INIT(co_yield);
+
     lgx_val_t symbol;
-
-    // TODO co_create 支持变长参数
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(2);
-    symbol.v.fun->buildin = std_co_create;
-
-    symbol.v.fun->args[0].type = T_FUNCTION;
-    symbol.v.fun->args[1].type = T_LONG;
-
-    if (lgx_ext_add_symbol(hash, "co_create", &symbol)) {
-        return 1;
-    }
-
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(0);
-    symbol.v.fun->buildin = std_co_yield;
-
-    if (lgx_ext_add_symbol(hash, "co_yield", &symbol)) {
-        return 1;
-    }
-
     symbol.type = T_FUNCTION;
     symbol.v.fun = lgx_fun_new(1);
     symbol.v.fun->buildin = std_co_sleep;

@@ -304,8 +304,7 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
     return on_close(ev);
 }
 
-static int client_get(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
+static int client_get(lgx_vm_t *vm) {
     lgx_co_t *co = vm->co_running;
 
     unsigned base = vm->regs[0].v.fun->stack_size;

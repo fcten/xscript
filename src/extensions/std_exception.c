@@ -2,18 +2,12 @@
 #include "../common/obj.h"
 #include "std_exception.h"
 
+LGX_CLASS(Exception) {
+    return 0;
+}
+
 int std_exception_load_symbols(lgx_hash_t *hash) {
-    lgx_str_t name;
-    name.buffer = "Exception";
-    name.length = sizeof("Exception")-1;
-
-    lgx_val_t symbol;
-    symbol.type = T_OBJECT;
-    symbol.v.obj = lgx_obj_create(&name);
-
-    if (lgx_ext_add_symbol(hash, symbol.v.obj->name->buffer, &symbol)) {
-        return 1;
-    }
+    LGX_CLASS_INIT(Exception);
 
     return 0;
 }

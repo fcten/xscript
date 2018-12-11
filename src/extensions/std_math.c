@@ -5,25 +5,16 @@
 #include "../common/fun.h"
 #include "std_math.h"
 
-int std_rand(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
-    return lgx_co_return_long(vm->co_running, rand());
+LGX_FUNCTION(rand) {
+    LGX_RETURN_LONG(rand());
+    return 0;
 }
 
 int std_math_load_symbols(lgx_hash_t *hash) {
     // 初始化随机数种子
     srand((unsigned)time(NULL));
 
-    lgx_val_t symbol;
-
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(0);
-    symbol.v.fun->buildin = std_rand;
-
-    if (lgx_ext_add_symbol(hash, "rand", &symbol)) {
-        return 1;
-    }
+    LGX_FUNCTION_INIT(rand);
 
     return 0;
 }

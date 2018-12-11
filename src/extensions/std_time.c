@@ -4,22 +4,13 @@
 #include "../common/fun.h"
 #include "std_time.h"
 
-int std_time(void *p) {
-    lgx_vm_t *vm = (lgx_vm_t *)p;
-
-    return lgx_co_return_long(vm->co_running, time(NULL));
+LGX_FUNCTION(time) {
+    LGX_RETURN_LONG(time(NULL));
+    return 0;
 }
 
 int std_time_load_symbols(lgx_hash_t *hash) {
-    lgx_val_t symbol;
-
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(0);
-    symbol.v.fun->buildin = std_time;
-
-    if (lgx_ext_add_symbol(hash, "time", &symbol)) {
-        return 1;
-    }
+    LGX_FUNCTION_INIT(time);
 
     return 0;
 }

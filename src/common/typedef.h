@@ -123,6 +123,8 @@ struct lgx_str_s {
     char *buffer;
 };
 
+struct lgx_vm_s;
+
 struct lgx_fun_s {
     // GC 信息
     lgx_gc_t gc;
@@ -137,7 +139,7 @@ struct lgx_fun_s {
     // 结束地址（必然为 RET undefined 语句）
     unsigned end;
     // 内建函数指针
-    int (*buildin)(void *vm);
+    int (*buildin)(struct lgx_vm_s *vm);
     // 返回值
     lgx_val_t ret;
     // 参数列表
