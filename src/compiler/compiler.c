@@ -15,15 +15,37 @@
 #define check_type(v, t)     ( check_constant(v, t) || check_variable(v, t) )
 #define is_auto(v)           (  is_register((v)) && (v)->type == T_UNDEFINED )
 
-void bc_error(lgx_bc_t *bc, const char *fmt, ...) {
+void bc_error(lgx_bc_t *bc, lgx_ast_node_t *node, const char *fmt, ...) {
     va_list   args;
 
     if (bc->err_no) {
         return;
     }
 
+    char *file = NULL;
+
+    if (node->file) {
+    #ifndef WIN32
+        file = strrchr (node->file, '/');
+    #else
+        file = strrchr (node->file, '\\');
+    #endif
+    }
+
+    if (file) {
+        file += 1;
+    } else {
+        file = node->file;
+    }
+
+    if (file) {
+        bc->err_len = snprintf(bc->err_info, 256, "[ERROR] [%s:%d] ", file, node->line + 1);
+    } else {
+        bc->err_len = snprintf(bc->err_info, 256, "[ERROR] ");
+    }
+
     va_start(args, fmt);
-    bc->err_len = vsnprintf(bc->err_info, 256, fmt, args);
+    bc->err_len += vsnprintf(bc->err_info + bc->err_len, 256 - bc->err_len, fmt, args);
     va_end(args);
     
     bc->err_no = 1;
@@ -68,7 +90,7 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
         return 0;
     }
 
-    bc_error(bc, "[Error] [Line:%d] `%.*s` is not defined\n", node->line, s.length, s.buffer);
+    bc_error(bc, node, "`%.*s` is not defined\n", s.length, s.buffer);
     return 1;
 }
 
@@ -152,7 +174,7 @@ static int bc_this(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     while (parent->type != CLASS_DECLARATION) {
         parent = parent->parent;
         if (!parent) {
-            bc_error(bc, "[Error] [Line:%d] Invalid using `this` outside of classes\n", node->line);
+            bc_error(bc, node, "Invalid using `this` outside of classes\n");
             return 1;
         }
     }
@@ -182,7 +204,7 @@ static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_v
         case TK_TYPEOF: bc_typeof(bc, e, e1); break;
         case TK_AWAIT: bc_await(bc, e, e1); break;
         default:
-            bc_error(bc, "[Error] [Line:%d] unknown unary operation\n", node->line);
+            bc_error(bc, node, "unknown unary operation\n");
             return 1;
     }
 
@@ -223,7 +245,7 @@ static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
             break;
         default:
             // error
-            bc_error(bc, "[Error] [Line:%d] unknown binary operation\n", node->line);
+            bc_error(bc, node, "unknown binary operation\n");
             return 1;
     }
 
@@ -251,11 +273,11 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
     } else if (node->type == BREAK_STATEMENT) {
         loop = jmp_find_loop_or_switch(node);
     } else {
-        bc_error(bc, "[Error] [Line:%d] break or continue statement expected\n", node->line);
+        bc_error(bc, node, "break or continue statement expected\n");
         return 1;
     }
     if (!loop) {
-        bc_error(bc, "[Error] [Line:%d] illegal break or continue statement\n", node->line);
+        bc_error(bc, node, "illegal break or continue statement\n");
         return 1;
     }
 
@@ -266,7 +288,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
             wbt_list_init(&loop->u.jmps->head);
             loop->u.jmps->node = NULL;
         } else {
-            bc_error(bc, "[Error] [Line:%d] out of memory\n", node->line);
+            bc_error(bc, node, "out of memory\n");
             return 1;
         }
     }
@@ -279,7 +301,7 @@ static int jmp_add(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
         return 0;
     } else {
-        bc_error(bc, "[Error] [Line:%d] out of memory\n", node->line);
+        bc_error(bc, node, "out of memory\n");
         return 1;
     }
 }
@@ -289,7 +311,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
         node->type != WHILE_STATEMENT && 
         node->type != DO_WHILE_STATEMENT &&
         node->type != SWITCH_STATEMENT) {
-        bc_error(bc, "[Error] [Line:%d] switch or loop statement expected\n", node->line);
+        bc_error(bc, node, "switch or loop statement expected\n");
         return 1;
     }
 
@@ -305,7 +327,7 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
             bc_set_pe(bc, n->node->u.pos, start);
         } else {
             // error
-            bc_error(bc, "[Error] [Line:%d] break or continue statement expected\n", n->node->line);
+            bc_error(bc, node, "break or continue statement expected\n");
             return 1;
         }
     }
@@ -365,7 +387,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
             *e = e2;
             return 0;
         } else {
-            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e2));
             return 1;
         }
     } else if (check_variable(&e1, T_BOOL)) {
@@ -386,7 +408,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
-            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e2));
             return 1;
         }
 
@@ -405,7 +427,7 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
 
         return 0;
     } else {
-        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 }
@@ -439,7 +461,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
             *e = e2;
             return 0;
         } else {
-            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e2));
             return 1;
         }
     } else if (check_variable(&e1, T_BOOL)) {
@@ -471,7 +493,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
         } else if (check_variable(&e2, T_BOOL)) {
             bc_mov(bc, e, &e2);
         } else {
-            bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e2));
             return 1;
         }
 
@@ -479,7 +501,7 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
 
         return 0;
     } else {
-        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 }
@@ -499,7 +521,7 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     if (node->u.op == TK_EQ) {
         if (!is_auto(&e1) && !check_type(&e2, e1.type)) {
-            bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&e1), lgx_val_typeof(&e2));
             return 1;
         }
     } else if (node->u.op == '+') {
@@ -507,21 +529,21 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
             // OK
         } else {
             if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
-                bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+                bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e1));
                 return 1;
             }
             if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
-                bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+                bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e2));
                 return 1;
             }
         }
     } else {
         if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
-            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e1));
             return 1;
         }
         if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
-            bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+            bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e2));
             return 1;
         }
     }
@@ -556,7 +578,7 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
     }
 
     if (!check_type(&e1, T_LONG)) {
-        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes integer from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -565,7 +587,7 @@ static int bc_expr_binary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t 
     }
 
     if (!check_type(&e2, T_LONG)) {
-        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e2));
+        bc_error(bc, node, "makes integer from %s without a cast\n", lgx_val_typeof(&e2));
         return 1;
     }
 
@@ -609,7 +631,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                     e2 = tmp;
                     // TODO 变量类型转换
                 } else {
-                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&e1), lgx_val_typeof(&e2));
+                    bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&e1), lgx_val_typeof(&e2));
                     return 1;
                 }
             } else {
@@ -617,8 +639,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                     if (lgx_obj_is_same_class(e1.v.obj, e2.v.obj)) {
                         lgx_str_t *n1 = lgx_obj_get_name(e1.v.obj);
                         lgx_str_t *n2 = lgx_obj_get_name(e2.v.obj);
-                        bc_error(bc, "[Error] [Line:%d] makes %s<%.*s> from %s<%.*s> without a cast\n",
-                            node->line,
+                        bc_error(bc, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
                             lgx_val_typeof(&e1),
                             n1->length, n1->buffer,
                             lgx_val_typeof(&e2),
@@ -651,7 +672,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         }
 
         if (!check_type(&e1, T_ARRAY)) {
-            bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            bc_error(bc, node, "makes array from %s without a cast\n", lgx_val_typeof(&e1));
             return 1;
         }
 
@@ -661,7 +682,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             }
 
             if (!check_type(&e2, T_LONG) && !check_type(&e2, T_STRING)) {
-                bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
+                bc_error(bc, node, "attempt to index a %s key, integer or string expected\n", lgx_val_typeof(&e2));
                 return 1;
             }
 
@@ -697,7 +718,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         }
 
         if (!check_type(&e1, T_OBJECT)) {
-            bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            bc_error(bc, node, "makes object from %s without a cast\n", lgx_val_typeof(&e1));
             return 1;
         }
 
@@ -711,7 +732,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         // 判断类型
         lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
         if (!v || v->type == T_FUNCTION) {
-            bc_error(bc, "[Error] [Line:%d] property `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
+            bc_error(bc, node, "property `%.*s` not exists\n", e2.v.str->length, e2.v.str->buffer);
             return 1;
         }
 
@@ -721,7 +742,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 
         bc_object_set(bc, &e1, &e2, &e3);
     } else {
-        bc_error(bc, "[Error] [Line:%d] invalid left variable for assignment\n", node->line);
+        bc_error(bc, node, "invalid left variable for assignment\n");
         return 1;
     }
 
@@ -739,7 +760,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         }
 
         if (!check_type(&obj, T_OBJECT)) {
-            bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+            bc_error(bc, node, "makes object from %s without a cast\n", lgx_val_typeof(&e1));
             return 1;
         }
 
@@ -755,7 +776,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         // 判断类型
         lgx_val_t *v = lgx_obj_get(obj.v.obj, &e2);
         if (!v) {
-            bc_error(bc, "[Error] [Line:%d] property or method `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
+            bc_error(bc, node, "property or method `%.*s` not exists\n", e2.v.str->length, e2.v.str->buffer);
             return 1;
         }
         e1 = *v;
@@ -770,7 +791,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     }
 
     if (!check_type(&e1, T_FUNCTION) || !e1.v.fun) {
-        bc_error(bc, "[Error] [Line:%d] makes function from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes function from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -778,7 +799,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     // 实参数量必须小于等于形参
     if (node->child[1]->children > fun->args_num) {
-        bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "arguments length mismatch\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -803,7 +824,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
             if (fun->args[i].type != T_UNDEFINED &&
                 expr[i].type != T_UNDEFINED &&
                 fun->args[i].type != expr[i].type) {
-                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->child[1]->line, lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
+                bc_error(bc, node->child[1], "makes %s from %s without a cast\n", lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
                 return 1;
             }
 
@@ -811,7 +832,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
             reg_free(bc, &expr[i]);
         } else {
             if (!fun->args[i].u.c.init) {
-                bc_error(bc, "[Error] [Line:%d] arguments length mismatch\n", node->line);
+                bc_error(bc, node, "arguments length mismatch\n");
                 return 1;
             }
         }
@@ -840,12 +861,12 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
     }
 
     if (!check_type(&e1, T_ARRAY)) {
-        bc_error(bc, "[Error] [Line:%d] makes array from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes array from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
     if (!node->child[1]) {
-        bc_error(bc, "[Error] [Line:%d] index can not be empty\n", node->line);
+        bc_error(bc, node, "index can not be empty\n");
         return 1;
     }
 
@@ -854,7 +875,7 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
     }
 
     if (!check_type(&e2, T_LONG) && !!check_type(&e1, T_STRING)) {
-        bc_error(bc, "[Error] [Line:%d] attempt to index a %s key, integer or string expected\n", node->line, lgx_val_typeof(&e2));
+        bc_error(bc, node, "attempt to index a %s key, integer or string expected\n", lgx_val_typeof(&e2));
         return 1;
     }
 
@@ -885,7 +906,7 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     }
 
     if (!check_type(&e1, T_OBJECT)) {
-        bc_error(bc, "[Error] [Line:%d] makes object from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes object from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -902,7 +923,7 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     // 判断类型
     lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
     if (!v) {
-        bc_error(bc, "[Error] [Line:%d] property or method `%.*s` not exists\n", node->line, e2.v.str->length, e2.v.str->buffer);
+        bc_error(bc, node, "property or method `%.*s` not exists\n", e2.v.str->length, e2.v.str->buffer);
         return 1;
     }
 
@@ -947,13 +968,13 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
     } else {
-        bc_error(bc, "[Error] [Line:%d] invalid expression for `new` operator\n", node->line);
+        bc_error(bc, node, "invalid expression for `new` operator\n");
         return 1;
     }
 
     lgx_val_t *v = lgx_scope_global_val_get(node, &s);
     if (!v || v->type != T_OBJECT) {
-        bc_error(bc, "[Error] [Line:%d] `%.*s` is not a class\n", node->line, s.length, s.buffer);
+        bc_error(bc, node, "`%.*s` is not a class\n", s.length, s.buffer);
         return 1;
     }
 
@@ -976,7 +997,7 @@ static int bc_expr_unary_logic(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     }
 
     if (!check_type(&e1, T_BOOL)) {
-        bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -1002,7 +1023,7 @@ static int bc_expr_unary_bitwise(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *
     }
 
     if (!check_type(&e1, T_LONG)) {
-        bc_error(bc, "[Error] [Line:%d] makes integer from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes integer from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -1028,7 +1049,7 @@ static int bc_expr_unary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     }
 
     if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
-        bc_error(bc, "[Error] [Line:%d] makes number from %s without a cast\n", node->line, lgx_val_typeof(&e1));
+        bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e1));
         return 1;
     }
 
@@ -1148,7 +1169,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     // TODO
                     break;
                 default:
-                    bc_error(bc, "[Error] [Line:%d] unknown operator `%c`\n", node->line, node->u.op);
+                    bc_error(bc, node, "unknown operator `%c`\n", node->u.op);
                     return 1;
             }
             break;
@@ -1186,13 +1207,13 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 default:
-                    bc_error(bc, "[Error] [Line:%d] unknown operator `%c`\n", node->line, node->u.op);
+                    bc_error(bc, node, "unknown operator `%c`\n", node->u.op);
                     return 1;
             }
             break;
         }
         default:
-            bc_error(bc, "[Error] [Line:%d] expression expected, ast-node type: %d\n", node->line, node->type);
+            bc_error(bc, node, "expression expected, ast-node type: %d\n", node->type);
             return 1;
     }
 
@@ -1230,13 +1251,13 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         lgx_val_t expr;
                         bc_expr(bc, n->child[1], &expr);
                         if (is_register(&expr)) {
-                            bc_error(bc, "[Error] [Line:%d] only constant expression allowed in parameter declaration", n->line);
+                            bc_error(bc, n, "only constant expression allowed in parameter declaration");
                             return 1;
                         }
                         if (e->v.fun->args[i].type != T_UNDEFINED &&
                             expr.type != T_UNDEFINED &&
                             e->v.fun->args[i].type != expr.type) {
-                            bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", n->line, lgx_val_typeof(&e->v.fun->args[i]), lgx_val_typeof(&expr));
+                            bc_error(bc, n, "makes %s from %s without a cast\n", lgx_val_typeof(&e->v.fun->args[i]), lgx_val_typeof(&expr));
                             return 1;
                         }
                         
@@ -1277,7 +1298,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             while (next) {
                 // 检查未使用的变量
                 if (!next->v.u.c.used) {
-                    bc_error(bc, "[Error] [Line:%d] unused variable `%.*s`\n", node->line, next->k.v.str->length, next->k.v.str->buffer);
+                    bc_error(bc, node, "unused variable `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
                     return 1;
                 }
                 if (next->v.type != T_FUNCTION) { // TODO CLASS 不需要分配寄存器
@@ -1313,7 +1334,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
-                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e));
                 return 1;
             }
             break;
@@ -1354,7 +1375,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pe(bc, pos2, bc->bc_top);
             } else {
-                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e));
                 return 1;
             }
             break;
@@ -1389,7 +1410,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     bc_test(bc, &e, 0);
                     reg_free(bc, &e);
                 } else {
-                    bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                    bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e));
                     return 1;
                 }
             }
@@ -1451,7 +1472,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 // 更新条件跳转
                 bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
-                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e));
                 return 1;
             }
 
@@ -1486,7 +1507,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 bc_set_pd(bc, pos, bc->bc_top - pos - 1);
             } else {
-                bc_error(bc, "[Error] [Line:%d] makes boolean from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                bc_error(bc, node, "makes boolean from %s without a cast\n", lgx_val_typeof(&e));
                 return 1;
             }
 
@@ -1520,7 +1541,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             if (!check_type(&e, T_LONG) && check_type(&e, T_STRING)) {
-                bc_error(bc, "[Error] [Line:%d] makes integer or string from %s without a cast\n", node->line, lgx_val_typeof(&e));
+                bc_error(bc, node, "makes integer or string from %s without a cast\n", lgx_val_typeof(&e));
                 return 1;
             }
 
@@ -1544,12 +1565,12 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         }
 
                         if (!check_constant(&case_node.k, T_LONG) && !check_constant(&case_node.k, T_STRING)) {
-                            bc_error(bc, "[Error] [Line:%d] only constant expression allowed in case label", child->line);
+                            bc_error(bc, child, "only constant expression allowed in case label");
                             return 1;
                         }
 
                         if (lgx_hash_get(condition.v.arr, &case_node.k)) {
-                            bc_error(bc, "[Error] [Line:%d] duplicate case value", child->line);
+                            bc_error(bc, child, "duplicate case value");
                             return 1;
                         }
 
@@ -1669,7 +1690,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     block->e = lgx_scope_local_val_get(n->child[1], &s);
                     assert(block->e);
                 } else {
-                    bc_error(bc, "[Error] [Line:%d] finally block is not supported\n", n->line);
+                    bc_error(bc, n, "finally block is not supported\n");
                     return 1;
                 }
             }
@@ -1738,14 +1759,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
 
                 if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
-                    bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(&ret), lgx_val_typeof(&r));
+                    bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&ret), lgx_val_typeof(&r));
                     return 1;
                 }
             } else {
                 if (ret.type == T_UNDEFINED) {
                     r.u.c.type = R_LOCAL;
                 } else {
-                    bc_error(bc, "[Error] [Line:%d] makes %s from undefined without a cast\n", node->line, lgx_val_typeof(&ret));
+                    bc_error(bc, node, "makes %s from undefined without a cast\n", lgx_val_typeof(&ret));
                     return 1;
                 }
             }
@@ -1859,7 +1880,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             if (is_register(&v)) {
-                bc_error(bc, "[Error] [Line:%d] only constant expression allowed in property declaration", node->line);
+                bc_error(bc, node, "only constant expression allowed in property declaration");
                 return 1;
             }
 
@@ -1886,7 +1907,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_val_t *val = lgx_obj_get(o->v.obj, &k);
 
             if (!check_type(&v, val->type)) {
-                bc_error(bc, "[Error] [Line:%d] makes %s from %s without a cast\n", node->line, lgx_val_typeof(val), lgx_val_typeof(&v));
+                bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(val), lgx_val_typeof(&v));
                 return 1;
             }
 
@@ -1895,7 +1916,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         default:
-            bc_error(bc, "[Error] [Line:%d] unknown ast-node type\n", node->line);
+            bc_error(bc, node, "unknown ast-node type\n");
             return 1;
     }
 
@@ -1921,7 +1942,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     wbt_rb_init(bc->exception, WBT_RB_KEY_LONGLONG);
 
     if (bc_stat(bc, ast->root)) {
-        bc_error(bc, "[Error] unknown error\n");
+        bc_error(bc, ast->root, "[Error] unknown error\n");
         return 1;
     }
 

@@ -29,6 +29,7 @@ lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_package_t *pkg, int n) {
     node->children = 0;
     node->size = n;
 
+    node->file = pkg->lex.file;
     node->line = pkg->cur_line;
 
     return node;
@@ -40,6 +41,7 @@ lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast, lgx_package_t *pkg) {
     node->tk_start = pkg->cur_start;
     node->tk_length = pkg->cur_length;
 
+    node->file = pkg->lex.file;
     node->line = pkg->cur_line;
     
     return node;

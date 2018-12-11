@@ -61,7 +61,9 @@ typedef struct lgx_ast_node_s {
     unsigned short type;
     struct lgx_ast_node_s* parent;
 
-    unsigned line; // 当前节点对应的代码位置
+    // 当前节点对应的代码位置
+    char *file;
+    unsigned line;
 
     union {
         // 当节点类型为 BLOCK 时，用于保存符号表
@@ -97,7 +99,9 @@ typedef struct lgx_ast_node_token_s {
     unsigned short type;
     struct lgx_ast_node_s* parent;
 
-    unsigned line; // 当前节点对应的代码位置
+    // 当前节点对应的代码位置
+    char *file;
+    unsigned line;
 
     char* tk_start;
     int tk_length;
