@@ -214,16 +214,22 @@ wbt_status wbt_http_parse_request_body(wbt_http_request_t *req) {
     }
 }
 
-wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
+wbt_status wbt_http_parse_request_line(wbt_http_request_t *req) {
     while (req->recv.offset < req->recv.length) {
         char ch = req->recv.buf[req->recv.offset];
 
         switch (req->state) {
-            case 0: { // 解析 method
+            case STATE_PARSE_REQUEST_LINE_START: {
+                req->method_str.start = req->recv.offset;
+                req->state = STATE_PARSE_REQUEST_LINE_METHOD;
+                break;
+            }
+            case STATE_PARSE_REQUEST_LINE_METHOD: { // 解析 method
                 if (ch == ' ') {
+                    req->method_str.len = req->recv.offset - req->method_str.start;
+
                     wbt_str_t method;
-                    method.str = req->recv.buf;
-                    method.len = req->recv.offset;
+                    wbt_offset_to_str(req->method_str, method, req->recv.buf);
 
                     int i;
                     for(i = METHOD_UNKNOWN + 1 ; i < METHOD_LENGTH ; i++ ) {
@@ -238,7 +244,7 @@ wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
                     if (req->method == METHOD_UNKNOWN) {
                         return WBT_ERROR;
                     } else {
-                        req->state = 1;
+                        req->state = STATE_PARSE_REQUEST_LINE_URI;
                         req->uri.start = req->recv.offset + 1;
                     }
                 } else if (req->recv.offset >= 8) { // 长度限制
@@ -246,132 +252,124 @@ wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
                 }
                 break;
             }
-            case 1: { // 解析 uri
+            case STATE_PARSE_REQUEST_LINE_URI: { // 解析 uri
                 if (ch == ' ') {
                     req->uri.len = req->recv.offset - req->uri.start;
-                    req->state = 3;
+                    req->state = STATE_PARSE_REQUEST_LINE_VERSION;
                     req->params.start = 0;
                     req->params.len = 0;
+                    req->version_str.start = req->recv.offset + 1;
                 } else if (ch == '?') {
                     req->uri.len = req->recv.offset - req->uri.start;
-                    req->state = 2;
+                    req->state = STATE_PARSE_REQUEST_LINE_PARAMS;
                     req->params.start = req->recv.offset + 1;
                 }
                 break;
             }
-            case 2: { // 解析 param
+            case STATE_PARSE_REQUEST_LINE_PARAMS: { // 解析 param
                 if (ch == ' ') {
                     req->params.len = req->recv.offset - req->params.start;
-                    req->state = 3;
+                    req->state = STATE_PARSE_REQUEST_LINE_VERSION;
+                    req->version_str.start = req->recv.offset + 1;
                 }
                 break;
             }
-            case 3: { // 解析 http 版本号
-                if (req->recv.length < req->recv.offset + 10) {
-                    return WBT_AGAIN;
-                }
-
-                wbt_str_t ver;
-                wbt_str_t http_ver_1_0 = wbt_string("HTTP/1.0\r\n");
-                wbt_str_t http_ver_1_1 = wbt_string("HTTP/1.1\r\n");
-
-                ver.str = req->recv.buf + req->recv.offset;
-                ver.len = http_ver_1_0.len;
-
-                if (wbt_strcmp(&ver, &http_ver_1_0) == 0) {
-                    req->version = PROTO_HTTP_1_0;
-                } else if (wbt_strcmp(&ver, &http_ver_1_1) == 0) {
-                    req->version = PROTO_HTTP_1_1;
-                } else {
-                    req->version = PROTO_HTTP_UNKNOWN;
-                    return WBT_ERROR;
-                }
-
-                req->recv.offset += ver.len - 1;
-                req->state = 4;
-                req->headers.start = req->recv.offset + 1;
-                req->header_key.start = req->recv.offset + 1;
-                break;
-            }
-            case 4: {
-                if (ch == ':') {
-                    req->header_key.len = req->recv.offset - req->header_key.start;
-                    req->state = 5;
-                }
-                break;
-            }
-            case 5: {
-                if (ch != ' ') {
-                    req->header_value.start = req->recv.offset;
-                    req->state = 6;
-                }
-            }
-            case 6: {
+            case STATE_PARSE_REQUEST_LINE_VERSION: { // 解析 http 版本号
                 if (ch == '\r') {
-                    req->header_value.len = req->recv.offset - req->header_value.start;
-                    wbt_str_t header_key, header_value;
-                    wbt_offset_to_str(req->header_key, header_key, req->recv.buf);
-                    wbt_offset_to_str(req->header_value, header_value, req->recv.buf);
+                    req->version_str.len = req->recv.offset - req->version_str.start;
 
-                    wbt_debug("%.*s", header_key.len, header_key.str);
-                    
-                    int i;
-                    for( i = 1 ; i < HEADER_LENGTH ; i ++ ) {
-                        if( wbt_strnicmp( &header_key, &HTTP_HEADERS[i], HTTP_HEADERS[i].len ) == 0 ) {
-                            switch (i) {
-                                case HEADER_CONNECTION: {
-                                    wbt_str_t keep_alive = wbt_string("keep-alive");
-                                    if( wbt_strnicmp( &header_value, &keep_alive, keep_alive.len ) == 0 ) {
-                                        /* 声明为 keep-alive 连接 */
-                                        req->keep_alive = 1;
-                                    } else {
-                                        req->keep_alive = 0;
-                                    }
-                                    break;
-                                }
-                                case HEADER_CONTENT_LENGTH: {
-                                    req->content_length = wbt_atoi(&header_value);
-                                    break;
-                                }
-                            }
-                        }
+                    wbt_str_t ver;
+                    wbt_str_t http_ver_1_0 = wbt_string("HTTP/1.0");
+                    wbt_str_t http_ver_1_1 = wbt_string("HTTP/1.1");
+
+                    wbt_offset_to_str(req->version_str, ver, req->recv.buf);
+
+                    if (wbt_strcmp(&ver, &http_ver_1_0) == 0) {
+                        req->version = PROTO_HTTP_1_0;
+                    } else if (wbt_strcmp(&ver, &http_ver_1_1) == 0) {
+                        req->version = PROTO_HTTP_1_1;
+                    } else {
+                        req->version = PROTO_HTTP_UNKNOWN;
+                        return WBT_ERROR;
                     }
 
-                    req->state = 7;
+                    req->state = STATE_PARSE_REQUEST_LINE_END;
                 }
                 break;
             }
-            case 7: {
+            case STATE_PARSE_REQUEST_LINE_END: {
                 if (ch == '\n') {
-                    req->state = 8;
-                } else {
-                    return WBT_ERROR;
-                }
-                break;
-            }
-            case 8: {
-                if (ch == '\r') {
-                    req->state = 9;
-                } else {
-                    req->header_key.start = req->recv.offset;
-                    req->state = 4;
-                }
-                break;
-            }
-            case 9: {
-                if (ch == '\n') {
-                    req->headers.len = req->recv.offset - req->headers.start - 3;
+                    req->state = STATE_PARSE_REQUEST_HEADER_START;
                     req->recv.offset ++;
-                    req->body.start = req->recv.offset;
-                    req->state = 10;
+                    req->headers.start = req->recv.offset;
+                    req->header.key.start = req->recv.offset;
                     return WBT_OK;
                 } else {
                     return WBT_ERROR;
                 }
                 break;
             }
-            case 10:
-                 return WBT_OK;
+            default:
+                return WBT_ERROR;
+        }
+
+        req->recv.offset ++;
+    }
+
+    return WBT_AGAIN; // 数据不完整
+}
+
+wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
+    while (req->recv.offset < req->recv.length) {
+        char ch = req->recv.buf[req->recv.offset];
+
+        switch (req->state) {
+            case STATE_PARSE_REQUEST_HEADER_START: {
+                if (ch == '\r') {
+                    req->state = STATE_PARSE_REQUEST_HEADERS_END;
+                } else {
+                    req->header.key.start = req->recv.offset;
+                    req->state = STATE_PARSE_REQUEST_HEADER_KEY;
+                }
+                break;
+            }
+            case STATE_PARSE_REQUEST_HEADER_KEY: {
+                if (ch == ':') {
+                    req->header.key.len = req->recv.offset - req->header.key.start;
+                    req->header.value.start = req->recv.offset + 1;
+                    req->state = STATE_PARSE_REQUEST_HEADER_VALUE;
+                }
+                break;
+            }
+            case STATE_PARSE_REQUEST_HEADER_VALUE: {
+                if (ch == '\r') {
+                    req->header.value.len = req->recv.offset - req->header.value.start;
+                    req->state = STATE_PARSE_REQUEST_HEADER_END;
+                }
+                break;
+            }
+            case STATE_PARSE_REQUEST_HEADER_END: {
+                if (ch == '\n') {
+                    req->state = STATE_PARSE_REQUEST_HEADER_START;
+                    req->recv.offset ++;
+                    return WBT_OK;
+                } else {
+                    return WBT_ERROR;
+                }
+                break;
+            }
+            case STATE_PARSE_REQUEST_HEADERS_END: {
+                if (ch == '\n') {
+                    req->headers.len = req->recv.offset - req->headers.start - 3;
+                    req->state = STATE_PARSE_REQUEST_BODY;
+                    req->recv.offset ++;
+                    req->body.start = req->recv.offset;
+                    return WBT_OK;
+                } else {
+                    return WBT_ERROR;
+                }
+                break;
+            }
             default:
                 return WBT_ERROR;
         }
@@ -383,12 +381,40 @@ wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
 }
 
 wbt_status wbt_http_parse_request(wbt_http_request_t *req) {
-    wbt_status ret = wbt_http_parse_request_header(req);
-    if (ret != WBT_OK) {
-        return ret;
+    wbt_status ret = WBT_OK;
+
+    while (ret == WBT_OK) {
+        if (req->state <= STATE_PARSE_REQUEST_LINE_END) {
+            ret = wbt_http_parse_request_line(req);
+        } else if (req->state <= STATE_PARSE_REQUEST_HEADERS_END) {
+            ret = wbt_http_parse_request_header(req);
+            if (ret == WBT_OK) {
+                wbt_str_t header_key, header_value;
+                wbt_offset_to_str(req->header.key, header_key, req->recv.buf);
+                wbt_offset_to_str(req->header.value, header_value, req->recv.buf);
+
+                wbt_debug("%.*s", header_key.len, header_key.str);
+
+                if(wbt_strnicmp( &header_key, &HTTP_HEADERS[HEADER_CONNECTION], HTTP_HEADERS[HEADER_CONNECTION].len ) == 0) {
+                    wbt_str_t keep_alive = wbt_string("keep-alive");
+                    if( wbt_strnicmp( &header_value, &keep_alive, keep_alive.len ) == 0 ) {
+                        /* 声明为 keep-alive 连接 */
+                        req->keep_alive = 1;
+                    } else {
+                        req->keep_alive = 0;
+                    }
+                } else if (wbt_strnicmp( &header_key, &HTTP_HEADERS[HEADER_CONTENT_LENGTH], HTTP_HEADERS[HEADER_CONTENT_LENGTH].len ) == 0) {
+                    req->content_length = wbt_atoi(&header_value);
+                }
+            }
+        } else if (req->state <= STATE_PARSE_REQUEST_BODY) {
+            return wbt_http_parse_request_body(req);
+        } else {
+            return WBT_ERROR;
+        }
     }
 
-    return wbt_http_parse_request_body(req);
+    return ret;
 }
 
 wbt_status wbt_http_generate_response_check_space(wbt_http_response_t *resp, int len) {

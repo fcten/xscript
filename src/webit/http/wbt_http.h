@@ -23,6 +23,8 @@ typedef enum {
     METHOD_LENGTH
 } wbt_http_method_t;
 
+const char *wbt_http_method(wbt_http_method_t method);
+
 typedef enum {
     PROTO_HTTP_UNKNOWN,
     PROTO_HTTP_1_0,
@@ -147,8 +149,28 @@ typedef enum {
 } wbt_http_status_t;
 
 typedef struct {
+    wbt_str_offset_t key;
+    wbt_str_offset_t value;
+} wbt_http_header_t;
+
+typedef enum {
+    STATE_PARSE_REQUEST_LINE_START = 0,
+    STATE_PARSE_REQUEST_LINE_METHOD,
+    STATE_PARSE_REQUEST_LINE_URI,
+    STATE_PARSE_REQUEST_LINE_PARAMS,
+    STATE_PARSE_REQUEST_LINE_VERSION,
+    STATE_PARSE_REQUEST_LINE_END,
+    STATE_PARSE_REQUEST_HEADER_START,
+    STATE_PARSE_REQUEST_HEADER_KEY,
+    STATE_PARSE_REQUEST_HEADER_VALUE,
+    STATE_PARSE_REQUEST_HEADER_END,
+    STATE_PARSE_REQUEST_HEADERS_END,
+    STATE_PARSE_REQUEST_BODY
+} wbt_http_parse_request_state_t;
+
+typedef struct {
     // 状态机状态
-    unsigned state;
+    wbt_http_parse_request_state_t state;
     // 接收缓冲区
     struct {
         char *buf;
@@ -156,15 +178,16 @@ typedef struct {
         unsigned offset;
     } recv;
     // 保存解析好的请求
+    wbt_str_offset_t method_str;
     wbt_http_method_t method;
     wbt_str_offset_t uri;
     wbt_str_offset_t params;
+    wbt_str_offset_t version_str;
     wbt_http_version_t version;
     wbt_str_offset_t headers;
     wbt_str_offset_t body;
 
-    wbt_str_offset_t header_key;
-    wbt_str_offset_t header_value;
+    wbt_http_header_t header;
     unsigned keep_alive;
     int content_length;
 } wbt_http_request_t;
@@ -183,9 +206,11 @@ typedef struct {
     wbt_str_t content_type;
 } wbt_http_response_t;
 
-const char *wbt_http_method(wbt_http_method_t method);
-
 wbt_status wbt_http_parse_request(wbt_http_request_t *req);
+
+wbt_status wbt_http_parse_request_line(wbt_http_request_t *req);
+wbt_status wbt_http_parse_request_header(wbt_http_request_t *req);
+wbt_status wbt_http_parse_request_body(wbt_http_request_t *req);
 
 wbt_status wbt_http_generate_response_status(wbt_http_response_t *resp);
 wbt_status wbt_http_generate_response_header(wbt_http_response_t *resp, wbt_http_line_t key, wbt_str_t *value);
