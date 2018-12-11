@@ -343,6 +343,9 @@ wbt_status wbt_http_parse_request_header(wbt_http_request_t *req) {
             }
             case STATE_PARSE_REQUEST_HEADER_VALUE: {
                 if (ch == '\r') {
+                    while (req->recv.buf[req->header.value.start] == ' ') {
+                        req->header.value.start ++;
+                    }
                     req->header.value.len = req->recv.offset - req->header.value.start;
                     req->state = STATE_PARSE_REQUEST_HEADER_END;
                 }
@@ -388,7 +391,7 @@ wbt_status wbt_http_parse_request(wbt_http_request_t *req) {
             ret = wbt_http_parse_request_line(req);
         } else if (req->state <= STATE_PARSE_REQUEST_HEADERS_END) {
             ret = wbt_http_parse_request_header(req);
-            if (ret == WBT_OK) {
+            if (ret == WBT_OK && req->state == STATE_PARSE_REQUEST_HEADER_START) {
                 wbt_str_t header_key, header_value;
                 wbt_offset_to_str(req->header.key, header_key, req->recv.buf);
                 wbt_offset_to_str(req->header.value, header_value, req->recv.buf);

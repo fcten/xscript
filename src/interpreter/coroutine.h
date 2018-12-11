@@ -29,6 +29,12 @@ int lgx_co_return_undefined(lgx_co_t *co);
 int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str);
 int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj);
 
+int lgx_co_set(lgx_co_t *co, unsigned pos, lgx_val_t *v);
+int lgx_co_set_long(lgx_co_t *co, unsigned pos, long long l);
+int lgx_co_set_function(lgx_co_t *co, unsigned pos, lgx_fun_t *fun);
+int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_str_t *str);
+int lgx_co_set_object(lgx_co_t *co, unsigned pos, lgx_obj_t *obj);
+
 lgx_obj_t* lgx_co_obj_new(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_await(lgx_vm_t *vm);
 

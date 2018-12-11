@@ -300,8 +300,6 @@ static wbt_status on_recv(wbt_event_t *ev) {
         return WBT_OK;
     }
 
-    // TODO 取出数据包传递给对应的协程
-
     lgx_request_t *req = (lgx_request_t *)xmalloc(sizeof(lgx_request_t));
     if (!req) {
         on_close(ev);
@@ -323,9 +321,8 @@ static wbt_status on_recv(wbt_event_t *ev) {
     co->ctx = req;
 
     // 写入参数
-    co->stack.buf[4].type = T_OBJECT;
-    co->stack.buf[4].v.obj = server->obj;
-    lgx_gc_ref_add(&co->stack.buf[4]);
+    lgx_co_set_object(co, 4, server->obj);
+    lgx_co_set_string(co, 5, lgx_str_new_ref(conn->http.recv.buf, conn->http.recv.offset));
 
     return WBT_OK;
 }
@@ -701,9 +698,10 @@ static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
     symbol_on_request.k.type = T_STRING;
     symbol_on_request.k.v.str = lgx_str_new_ref("onRequest", sizeof("onRequest")-1);
     symbol_on_request.v.type = T_FUNCTION;
-    symbol_on_request.v.v.fun = lgx_fun_new(1);
+    symbol_on_request.v.v.fun = lgx_fun_new(2);
     symbol_on_request.v.v.fun->buildin = server_on_request;
-    symbol_on_request.v.v.fun->args[0].type = T_FUNCTION; // TODO 编译时需要能够检查函数原型
+    symbol_on_request.v.v.fun->args[0].type = T_OBJECT; // TODO 编译时需要能够检查函数原型
+    symbol_on_request.v.v.fun->args[1].type = T_STRING;
 
     if (lgx_obj_add_method(symbol.v.obj, &symbol_on_request)) {
         return 1;

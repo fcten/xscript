@@ -25,6 +25,44 @@ int lgx_co_stack_cleanup(lgx_co_stack_t *stack) {
     return 0;
 }
 
+int lgx_co_set(lgx_co_t *co, unsigned pos, lgx_val_t *v) {
+    assert(pos < co->stack.size);
+
+    co->stack.buf[pos].type = v->type;
+    co->stack.buf[pos].v = v->v;
+    lgx_gc_ref_add(&co->stack.buf[pos]);
+
+    return 0;
+}
+
+int lgx_co_set_long(lgx_co_t *co, unsigned pos, long long l) {
+    lgx_val_t v;
+    v.type = T_LONG;
+    v.v.l = l;
+    return lgx_co_set(co, pos, &v);
+}
+
+int lgx_co_set_function(lgx_co_t *co, unsigned pos, lgx_fun_t *fun) {
+    lgx_val_t v;
+    v.type = T_FUNCTION;
+    v.v.fun = fun;
+    return lgx_co_set(co, pos, &v);
+}
+
+int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_str_t *str) {
+    lgx_val_t v;
+    v.type = T_STRING;
+    v.v.str = str;
+    return lgx_co_set(co, pos, &v);
+}
+
+int lgx_co_set_object(lgx_co_t *co, unsigned pos, lgx_obj_t *obj) {
+    lgx_val_t v;
+    v.type = T_OBJECT;
+    v.v.obj = obj;
+    return lgx_co_set(co, pos, &v);
+}
+
 lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     if (vm->co_count > LGX_MAX_CO_LIMIT) {
         return NULL;
@@ -57,20 +95,14 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     co->status = CO_READY;
     wbt_list_add_tail(&co->head, &vm->co_ready);
 
-    lgx_val_t *R = co->stack.buf;
-
     // 初始化函数
-    R[0].type = T_FUNCTION;
-    R[0].v.fun = fun;
+    lgx_co_set_function(co, 0, fun);
     // 写入返回值地址
-    R[1].type = T_LONG;
-    R[1].v.l = 1;
+    lgx_co_set_long(co, 1, 1);
     // 写入返回地址
-    R[2].type = T_LONG;
-    R[2].v.l = -1;
+    lgx_co_set_long(co, 2, -1);
     // 写入堆栈地址
-    R[3].type = T_LONG;
-    R[3].v.l = 0;
+    lgx_co_set_long(co, 3, 0);
 
     vm->co_count ++;
 
