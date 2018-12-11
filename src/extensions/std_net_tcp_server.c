@@ -538,7 +538,7 @@ static void* worker(void *args) {
     return NULL;
 }
 
-static int server_listen(lgx_vm_t *vm) {
+LGX_METHOD(Server, listen) {
     unsigned base = vm->regs[0].v.fun->stack_size;
 
     lgx_val_t *obj = &vm->regs[base+4];
@@ -574,16 +574,15 @@ static int server_listen(lgx_vm_t *vm) {
         return 1;
     }
 
-    lgx_co_return_undefined(vm->co_running);
-
-    return 0;
+    return LGX_RETURN_TRUE();
 }
 
-static int server_on_request(lgx_vm_t *vm) {
-    return lgx_co_return_undefined(vm->co_running);
+// TODO 声明为 abstract
+LGX_METHOD(Server, onRequest) {
+    return LGX_RETURN_UNDEFINED();
 }
 
-static int server_start(lgx_vm_t *vm) {
+LGX_METHOD(Server, start) {
     unsigned base = vm->regs[0].v.fun->stack_size;
 
     lgx_val_t *obj = &vm->regs[base+4];
@@ -649,83 +648,41 @@ static int server_start(lgx_vm_t *vm) {
 
     p_ev->ctx = server;
 
-    lgx_co_return_undefined(vm->co_running);
+    LGX_RETURN_TRUE();
 
     lgx_co_suspend(vm);
 
     return 0;
 }
-/*
-LGX_METHOD(Server, listen) {
-
-}
 
 LGX_CLASS(Server) {
-    LGX_PROPERTY_INIT(fd, LONG, PROTECTED, DYNAMIC);
-    LGX_METHOD_INIT(listen, BOOL, PUBLIC, DYNAMIC);
+    LGX_PROPERTY_BEGIN(Server, fd, T_LONG, 0)
+        LGX_PROPERTY_ACCESS(P_PROTECTED)
+    LGX_PROPERTY_END
+
+    LGX_METHOD_BEGIN(Server, listen, 1)
+        LGX_METHOD_RET(T_BOOL, 0)
+        LGX_METHOD_ARG(0, T_LONG, 0)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Server, onRequest, 1)
+        LGX_METHOD_RET(T_BOOL, 0)
+        LGX_METHOD_ARG(0, T_STRING, 0)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Server, start, 1)
+        LGX_METHOD_RET(T_BOOL, 0)
+        LGX_METHOD_ARG(0, T_LONG, 0)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    return 0;
 }
-*/
+
 static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
-    //LGX_CLASS_INIT(Server, NULL);
-
-    lgx_str_t name;
-    name.buffer = "Server";
-    name.length = sizeof("Server")-1;
-
-    lgx_val_t symbol;
-    symbol.type = T_OBJECT;
-    symbol.v.obj = lgx_obj_create(&name);
-
-    lgx_hash_node_t symbol_fd;
-    symbol_fd.k.type = T_STRING;
-    symbol_fd.k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1);
-    symbol_fd.v.type = T_LONG;
-    symbol_fd.v.v.l = 0;
-    symbol_fd.v.u.c.modifier.access = P_PROTECTED;
-
-    if (lgx_obj_add_property(symbol.v.obj, &symbol_fd)) {
-        return 1;
-    }
-
-    lgx_hash_node_t symbol_listen;
-    symbol_listen.k.type = T_STRING;
-    symbol_listen.k.v.str = lgx_str_new_ref("listen", sizeof("listen")-1);
-    symbol_listen.v.type = T_FUNCTION;
-    symbol_listen.v.v.fun = lgx_fun_new(1);
-    symbol_listen.v.v.fun->buildin = server_listen;
-    symbol_listen.v.v.fun->args[0].type = T_LONG;
-
-    if (lgx_obj_add_method(symbol.v.obj, &symbol_listen)) {
-        return 1;
-    }
-
-    lgx_hash_node_t symbol_on_request;
-    symbol_on_request.k.type = T_STRING;
-    symbol_on_request.k.v.str = lgx_str_new_ref("onRequest", sizeof("onRequest")-1);
-    symbol_on_request.v.type = T_FUNCTION;
-    symbol_on_request.v.v.fun = lgx_fun_new(1);
-    symbol_on_request.v.v.fun->buildin = server_on_request;
-    symbol_on_request.v.v.fun->args[0].type = T_STRING; // TODO 编译时需要能够检查函数原型
-
-    if (lgx_obj_add_method(symbol.v.obj, &symbol_on_request)) {
-        return 1;
-    }
-
-    lgx_hash_node_t symbol_create;
-    symbol_create.k.type = T_STRING;
-    symbol_create.k.v.str = lgx_str_new_ref("start", sizeof("start")-1);
-    symbol_create.v.type = T_FUNCTION;
-    symbol_create.v.v.fun = lgx_fun_new(1);
-    symbol_create.v.v.fun->buildin = server_start;
-    symbol_create.v.v.fun->args[0].type = T_LONG;
-
-    if (lgx_obj_add_method(symbol.v.obj, &symbol_create)) {
-        return 1;
-    }
-
-    if (lgx_ext_add_symbol(hash, symbol.v.obj->name->buffer, &symbol)) {
-        return 1;
-    }
+    LGX_CLASS_INIT(Server);
 
     return 0;
 }

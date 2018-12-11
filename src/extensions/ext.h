@@ -12,22 +12,40 @@
 #define LGX_RETURN_LONG(v) \
     lgx_co_return_long(vm->co_running, v)
 
+#define LGX_RETURN_UNDEFINED() \
+    lgx_co_return_undefined(vm->co_running)
+
 #define LGX_RETURN_TRUE() \
     lgx_co_return_true(vm->co_running)
+
+#define LGX_RETURN_FALSE() \
+    lgx_co_return_false(vm->co_running)
 
 #define LGX_FUNCTION(function) \
     static int lgx_internal_function_##function(lgx_vm_t *vm)
 
-#define LGX_FUNCTION_INIT(function) \
+#define LGX_FUNCTION_BEGIN(function, args) \
     do { \
         lgx_val_t symbol; \
         symbol.type = T_FUNCTION; \
-        symbol.v.fun = lgx_fun_new(0); \
-        symbol.v.fun->buildin = lgx_internal_function_##function; \
-        if (lgx_ext_add_symbol(hash, #function, &symbol)) { \
+        symbol.v.fun = lgx_fun_new(args); \
+        symbol.v.fun->name.buffer = #function; \
+        symbol.v.fun->name.length = sizeof(#function) - 1; \
+        symbol.v.fun->buildin = lgx_internal_function_##function;
+
+#define LGX_FUNCTION_RET(rettype, retvalue) \
+        symbol.v.fun->ret.type = rettype; \
+        symbol.v.fun->ret.v.l = (long long)(retvalue);
+
+#define LGX_FUNCTION_ARG(pos, argtype, argvalue) \
+        symbol.v.fun->args[pos].type = argtype; \
+        symbol.v.fun->args[pos].v.l = (long long)(argvalue);
+
+#define LGX_FUNCTION_END \
+        if (lgx_ext_add_symbol(hash, symbol.v.fun->name.buffer, &symbol)) { \
             return 1; \
         } \
-    } while (0)
+    } while (0);
 
 #define LGX_CLASS(class) \
     static int lgx_internal_class_##class(lgx_obj_t *obj)
@@ -50,6 +68,55 @@
 
 #define LGX_METHOD(class, method) \
     static int lgx_internal_method_##class##method(lgx_vm_t *vm)
+
+#define LGX_METHOD_BEGIN(class, method, args) \
+    do { \
+        lgx_hash_node_t symbol; \
+        symbol.k.type = T_STRING; \
+        symbol.k.v.str = lgx_str_new_ref(#method, sizeof(#method) - 1); \
+        symbol.v.type = T_FUNCTION; \
+        symbol.v.v.fun = lgx_fun_new(args); \
+        symbol.v.v.fun->buildin = lgx_internal_method_##class##method; \
+
+#define LGX_METHOD_RET(rettype, retvalue) \
+        symbol.v.v.fun->ret.type = rettype; \
+        symbol.v.v.fun->ret.v.l = (long long)(retvalue);
+
+#define LGX_METHOD_ARG(pos, argtype, argvalue) \
+        symbol.v.v.fun->args[pos].type = argtype; \
+        symbol.v.v.fun->args[pos].v.l = (long long)(argvalue);
+
+#define LGX_METHOD_ACCESS(accessmodifier) \
+        symbol.v.u.c.modifier.access = accessmodifier;
+
+#define LGX_METHOD_STATIC() \
+        symbol.v.u.c.modifier.is_static = 1;
+
+#define LGX_METHOD_END \
+        if (lgx_obj_add_method(obj, &symbol)) { \
+            return 1; \
+        } \
+    } while (0);
+
+#define LGX_PROPERTY_BEGIN(class, property, propertytype, propertyvalue) \
+    do { \
+        lgx_hash_node_t symbol; \
+        symbol.k.type = T_STRING; \
+        symbol.k.v.str = lgx_str_new_ref(#property, sizeof(#property) - 1); \
+        symbol.v.type = propertytype; \
+        symbol.v.v.l = (long long)(propertyvalue);
+
+#define LGX_PROPERTY_ACCESS(accessmodifier) \
+        symbol.v.u.c.modifier.access = accessmodifier;
+
+#define LGX_PROPERTY_STATIC() \
+        symbol.v.u.c.modifier.is_static = 1;
+
+#define LGX_PROPERTY_END \
+        if (lgx_obj_add_property(obj, &symbol)) { \
+            return 1; \
+        } \
+    } while (0);
 
 typedef struct lgx_buildin_ext_s {
     const char *package;

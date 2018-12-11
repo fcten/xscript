@@ -25,14 +25,14 @@ static wbt_status timer_wakeup(wbt_timer_t *timer) {
 
 extern time_t wbt_cur_mtime;
 
-int std_co_sleep(lgx_vm_t *vm) {
+LGX_FUNCTION(co_sleep) {
     unsigned base = vm->regs[0].v.fun->stack_size;
     long long sleep = vm->regs[base+4].v.l;
 
     if (sleep > 0) {
         co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
         if (!ctx) {
-            return lgx_co_return_false(vm->co_running);
+            return LGX_RETURN_FALSE();
         }
         ctx->timer.on_timeout = timer_wakeup;
         ctx->timer.timeout = wbt_cur_mtime + sleep;
@@ -41,12 +41,11 @@ int std_co_sleep(lgx_vm_t *vm) {
 
         if (wbt_timer_add(&vm->events->timer, &ctx->timer) != WBT_OK) {
             xfree(ctx);
-            return lgx_co_return_false(vm->co_running);
+            return LGX_RETURN_FALSE();
         }
 
         // 在协程切换前写入返回值
-        lgx_co_return_true(vm->co_running);
-
+        LGX_RETURN_TRUE();
         return lgx_co_suspend(vm);
     } else {
         LGX_RETURN_TRUE();
@@ -55,18 +54,14 @@ int std_co_sleep(lgx_vm_t *vm) {
 }
 
 int std_coroutine_load_symbols(lgx_hash_t *hash) {
-    LGX_FUNCTION_INIT(co_yield);
+    LGX_FUNCTION_BEGIN(co_yield, 0)
+        LGX_FUNCTION_RET(T_BOOL, 0)
+    LGX_FUNCTION_END
 
-    lgx_val_t symbol;
-    symbol.type = T_FUNCTION;
-    symbol.v.fun = lgx_fun_new(1);
-    symbol.v.fun->buildin = std_co_sleep;
-
-    symbol.v.fun->args[0].type = T_LONG;
-
-    if (lgx_ext_add_symbol(hash, "co_sleep", &symbol)) {
-        return 1;
-    }
+    LGX_FUNCTION_BEGIN(co_sleep, 1)
+        LGX_FUNCTION_RET(T_BOOL, 0)
+        LGX_FUNCTION_ARG(0, T_LONG, 0)
+    LGX_FUNCTION_END
 
     return 0;
 }

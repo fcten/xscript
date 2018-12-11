@@ -10,7 +10,9 @@ LGX_FUNCTION(time) {
 }
 
 int std_time_load_symbols(lgx_hash_t *hash) {
-    LGX_FUNCTION_INIT(time);
+    LGX_FUNCTION_BEGIN(time, 0)
+        LGX_FUNCTION_RET(T_LONG, 0)
+    LGX_FUNCTION_END
 
     return 0;
 }

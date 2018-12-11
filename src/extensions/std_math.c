@@ -14,7 +14,9 @@ int std_math_load_symbols(lgx_hash_t *hash) {
     // 初始化随机数种子
     srand((unsigned)time(NULL));
 
-    LGX_FUNCTION_INIT(rand);
+    LGX_FUNCTION_BEGIN(rand, 0)
+        LGX_FUNCTION_RET(T_LONG, 0)
+    LGX_FUNCTION_END
 
     return 0;
 }
