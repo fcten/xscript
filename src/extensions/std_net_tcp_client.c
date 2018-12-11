@@ -304,7 +304,7 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
     return on_close(ev);
 }
 
-static int client_get(lgx_vm_t *vm) {
+LGX_METHOD(Client, get) {
     lgx_co_t *co = vm->co_running;
 
     unsigned base = vm->regs[0].v.fun->stack_size;
@@ -401,42 +401,23 @@ static int client_get(lgx_vm_t *vm) {
     return 0;
 }
 
+LGX_CLASS(Client) {
+    LGX_PROPERTY_BEGIN(Client, fd, T_LONG, 0)
+        LGX_PROPERTY_ACCESS(P_PRIVATE)
+    LGX_PROPERTY_END
+
+    LGX_METHOD_BEGIN(Client, get, 2)
+        LGX_METHOD_RET(T_STRING, 0)
+        LGX_METHOD_ARG(0, T_STRING, 0)
+        LGX_METHOD_ARG(1, T_LONG, 0)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    return 0;
+}
+
 static int std_net_tcp_client_load_symbols(lgx_hash_t *hash) {
-    lgx_str_t name;
-    name.buffer = "Client";
-    name.length = sizeof("Client")-1;
-
-    lgx_val_t symbol;
-    symbol.type = T_OBJECT;
-    symbol.v.obj = lgx_obj_create(&name);
-
-    lgx_hash_node_t symbol_fd;
-    symbol_fd.k.type = T_STRING;
-    symbol_fd.k.v.str = lgx_str_new_ref("fd", sizeof("fd")-1);
-    symbol_fd.v.type = T_LONG;
-    symbol_fd.v.v.l = 0;
-    symbol_fd.v.u.c.modifier.access = P_PRIVATE;
-
-    if (lgx_obj_add_property(symbol.v.obj, &symbol_fd)) {
-        return 1;
-    }
-
-    lgx_hash_node_t symbol_get;
-    symbol_get.k.type = T_STRING;
-    symbol_get.k.v.str = lgx_str_new_ref("get", sizeof("get")-1);
-    symbol_get.v.type = T_FUNCTION;
-    symbol_get.v.v.fun = lgx_fun_new(2);
-    symbol_get.v.v.fun->buildin = client_get;
-    symbol_get.v.v.fun->args[0].type = T_STRING;
-    symbol_get.v.v.fun->args[1].type = T_LONG;
-
-    if (lgx_obj_add_method(symbol.v.obj, &symbol_get)) {
-        return 1;
-    }
-
-    if (lgx_ext_add_symbol(hash, symbol.v.obj->name->buffer, &symbol)) {
-        return 1;
-    }
+    LGX_CLASS_INIT(Client);
 
     return 0;
 }

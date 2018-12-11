@@ -7,7 +7,8 @@ class MyServer extends Server {
 
     }
 
-    protected function onRequest() {
+    protected function onRequest(string req) {
+        return req;
         //try {
         //    Client cli = new Client;
         //    return cli->get("58.217.200.15", 80);
