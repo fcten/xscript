@@ -140,7 +140,7 @@ auto str = "hello";
 
 ```
 // 创建空数组
-auto arr = [];
+array arr = [];
 
 // 追加元素
 arr[] = 1;
@@ -157,10 +157,10 @@ echo arr[0];
 ### 数组字面量
 
 ```
-auto arr1 = [1, 2, 3];
+array arr1 = [1, 2, 3];
 
 // TODO 带下标的数组字面量尚未实现
-auto arr2 = [
+array arr2 = [
     1: 1,
     "1": 2,
 ];
@@ -191,11 +191,11 @@ auto arr2 = [
 与 (&&) 和 或 (||) 运算符存在短路特性：
 
 ```
-auto ret1 = fun1() && fun2();
+bool ret1 = fun1() && fun2();
 
 // 等价于
 
-auto ret2;
+bool ret2;
 if (fun1() == false) {
     ret2 = false;
 } else {
@@ -204,11 +204,11 @@ if (fun1() == false) {
 ```
 
 ```
-auto ret1 = fun1() || fun2();
+bool ret1 = fun1() || fun2();
 
 // 等价于
 
-auto ret2;
+bool ret2;
 if (fun1() == true) {
     ret2 = true;
 } else {
@@ -273,15 +273,15 @@ if (fun1() == true) {
 其它运算符均为左结合。
 
 ```
-auto a1 = !!!true;
+bool a1 = !!!true;
 
 // 等价于
 
-auto a2 = !(!(!true));
+bool a1 = !(!(!true));
 ```
 
 ```
-auto a, b, c;
+int a, b, c;
 
 a = b = 1;
 
@@ -297,23 +297,23 @@ a = c;
 ```
 
 ```
-auto a1 = false && true && false;
+bool a1 = false && true && false;
 
 // 等价于
 
-auto a2 = false && (true && false);
+bool a1 = false && (true && false);
 
 // 等价于
 
-auto a3 = false;
+bool a1 = false;
 ```
 
 ```
-auto a1 = 1 + 2 + 3;
+int a1 = 1 + 2 + 3;
 
 // 等价于
 
-auto a2 = (1 + 2) + 3;
+int a1 = (1 + 2) + 3;
 ```
 
 ## 类型转换
@@ -325,7 +325,15 @@ auto a2 = (1 + 2) + 3;
 变量必须先声明再使用。
 
 ```
-auto a;
+var_type var_name;
+
+var_type var_name = init_value;
+```
+
+以下是一些示例：
+
+```
+int a;
 
 a = 1; // OK
 b = 1; // Error: undefined variable `b`
@@ -340,13 +348,13 @@ b = 1; // Error: undefined variable `b`
 xscript 支持函数级变量作用域和块级变量作用域。
 
 ```
-function add (auto a, auto b) {
-    auto c = 1;
+function add (int a, int b) int {
+    int c = 1;
     return a + b + c;
 }
 
 if (true) {
-    auto d = 1;
+    int d = 1;
 }
 
 echo a; // Error: undefined variable `a`
@@ -360,9 +368,9 @@ echo d; // Error: undefined variable `d`
 在 xscript 中，变量赋值、参数传递均是通过值传递的方式完成的。
 
 ```
-auto a = [1,2,3];
+array a = [1,2,3];
 
-function assign(auto a) {
+function assign(array a) {
     a = [4,5,6];
 }
 
@@ -378,9 +386,9 @@ echo a; // output [1,2,3]
 在 xscript 中，string、array、object、function 类型均为隐式引用类型。
 
 ```
-auto a = [1,2,3];
+array a = [1,2,3];
 
-function assign(auto a) {
+function assign(array a) {
     a[] = 4;
 }
 
@@ -396,12 +404,36 @@ echo a; // output [1,2,3,4]
 函数不需要声明，可以先使用再定义。
 
 ```
+function func_name(arg_type arg_name, ...) ret_type {
+    func_body
+}
+```
+
+返回值类型可以被省略。返回值类型被省略时默认为 auto。
+
+以下是一些示例：
+
+```
 echo add(1, add(2, 3));
 
-function add(auto a, auto b) {
+function add(int a, int b) int {
     return a + b;
 }
 ```
+
+## 可选参数
+
+定义函数时可以设定参数的默认值，设定了默认值的参数可以在函数调用时省略。
+
+```
+echo add();
+
+function add(int a = 1, int b = 2) int {
+    return a + b;
+}
+```
+
+注意：因为形参和实参必须一一对应，所以包含默认值的参数应当被置于参数列表的最后。
 
 # 语句 (statement)
 
@@ -536,7 +568,7 @@ for (expression; expression; expression) {
 所有三个 expression 均可省略，如下代码也是合法的：
 
 ```
-for (;;) { // 死循环
+for (;;) { // endless loop
     // do something
 }
 ```
@@ -577,7 +609,7 @@ obj->print();
 try {
     throw 1;
 } catch (auto e) {
-    echo "catch exception 1\n";
+    echo "catch exception 1";
 }
 
 function test() {
@@ -587,7 +619,7 @@ function test() {
 try {
     test();
 } catch (auto e) {
-    echo "catch exception 2\n";
+    echo "catch exception 2";
 }
 
 throw 3; // uncaught exception 3
