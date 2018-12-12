@@ -163,6 +163,8 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
                 lgx_str_delete(node->u.type.obj_name);
             }
             break;
+        default: // todo ?
+            break;
     }
     for(i = 0; i < node->children; i++) {
         if (node->child[i]) {
@@ -678,6 +680,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_
         switch (parent->type) {
             case FUNCTION_DECLARATION: n = parent->child[1]; break;
             case CATCH_STATEMENT: n = parent->child[0]; break;
+            default: break; // todo error
         }
         lgx_str_t s;
         int i;

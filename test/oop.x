@@ -22,7 +22,7 @@ class C1 {
     }
 
     public function test() {
-        echo "test\n";
+        echo "test";
     }
 }
 

@@ -960,17 +960,23 @@ static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 }
 
 static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_str_t s;
+    lgx_ast_node_token_t *id_token = NULL;
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
-        s.buffer = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start;
-        s.length = ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length;
+        if (node->child[0]->child[0]->type == IDENTIFIER_TOKEN) {
+            id_token = (lgx_ast_node_token_t *)(node->child[0]->child[0]);
+        }
     } else if (node->child[0]->type == IDENTIFIER_TOKEN) {
-        s.buffer = ((lgx_ast_node_token_t *)(node->child[0]))->tk_start;
-        s.length = ((lgx_ast_node_token_t *)(node->child[0]))->tk_length;
-    } else {
-        bc_error(bc, node, "invalid expression for `new` operator\n");
+        id_token = (lgx_ast_node_token_t *)(node->child[0]);
+    }
+    
+    if (!id_token) {
+        bc_error(bc, node, "identifier expected after `new` operator\n");
         return 1;
     }
+
+    lgx_str_t s;
+    s.buffer = id_token->tk_start;
+    s.length = id_token->tk_length;
 
     lgx_val_t *v = lgx_scope_global_val_get(node, &s);
     if (!v || v->type != T_OBJECT) {

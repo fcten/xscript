@@ -4,7 +4,7 @@
 #include "../tokenizer/lex.h"
 #include "../common/hash.h"
 
-enum {
+typedef enum {
     // Statement
     BLOCK_STATEMENT = 1,
     IF_STATEMENT,
@@ -50,7 +50,7 @@ enum {
     TRUE_TOKEN,
     FALSE_TOKEN,
     THIS_TOKEN
-};
+} lgx_ast_type_t;
 
 typedef struct lgx_ast_node_list_s {
     wbt_list_t head;
@@ -58,7 +58,7 @@ typedef struct lgx_ast_node_list_s {
 } lgx_ast_node_list_t;
 
 typedef struct lgx_ast_node_s {
-    unsigned short type;
+    lgx_ast_type_t type:8;
     struct lgx_ast_node_s* parent;
 
     // 当前节点对应的代码位置
