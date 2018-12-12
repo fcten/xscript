@@ -305,13 +305,11 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
 }
 
 LGX_METHOD(Client, get) {
-    lgx_co_t *co = vm->co_running;
+    LGX_METHOD_ARGS_INIT();
 
-    unsigned base = vm->regs[0].v.fun->stack_size;
-
-    //lgx_val_t *obj = &vm->regs[base+4];
-    lgx_val_t *ip = &vm->regs[base+5];
-    lgx_val_t *port = &vm->regs[base+6];
+    //LGX_METHOD_ARGS_THIS(obj);
+    LGX_METHOD_ARGS_GET(ip, 0);
+    LGX_METHOD_ARGS_GET(port, 0);
 
     if (ip->type != T_STRING || ip->v.str->length > 15) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
@@ -328,6 +326,8 @@ LGX_METHOD(Client, get) {
         lgx_vm_throw_s(vm, "create socket faild");
         return 1;
     }
+
+    lgx_co_t *co = vm->co_running;
 
     char ip_str[16];
     memcpy(ip_str, ip->v.str->buffer, ip->v.str->length);

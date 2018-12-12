@@ -118,6 +118,21 @@
         } \
     } while (0);
 
+#define LGX_FUNCTION_ARGS_INIT() \
+    unsigned args_base = vm->regs[0].v.fun->stack_size
+
+#define LGX_FUNCTION_ARGS_GET(variable, position) \
+    lgx_val_t *variable = &vm->regs[args_base + position + 4]
+
+#define LGX_METHOD_ARGS_INIT() \
+    unsigned args_base = vm->regs[0].v.fun->stack_size
+
+#define LGX_METHOD_ARGS_THIS(variable) \
+    lgx_val_t *variable = &vm->regs[args_base + 4]
+
+#define LGX_METHOD_ARGS_GET(variable, position) \
+    lgx_val_t *variable = &vm->regs[args_base + position + 5]
+
 typedef struct lgx_buildin_ext_s {
     const char *package;
     int (*load_symbols)(lgx_hash_t *hash);
