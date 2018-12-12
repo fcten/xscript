@@ -40,7 +40,6 @@
         symbol.v.fun->args[pos].type = argtype;
 
 #define LGX_FUNCTION_ARG_OPTIONAL(pos, argtype, argvalue) \
-        assert(IS_BASIC_TYPE(argtype)); \
         symbol.v.fun->args[pos].type = argtype; \
         symbol.v.fun->args[pos].v.l = (long long)(argvalue); \
         symbol.v.fun->args[pos].u.c.init = 1;
@@ -89,7 +88,6 @@
         symbol.v.v.fun->args[pos].type = argtype;
 
 #define LGX_METHOD_ARG_OPTIONAL(pos, argtype, argvalue) \
-        assert(IS_BASIC_TYPE(argtype)); \
         symbol.v.v.fun->args[pos].type = argtype; \
         symbol.v.v.fun->args[pos].v.l = (long long)(argvalue); \
         symbol.v.v.fun->args[pos].u.c.init = 1;
