@@ -33,13 +33,17 @@
         symbol.v.fun->name.length = sizeof(#function) - 1; \
         symbol.v.fun->buildin = lgx_internal_function_##function;
 
-#define LGX_FUNCTION_RET(rettype, retvalue) \
-        symbol.v.fun->ret.type = rettype; \
-        symbol.v.fun->ret.v.l = (long long)(retvalue);
+#define LGX_FUNCTION_RET(rettype) \
+        symbol.v.fun->ret.type = rettype;
 
-#define LGX_FUNCTION_ARG(pos, argtype, argvalue) \
+#define LGX_FUNCTION_ARG(pos, argtype) \
+        symbol.v.fun->args[pos].type = argtype;
+
+#define LGX_FUNCTION_ARG_OPTIONAL(pos, argtype, argvalue) \
+        assert(IS_BASIC_TYPE(argtype)); \
         symbol.v.fun->args[pos].type = argtype; \
-        symbol.v.fun->args[pos].v.l = (long long)(argvalue);
+        symbol.v.fun->args[pos].v.l = (long long)(argvalue); \
+        symbol.v.fun->args[pos].u.c.init = 1;
 
 #define LGX_FUNCTION_END \
         if (lgx_ext_add_symbol(hash, symbol.v.fun->name.buffer, &symbol)) { \
@@ -78,13 +82,17 @@
         symbol.v.v.fun = lgx_fun_new(args); \
         symbol.v.v.fun->buildin = lgx_internal_method_##class##method; \
 
-#define LGX_METHOD_RET(rettype, retvalue) \
-        symbol.v.v.fun->ret.type = rettype; \
-        symbol.v.v.fun->ret.v.l = (long long)(retvalue);
+#define LGX_METHOD_RET(rettype) \
+        symbol.v.v.fun->ret.type = rettype;
 
-#define LGX_METHOD_ARG(pos, argtype, argvalue) \
+#define LGX_METHOD_ARG(pos, argtype) \
+        symbol.v.v.fun->args[pos].type = argtype;
+
+#define LGX_METHOD_ARG_OPTIONAL(pos, argtype, argvalue) \
+        assert(IS_BASIC_TYPE(argtype)); \
         symbol.v.v.fun->args[pos].type = argtype; \
-        symbol.v.v.fun->args[pos].v.l = (long long)(argvalue);
+        symbol.v.v.fun->args[pos].v.l = (long long)(argvalue); \
+        symbol.v.v.fun->args[pos].u.c.init = 1;
 
 #define LGX_METHOD_ACCESS(accessmodifier) \
         symbol.v.u.c.modifier.access = accessmodifier;
@@ -119,19 +127,29 @@
     } while (0);
 
 #define LGX_FUNCTION_ARGS_INIT() \
-    unsigned args_base = vm->regs[0].v.fun->stack_size
+    lgx_fun_t *_parent_func = vm->regs[0].v.fun; \
+    lgx_val_t *_this_stack = &vm->regs[_parent_func->stack_size]; \
+    lgx_fun_t *_this_func  = _this_stack->v.fun
 
 #define LGX_FUNCTION_ARGS_GET(variable, position) \
-    lgx_val_t *variable = &vm->regs[args_base + position + 4]
+    lgx_val_t *variable = _this_stack + position + 4; \
+    if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
+        *variable = _this_func->args[position]; \
+    }
 
 #define LGX_METHOD_ARGS_INIT() \
-    unsigned args_base = vm->regs[0].v.fun->stack_size
+    lgx_fun_t *_parent_func = vm->regs[0].v.fun; \
+    lgx_val_t *_this_stack = &vm->regs[_parent_func->stack_size]; \
+    lgx_fun_t *_this_func = _this_stack->v.fun
 
 #define LGX_METHOD_ARGS_THIS(variable) \
-    lgx_val_t *variable = &vm->regs[args_base + 4]
+    lgx_val_t *variable = _this_stack + 4
 
 #define LGX_METHOD_ARGS_GET(variable, position) \
-    lgx_val_t *variable = &vm->regs[args_base + position + 5]
+    lgx_val_t *variable = _this_stack + position + 5; \
+    if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
+        *variable = _this_func->args[position]; \
+    }
 
 typedef struct lgx_buildin_ext_s {
     const char *package;

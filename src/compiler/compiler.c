@@ -812,7 +812,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
 
     bc_call_new(bc, e1.u.c.reg);
 
-    // TODO 如果调用的是类的方法，则把对象压入堆栈
+    // 如果调用的是类的方法，则把对象压入堆栈
     int base = 4;
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
         base = 5;

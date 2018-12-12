@@ -309,7 +309,7 @@ LGX_METHOD(Client, get) {
 
     //LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(ip, 0);
-    LGX_METHOD_ARGS_GET(port, 0);
+    LGX_METHOD_ARGS_GET(port, 1);
 
     if (ip->type != T_STRING || ip->v.str->length > 15) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
@@ -407,9 +407,9 @@ LGX_CLASS(Client) {
     LGX_PROPERTY_END
 
     LGX_METHOD_BEGIN(Client, get, 2)
-        LGX_METHOD_RET(T_STRING, 0)
-        LGX_METHOD_ARG(0, T_STRING, 0)
-        LGX_METHOD_ARG(1, T_LONG, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ARG(0, T_STRING)
+        LGX_METHOD_ARG(1, T_LONG)
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 

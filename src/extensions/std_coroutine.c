@@ -55,12 +55,12 @@ LGX_FUNCTION(co_sleep) {
 
 int std_coroutine_load_symbols(lgx_hash_t *hash) {
     LGX_FUNCTION_BEGIN(co_yield, 0)
-        LGX_FUNCTION_RET(T_BOOL, 0)
+        LGX_FUNCTION_RET(T_BOOL)
     LGX_FUNCTION_END
 
     LGX_FUNCTION_BEGIN(co_sleep, 1)
-        LGX_FUNCTION_RET(T_BOOL, 0)
-        LGX_FUNCTION_ARG(0, T_LONG, 0)
+        LGX_FUNCTION_RET(T_BOOL)
+        LGX_FUNCTION_ARG(0, T_LONG)
     LGX_FUNCTION_END
 
     return 0;

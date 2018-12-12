@@ -3,8 +3,10 @@
 
 #include "../webit/common/wbt_list.h"
 
-#define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
-#define IS_GC_VALUE(x) ((x)->type > T_BOOL)
+#define IS_BASIC_TYPE(type) ((type) <= T_BOOL)
+
+#define IS_BASIC_VALUE(x) (IS_BASIC_TYPE((x)->type))
+#define IS_GC_VALUE(x) (!IS_BASIC_VALUE(x))
 
 typedef enum {
     // 基本类型
