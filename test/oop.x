@@ -11,7 +11,7 @@ class C implements A, B {
 }
 
 class C1 {
-    public string msg = "C1:print\n";
+    public string msg = "C1:print";
 
     public function print() {
         echo this->msg;
@@ -28,7 +28,7 @@ class C1 {
 
 class C2 {
     protected function print() {
-        echo "C2:print\n";
+        echo "C2:print";
     }
 }
 

@@ -2,7 +2,6 @@ async function print(int from, int to) {
     int i;
     for (i = from; i <= to; i = i + 1) {
         echo i;
-        echo "\n";
         co_sleep(100);
     }
 }
@@ -15,13 +14,12 @@ class MyClass {
         for (i = from; i <= to; i = i + 1) {
             echo this->name;
             echo i;
-            echo "\n";
             co_sleep(100);
         }
     }
 }
 
-echo "main start\n";
+echo "main start";
 
 print(100, 110);
 await print(200, 210);
@@ -31,4 +29,4 @@ MyClass obj = new MyClass;
 obj->print(300, 310);
 await obj->print(400, 410);
 
-echo "main end\n";
+echo "main end";

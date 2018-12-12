@@ -991,6 +991,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_ECHO:{
                 lgx_val_print(&R(PA(i)));
+                printf("\n");
                 break;
             }
             case OP_TYPEOF:{

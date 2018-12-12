@@ -8,13 +8,13 @@ class MyServer extends Server {
     }
 
     protected function onRequest(string req) {
-        return req;
-        //try {
-        //    Client cli = new Client;
-        //    return cli->get("58.217.200.15", 80);
-        //} catch (auto e) {
-            return "get failed";
-        //}
+        //return req;
+        try {
+            Client cli = new Client;
+            return cli->get("58.217.200.1", 80);
+        } catch (auto e) {
+            return e;
+        }
     }
 
     protected function onClose() {
