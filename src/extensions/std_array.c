@@ -1,8 +1,5 @@
-#include <time.h>
-
-#include "../common/str.h"
 #include "../common/fun.h"
-#include "std_time.h"
+#include "std_array.h"
 
 /* @name array_length
  * 
@@ -14,7 +11,6 @@
  */
 LGX_FUNCTION(array_length) {
     LGX_FUNCTION_ARGS_INIT();
-
     LGX_FUNCTION_ARGS_GET(arrval, 0);
 
     LGX_RETURN_LONG(arrval->v.arr->length);

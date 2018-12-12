@@ -306,7 +306,6 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
 
 LGX_METHOD(Client, get) {
     LGX_METHOD_ARGS_INIT();
-
     //LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(ip, 0);
     LGX_METHOD_ARGS_GET(port, 1);

@@ -540,7 +540,6 @@ static void* worker(void *args) {
 
 LGX_METHOD(Server, listen) {
     LGX_METHOD_ARGS_INIT();
-
     LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(port, 0);
 
@@ -584,7 +583,6 @@ LGX_METHOD(Server, onRequest) {
 
 LGX_METHOD(Server, start) {
     LGX_METHOD_ARGS_INIT();
-
     LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(worker_num, 0);
 

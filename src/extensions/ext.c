@@ -4,6 +4,7 @@
 
 #include "std_time.h"
 #include "std_math.h"
+#include "std_string.h"
 #include "std_array.h"
 #include "std_coroutine.h"
 #include "std_exception.h"
@@ -13,6 +14,7 @@
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
     &ext_std_math_ctx,
+    &ext_std_string_ctx,
     &ext_std_array_ctx,
     &ext_std_coroutine_ctx,
     &ext_std_exception_ctx,
