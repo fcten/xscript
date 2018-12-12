@@ -116,6 +116,8 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                     return 1;
                 }
                 break;
+            default:
+                return 0;
         }
     }
 
@@ -130,6 +132,7 @@ void lgx_val_free(lgx_val_t *src) {
             case T_FUNCTION: lgx_fun_delete(src->v.fun); break;
             case T_OBJECT:   lgx_obj_delete(src->v.obj); break;
             case T_RESOURCE: lgx_res_delete(src->v.res); break;
+            default: break;
         }
     } else {
         src->v.gc->ref_cnt --;

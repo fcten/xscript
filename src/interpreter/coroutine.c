@@ -194,7 +194,11 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
 
     wbt_list_add_tail(&co->head, &vm->co_ready);
 
-    return 0;
+    if (vm->co_running) {
+        return 0;
+    } else {
+        return lgx_co_run(vm, co);
+    }
 }
 
 int lgx_co_yield(lgx_vm_t *vm) {

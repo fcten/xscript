@@ -130,6 +130,8 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     e.v.str->length = len;
     e.v.str->is_ref = 0;
 
+    lgx_gc_ref_add(&e);
+
     lgx_vm_throw(vm, &e);
 }
 

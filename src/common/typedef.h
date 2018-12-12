@@ -6,7 +6,7 @@
 #define IS_BASIC_VALUE(x) ((x)->type <= T_BOOL)
 #define IS_GC_VALUE(x) ((x)->type > T_BOOL)
 
-enum {
+typedef enum {
     // 基本类型
     T_UNDEFINED = 0,// 变量尚未定义
     T_LONG,         // 64 位有符号整数
@@ -19,7 +19,7 @@ enum {
     T_OBJECT,
     T_FUNCTION,
     T_RESOURCE
-};
+} lgx_type_t;
 
 // 寄存器类型
 enum {
@@ -71,7 +71,7 @@ struct lgx_val_s {
         lgx_fun_t  *fun;
         lgx_gc_t   *gc; // 方便访问任意高级类型的 gc 字段，gc 字段必须在高级类型结构体的头部
     } v;
-    unsigned char type;
+    lgx_type_t type:8;
     // 这个 union 结构有 7 个字节可用
     union {
         // 仅在编译时使用
