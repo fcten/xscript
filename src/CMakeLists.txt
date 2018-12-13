@@ -42,7 +42,7 @@ if (WIN32)
 	set (XSCRIPT_LIBS ${XSCRIPT_LIBS} ws2_32)
 endif (WIN32)
 
-set (XSCRIPT_LIBS ${XSCRIPT_LIBS} hiredis.a)
+set (XSCRIPT_LIBS ${XSCRIPT_LIBS} hiredis)
 
 target_link_libraries(xscript ${XSCRIPT_LIBS})
 

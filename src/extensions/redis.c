@@ -4,8 +4,8 @@
 #include "../common/res.h"
 #include "redis.h"
 
-#include <hiredis/hiredis.h>
-#include <hiredis/async.h>
+#include "../../3rd/hiredis/hiredis.h"
+#include "../../3rd/hiredis/async.h"
 
 typedef struct {
     // 虚拟机对象
