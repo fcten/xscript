@@ -104,6 +104,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_fun_t *fun) {
     // 写入堆栈地址
     lgx_co_set_long(co, 3, 0);
 
+    co->id = ++vm->co_id;
     vm->co_count ++;
 
     return co;
@@ -195,10 +196,10 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     wbt_list_add_tail(&co->head, &vm->co_ready);
 
     if (vm->co_running) {
-        return 0;
-    } else {
-        return lgx_co_run(vm, co);
+        lgx_co_yield(vm);
     }
+
+    return lgx_co_run(vm, co);
 }
 
 int lgx_co_yield(lgx_vm_t *vm) {
@@ -341,6 +342,14 @@ int lgx_co_return_object(lgx_co_t *co, lgx_obj_t *obj) {
     lgx_val_t ret;
     ret.type = T_OBJECT;
     ret.v.obj = obj;
+
+    return lgx_co_return(co, &ret);
+}
+
+int lgx_co_return_array(lgx_co_t *co, lgx_hash_t *hash) {
+    lgx_val_t ret;
+    ret.type = T_ARRAY;
+    ret.v.arr = hash;
 
     return lgx_co_return(co, &ret);
 }

@@ -2,6 +2,7 @@
 #include "../common/fun.h"
 #include "../common/obj.h"
 #include "../common/res.h"
+#include "../common/hash.h"
 #include "redis.h"
 
 #include "../../3rd/hiredis/hiredis.h"
@@ -18,6 +19,36 @@ typedef struct {
     redisAsyncContext *ctx;
 } lgx_redis_t;
 
+static void parse_reply(redisReply *reply, lgx_hash_t *hash) {
+    lgx_val_t v;
+
+    switch (reply->type) {
+    case REDIS_REPLY_INTEGER:
+        v.type = T_LONG;
+        v.v.l = reply->integer;
+        break;
+    case REDIS_REPLY_STRING:
+        v.type = T_STRING;
+        v.v.str = lgx_str_new(reply->str, reply->len);
+        break;
+    case REDIS_REPLY_ARRAY: {
+        v.type = T_ARRAY;
+        v.v.arr = lgx_hash_new(reply->elements);
+        // 递归处理
+        int i;
+        for (i = 0; i < reply->elements; i++) {
+            parse_reply(reply->element[i], v.v.arr);
+        }
+        break;
+    }
+    case REDIS_REPLY_NIL:
+    default:
+        assert(0);
+    }
+
+    lgx_hash_add(hash, &v);
+}
+
 static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
     wbt_debug("redis:on_complete");
 
@@ -31,19 +62,35 @@ static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
     redisReply *reply = r;
     switch (reply->type) {
     case REDIS_REPLY_ERROR:
-        wbt_debug("%.*s", reply->len, reply->str);
+        lgx_vm_throw_s(vm, "%.*s", reply->len, reply->str);
         break;
     case REDIS_REPLY_STATUS:
         if (redis->ctx->err) {
-            wbt_debug("errno %d, %.*s",
-                redis->ctx->err,
-                redis->ctx->errstr);
+            lgx_vm_throw_s(vm, "%s (%d)", redis->ctx->errstr, redis->ctx->err);
+        } else {
+            LGX_RETURN_STRING(lgx_str_new(reply->str, reply->len));
         }
         break;
+    case REDIS_REPLY_INTEGER:
+        LGX_RETURN_LONG(reply->integer);
+        break;
+    case REDIS_REPLY_STRING:
+        LGX_RETURN_STRING(lgx_str_new(reply->str, reply->len));
+        break;
+    case REDIS_REPLY_ARRAY: {
+        // 递归处理
+        lgx_hash_t *hash = lgx_hash_new(reply->elements);
+        int i;
+        for (i = 0; i < reply->elements; i++) {
+            parse_reply(reply->element[i], hash);
+        }
+        LGX_RETURN_ARRAY(hash);
+        break;
     }
-
-    // 写入返回值
-    LGX_RETURN_TRUE();
+    case REDIS_REPLY_NIL:
+    default:
+        LGX_RETURN_UNDEFINED();
+    }
 }
 
 static void on_connect(const redisAsyncContext *c, int status) {
@@ -241,21 +288,39 @@ LGX_METHOD(Redis, connect) {
     return 0;
 }
 
-LGX_METHOD(Redis, set) {
+LGX_METHOD(Redis, exec) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(key, 0);
-    LGX_METHOD_ARGS_GET(value, 1);
+    LGX_METHOD_ARGS_GET(arr, 0);
 
-    wbt_debug("redis:set");
+    wbt_debug("redis:exec");
 
-    if (!key || key->type != T_STRING) {
-        lgx_vm_throw_s(vm, "invalid param `key`");
+    if (!arr || arr->type != T_ARRAY) {
+        lgx_vm_throw_s(vm, "invalid param `arr`");
         return 1;
     }
 
-    if (!value || value->type != T_STRING) {
-        lgx_vm_throw_s(vm, "invalid param `value`");
+    // 把数组转换成 redis 可以接受的格式
+    int argc = arr->v.arr->length;
+    size_t *argvlen = (size_t *)xmalloc(argc * sizeof(size_t));
+    char **argv = (char **)xmalloc(argc * sizeof(char *));
+
+    lgx_hash_node_t *next = arr->v.arr->head;
+    int count = 0;
+    while (next) {
+        if (next->v.type != T_STRING) {
+            break;
+        }
+        argvlen[count] = next->v.v.str->length;
+        argv[count] = wbt_strdup(next->v.v.str->buffer, next->v.v.str->length);
+
+        count ++;
+        next = next->order;
+    }
+
+    if (count != argc) {
+        // TODO 释放内存
+        lgx_vm_throw_s(vm, "invalid param `arr`");
         return 1;
     }
 
@@ -267,12 +332,22 @@ LGX_METHOD(Redis, set) {
 
     lgx_redis_t *redis = (lgx_redis_t *)res->v.res->buf;
 
+    if (redisAsyncCommandArgv(redis->ctx, on_complete, vm->co_running,
+            argc, (const char **)argv, argvlen) != REDIS_OK) {
+        lgx_vm_throw_s(vm, "redisAsyncCommandArgv() failed");
+        return 1;
+    }
+
+    // TODO 释放内存
+
+    /*
     if (redisAsyncCommand(redis->ctx, on_complete, vm->co_running, "SET %b %b",
         key->v.str->buffer, key->v.str->length,
         value->v.str->buffer, value->v.str->length) != REDIS_OK) {
         lgx_vm_throw_s(vm, "redisAsyncCommand() failed");
         return 1;
     }
+    */
 
     LGX_RETURN_TRUE();
 
@@ -290,10 +365,9 @@ LGX_CLASS(Redis) {
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 
-    LGX_METHOD_BEGIN(Redis, set, 2)
+    LGX_METHOD_BEGIN(Redis, exec, 1)
         LGX_METHOD_RET(T_BOOL)
-        LGX_METHOD_ARG(0, T_STRING)
-        LGX_METHOD_ARG(1, T_STRING)
+        LGX_METHOD_ARG(0, T_ARRAY)
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 

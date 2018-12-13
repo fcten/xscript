@@ -104,7 +104,7 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
             lgx_vm_throw(vm, e);
         } else {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
-            printf("[uncaught exception] ");
+            printf("[uncaught exception] [%llu] ", vm->co_running->id);
             lgx_val_print(e);
             printf("\n");
 
@@ -165,6 +165,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
         return 1;
     }
 
+    vm->co_id = 0;
     vm->co_count = 0;
 
     // 创建主协程

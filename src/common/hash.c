@@ -87,6 +87,8 @@ static int hash_resize(lgx_hash_t *hash) {
     hash->table = resize->table;
     hash->size = resize->size;
     hash->gc.size = resize->gc.size;
+    hash->head = resize->head;
+    hash->tail = resize->tail;
     xfree(resize);
 
     return 0;
@@ -186,7 +188,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     
     hash->length ++;
 
-    if (EXPECTED(hash->size > hash->length)) {
+    if (EXPECTED(hash->size >= hash->length * 2)) {
         return 0;
     } else {
         return hash_resize(hash);

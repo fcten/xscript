@@ -15,6 +15,12 @@
 #define LGX_RETURN_UNDEFINED() \
     lgx_co_return_undefined(vm->co_running)
 
+#define LGX_RETURN_STRING(v) \
+    lgx_co_return_string(vm->co_running, v)
+
+#define LGX_RETURN_ARRAY(v) \
+    lgx_co_return_array(vm->co_running, v)
+
 #define LGX_RETURN_TRUE() \
     lgx_co_return_true(vm->co_running)
 

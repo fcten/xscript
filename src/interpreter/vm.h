@@ -25,6 +25,8 @@ typedef struct lgx_vm_s lgx_vm_t;
 
 typedef struct lgx_co_s {
     wbt_list_t head;
+    // 协程 ID
+    unsigned long long id;
     // 协程状态
     lgx_co_status status;
     // 协程栈
@@ -54,6 +56,8 @@ struct lgx_vm_s {
     wbt_list_t co_ready;
     wbt_list_t co_suspend;
     wbt_list_t co_died;
+    // 协程创建统计
+    unsigned long long co_id;
     // 协程数量统计
     unsigned co_count;
 
