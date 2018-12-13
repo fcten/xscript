@@ -42,6 +42,8 @@ if (WIN32)
 	set (XSCRIPT_LIBS ${XSCRIPT_LIBS} ws2_32)
 endif (WIN32)
 
+set (XSCRIPT_LIBS ${XSCRIPT_LIBS} hiredis.a)
+
 target_link_libraries(xscript ${XSCRIPT_LIBS})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR})

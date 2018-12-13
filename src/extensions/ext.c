@@ -11,6 +11,8 @@
 #include "std_net_tcp_server.h"
 #include "std_net_tcp_client.h"
 
+#include "redis.h"
+
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
     &ext_std_math_ctx,
@@ -19,7 +21,8 @@ lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_coroutine_ctx,
     &ext_std_exception_ctx,
     &ext_std_net_tcp_server_ctx,
-    &ext_std_net_tcp_client_ctx
+    &ext_std_net_tcp_client_ctx,
+    &ext_redis_ctx
 };
 
 int lgx_ext_init(lgx_vm_t *vm) {

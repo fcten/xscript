@@ -83,6 +83,16 @@ lgx_val_t* lgx_obj_get(lgx_obj_t *obj, lgx_val_t *k) {
     }
 }
 
+lgx_val_t* lgx_obj_get_s(lgx_obj_t *obj, char *s) {
+    lgx_str_t str;
+    str.buffer = s;
+    str.length = strlen(s);
+    lgx_val_t v;
+    v.type = T_STRING;
+    v.v.str = &str;
+    return lgx_obj_get(obj, &v);
+}
+
 int lgx_obj_add_property(lgx_obj_t *obj, lgx_hash_node_t *node) {
     if (lgx_hash_get(obj->properties, &node->k)) {
         // 属性已存在
