@@ -23,9 +23,10 @@ static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
 
     lgx_redis_t *redis = c->ev.data;
     lgx_vm_t *vm = redis->vm;
+    lgx_co_t *co = (lgx_co_t *)privdata;
 
     // 恢复协程执行
-    lgx_co_resume(vm, redis->co);
+    lgx_co_resume(vm, co);
 
     redisReply *reply = r;
     switch (reply->type) {
@@ -144,6 +145,8 @@ LGX_METHOD(Redis, connect) {
     LGX_METHOD_ARGS_GET(ip, 0);
     LGX_METHOD_ARGS_GET(port, 1);
 
+    wbt_debug("redis:connect");
+
     if (!ip || ip->type != T_STRING || ip->v.str->length > 32) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
         return 1;
@@ -244,6 +247,8 @@ LGX_METHOD(Redis, set) {
     LGX_METHOD_ARGS_GET(key, 0);
     LGX_METHOD_ARGS_GET(value, 1);
 
+    wbt_debug("redis:set");
+
     if (!key || key->type != T_STRING) {
         lgx_vm_throw_s(vm, "invalid param `key`");
         return 1;
@@ -262,7 +267,7 @@ LGX_METHOD(Redis, set) {
 
     lgx_redis_t *redis = (lgx_redis_t *)res->v.res->buf;
 
-    if (redisAsyncCommand(redis->ctx, on_complete, NULL, "SET %b %b",
+    if (redisAsyncCommand(redis->ctx, on_complete, vm->co_running, "SET %b %b",
         key->v.str->buffer, key->v.str->length,
         value->v.str->buffer, value->v.str->length) != REDIS_OK) {
         lgx_vm_throw_s(vm, "redisAsyncCommand() failed");
@@ -277,6 +282,7 @@ LGX_METHOD(Redis, set) {
 }
 
 LGX_CLASS(Redis) {
+    // TODO connect 作为构造函数
     LGX_METHOD_BEGIN(Redis, connect, 2)
         LGX_METHOD_RET(T_BOOL)
         LGX_METHOD_ARG(0, T_STRING)
