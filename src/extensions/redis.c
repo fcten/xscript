@@ -1,6 +1,7 @@
 #include "../common/str.h"
 #include "../common/fun.h"
 #include "../common/obj.h"
+#include "../common/res.h"
 #include "redis.h"
 
 #include <hiredis/hiredis.h>
@@ -186,12 +187,20 @@ LGX_METHOD(Redis, connect) {
     redis->obj = obj->v.obj;
     redis->ctx = c;
 
+    lgx_res_t *res = lgx_res_new(0, redis);
+    if (!res) {
+        xfree(redis);
+        redisAsyncFree(c);
+        lgx_vm_throw_s(vm, "lgx_res_new() failed");
+        return 1;
+    }
+
     // 保存 lgx_redis_t
     lgx_hash_node_t symbol;
     symbol.k.type = T_STRING;
     symbol.k.v.str = lgx_str_new_ref("ctx", sizeof("ctx") - 1);
     symbol.v.type = T_RESOURCE;
-    symbol.v.v.l = (long long)(redis);
+    symbol.v.v.res = res;
     if (lgx_obj_add_property(obj->v.obj, &symbol)) {
         return 1;
     }
@@ -251,7 +260,7 @@ LGX_METHOD(Redis, set) {
         return 1;
     }
 
-    lgx_redis_t *redis = (lgx_redis_t *)res->v.res;
+    lgx_redis_t *redis = (lgx_redis_t *)res->v.res->buf;
 
     if (redisAsyncCommand(redis->ctx, on_complete, NULL, "SET %b %b",
         key->v.str->buffer, key->v.str->length,
