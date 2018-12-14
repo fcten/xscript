@@ -186,7 +186,7 @@ static wbt_status on_write(wbt_event_t *ev) {
     return WBT_OK;
 }
 
-LGX_METHOD(Redis, connect) {
+LGX_METHOD(Redis, constructor) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(ip, 0);
@@ -357,8 +357,7 @@ LGX_METHOD(Redis, exec) {
 }
 
 LGX_CLASS(Redis) {
-    // TODO connect 作为构造函数
-    LGX_METHOD_BEGIN(Redis, connect, 2)
+    LGX_METHOD_BEGIN(Redis, constructor, 2)
         LGX_METHOD_RET(T_BOOL)
         LGX_METHOD_ARG(0, T_STRING)
         LGX_METHOD_ARG_OPTIONAL(1, T_LONG, 6379)
