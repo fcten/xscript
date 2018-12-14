@@ -1,6 +1,6 @@
-# xscript
+# XScript
 
-Yet another scripting language.
+A scripting language characterized as dynamic, strongly typed, object-oriented and syntactically similar to C.
 
 # Hello World
 
