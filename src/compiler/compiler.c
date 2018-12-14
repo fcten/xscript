@@ -749,6 +749,30 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
     return 0;
 }
 
+static int bc_expr_method_without_params(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
+    lgx_fun_t *fun = funval->v.fun;
+
+    int i;
+    for(i = 0; i < fun->args_num; i++) {
+        if (!fun->args[i].u.c.init) {
+            bc_error(bc, node, "arguments length mismatch\n");
+            return 1;
+        }
+    }
+
+    bc_call_new(bc, funval->u.c.reg);
+
+    // 把对象压入堆栈
+    bc_call_set(bc, 4, objval);
+
+    e->type = fun->ret.type;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
+    bc_call(bc, e, funval->u.c.reg);
+
+    return 0;
+}
+
 static int bc_expr_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
     lgx_fun_t *fun = funval->v.fun;
 
@@ -1024,6 +1048,8 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         if (node->child[0]->child[0]->type == IDENTIFIER_TOKEN) {
             id_token = (lgx_ast_node_token_t *)(node->child[0]->child[0]);
         }
+    } else if (node->child[0]->type == IDENTIFIER_TOKEN) {
+        id_token = (lgx_ast_node_token_t *)(node->child[0]);
     }
     
     if (!id_token) {
@@ -1081,8 +1107,14 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     bc_load(bc, &e2, &constructor_name);
     bc_object_get(bc, &e1, e, &e2);
 
-    if (bc_expr_method(bc, node->child[0]->child[1], &e3, e, &e1)) {
-        return 1;
+    if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
+        if (bc_expr_method(bc, node->child[0]->child[1], &e3, e, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_method_without_params(bc, node->child[0], &e3, e, &e1)) {
+            return 1;
+        }
     }
 
     reg_free(bc, &e1);
@@ -1343,7 +1375,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 lgx_str_t s;
                 s.buffer = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_start;
                 s.length = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_length;
-                e = lgx_scope_global_val_get(node, &s);
+                e = lgx_scope_val_get(node, &s);
+                assert(e);
 
                 int i;
                 for (i = 0; i < node->parent->child[1]->children; i++) {

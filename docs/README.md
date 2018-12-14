@@ -584,7 +584,7 @@ for (;;) { // endless loop
 ```
 class Test {
     public function print() {
-        echo "Test:print\n";
+        echo "Test:print";
     }
 }
 
@@ -600,6 +600,31 @@ obj->print();
 ## 多态
 
 ## 构造函数
+
+可以通过定义一个名为 `constructor` 的方法为类添加一个构造函数。
+
+```
+class Test {
+    private string msg;
+
+    public function constructor(string msg) {
+        this->msg = msg;
+    }
+
+    public function print() {
+        echo this->msg;
+    }
+}
+
+(new Test("123"))->print();
+(new Test("456"))->print();
+```
+
+构造函数是一个普通的函数，可以像其他方法一样在任何时候被调用。但是除非必要，否则不建议手动调用构造函数。
+
+每当通过 new 操作符创建新的对象之后，该对象的构造函数会被隐式调用。当构造函数被隐式调用时，该方法的返回值会被忽略。
+
+构造函数不能阻止对象被创建，因为在调用构造函数时对象已经创建完毕了。在构造函数中抛出异常可以阻止初始化失败的对象被赋值给其它变量，未被赋值的对象会在未来的某个时间通过垃圾回收机制销毁。
 
 ## 析构函数
 

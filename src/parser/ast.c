@@ -588,6 +588,10 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t
             ast_step(pkg);
 
             ast_parse_sub_expression(ast, pkg, unary_expression, 2);
+            if (unary_expression->children == 0) {
+                ast_error(ast, pkg, "unexpected right value for unary operatior near `%.*s`\n", pkg->cur_length, pkg->cur_start);
+                return;
+            }
             break;    
         default:
             ast_parse_bsc_expression(ast, pkg, parent);
@@ -637,7 +641,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t
 
         ast_parse_sub_expression(ast, pkg, binary_expression, p);
         if (binary_expression->children == 1) {
-            ast_error(ast, pkg, "unexpected right value for binary operation near `%.*s`\n", pkg->cur_length, pkg->cur_start);
+            ast_error(ast, pkg, "unexpected right value for binary operatior near `%.*s`\n", pkg->cur_length, pkg->cur_start);
             return;
         }
 
