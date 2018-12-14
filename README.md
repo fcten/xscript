@@ -1,6 +1,6 @@
-# xscript [![Build Status](https://travis-ci.org/fcten/xscript.svg?branch=master)](https://travis-ci.org/fcten/xscript)
+# XScript [![Build Status](https://travis-ci.org/fcten/xscript.svg?branch=master)](https://travis-ci.org/fcten/xscript)
 
-Yet another scripting language.
+A scripting language characterized as dynamic, strongly typed, object-oriented and syntactically similar to C.
 
 # Get Started
 
