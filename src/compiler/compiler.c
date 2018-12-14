@@ -1363,7 +1363,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_hash_node_t* next = node->u.symbols->head;
             // 为当前作用域的变量分配寄存器
             while (next) {
-                if (next->v.type != T_FUNCTION) { // TODO CLASS 不需要分配寄存器
+                if (next->v.u.c.modifier.is_const) {
+                    // 不需要为常量分配寄存器
+                } else {
                     next->v.u.c.reg = reg_pop(bc);
                 }
                 next = next->order;

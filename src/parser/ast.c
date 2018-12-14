@@ -1343,6 +1343,8 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
         f->type = T_FUNCTION;
         f->u.c.used = 1;
         f->u.c.modifier = *modifier;
+        // 总是把符号表中的函数标记为 const
+        f->u.c.modifier.is_const = 1;
     } else {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;
@@ -1460,6 +1462,8 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
         f->type = T_OBJECT;
         f->v.obj = lgx_obj_create(&s);
         f->u.c.used = 1;
+        // 总是把符号表中的类标记为 const
+        f->u.c.modifier.is_const = 1;
     } else {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;
@@ -1642,8 +1646,10 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast
     if ((f = lgx_scope_val_add(interface_declaration, &s))) {
         f->type = T_OBJECT;
         f->v.obj = lgx_obj_create(&s);
-        f->u.c.used = 1;
         f->v.obj->is_interface = 1;
+        f->u.c.used = 1;
+        // 总是把符号表中的接口标记为 const
+        f->u.c.modifier.is_const = 1;
     } else {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;
