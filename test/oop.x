@@ -13,6 +13,10 @@ class C implements A, B {
 class C1 {
     public string msg = "C1:print";
 
+    public function constructor(string msg) {
+        this->msg = msg;
+    }
+
     public function print() {
         echo this->msg;
     }
@@ -32,8 +36,10 @@ class C2 {
     }
 }
 
-C1 obj1 = new C1();
+C1 obj1 = new C1("hello");
 C2 obj2 = new C2();
-// TODO 方法调用可以在编译时确定
+// TODO 方法调用可以在编译时确定？
 obj1->print();
 obj2->print();
+
+(new C1("world"))->print();

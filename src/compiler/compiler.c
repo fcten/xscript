@@ -749,6 +749,105 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
     return 0;
 }
 
+static int bc_expr_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
+    lgx_fun_t *fun = funval->v.fun;
+
+    // 实参数量必须小于等于形参
+    if (node->children > fun->args_num) {
+        bc_error(bc, node, "arguments length mismatch\n");
+        return 1;
+    }
+
+    // 计算参数
+    int i;
+    lgx_val_t *expr = (lgx_val_t *)xcalloc(node->children, sizeof(lgx_val_t));
+    for(i = 0; i < node->children; i++) {
+        bc_expr(bc, node->child[i], &expr[i]);
+    }
+
+    bc_call_new(bc, funval->u.c.reg);
+
+    // 先把对象压入堆栈
+    bc_call_set(bc, 4, objval);
+
+    int base = 5;
+    for(i = 0; i < fun->args_num; i++) {
+        if (i < node->children) {
+            if (fun->args[i].type != T_UNDEFINED &&
+                expr[i].type != T_UNDEFINED &&
+                fun->args[i].type != expr[i].type) {
+                bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
+                return 1;
+            }
+
+            bc_call_set(bc, i + base, &expr[i]);
+            reg_free(bc, &expr[i]);
+        } else {
+            if (!fun->args[i].u.c.init) {
+                bc_error(bc, node, "arguments length mismatch\n");
+                return 1;
+            }
+        }
+    }
+
+    xfree(expr);
+
+    e->type = fun->ret.type;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
+    bc_call(bc, e, funval->u.c.reg);
+
+    return 0;
+}
+
+static int bc_expr_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *funval) {
+    lgx_fun_t *fun = funval->v.fun;
+
+    // 实参数量必须小于等于形参
+    if (node->children > fun->args_num) {
+        bc_error(bc, node, "arguments length mismatch\n");
+        return 1;
+    }
+
+    // 计算参数
+    int i;
+    lgx_val_t *expr = (lgx_val_t *)xcalloc(node->children, sizeof(lgx_val_t));
+    for(i = 0; i < node->children; i++) {
+        bc_expr(bc, node->child[i], &expr[i]);
+    }
+
+    bc_call_new(bc, funval->u.c.reg);
+
+    int base = 4;
+    for(i = 0; i < fun->args_num; i++) {
+        if (i < node->children) {
+            if (fun->args[i].type != T_UNDEFINED &&
+                expr[i].type != T_UNDEFINED &&
+                fun->args[i].type != expr[i].type) {
+                bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
+                return 1;
+            }
+
+            bc_call_set(bc, i + base, &expr[i]);
+            reg_free(bc, &expr[i]);
+        } else {
+            if (!fun->args[i].u.c.init) {
+                bc_error(bc, node, "arguments length mismatch\n");
+                return 1;
+            }
+        }
+    }
+
+    xfree(expr);
+
+    e->type = fun->ret.type;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
+    bc_call(bc, e, funval->u.c.reg);
+
+    return 0;
+}
+
 static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1, obj;
     lgx_val_init(&e1);
@@ -795,55 +894,15 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    lgx_fun_t *fun = e1.v.fun;
-
-    // 实参数量必须小于等于形参
-    if (node->child[1]->children > fun->args_num) {
-        bc_error(bc, node, "arguments length mismatch\n", lgx_val_typeof(&e1));
-        return 1;
-    }
-
-    // 计算参数
-    int i;
-    lgx_val_t *expr = (lgx_val_t *)xcalloc(node->child[1]->children, sizeof(lgx_val_t));
-    for(i = 0; i < node->child[1]->children; i++) {
-        bc_expr(bc, node->child[1]->child[i], &expr[i]);
-    }
-
-    bc_call_new(bc, e1.u.c.reg);
-
-    // 如果调用的是类的方法，则把对象压入堆栈
-    int base = 4;
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
-        base = 5;
-        bc_call_set(bc, 4, &obj);
-    }
-
-    for(i = 0; i < fun->args_num; i++) {
-        if (i < node->child[1]->children) {
-            if (fun->args[i].type != T_UNDEFINED &&
-                expr[i].type != T_UNDEFINED &&
-                fun->args[i].type != expr[i].type) {
-                bc_error(bc, node->child[1], "makes %s from %s without a cast\n", lgx_val_typeof(&fun->args[i]), lgx_val_typeof(&expr[i]));
-                return 1;
-            }
-
-            bc_call_set(bc, i + base, &expr[i]);
-            reg_free(bc, &expr[i]);
-        } else {
-            if (!fun->args[i].u.c.init) {
-                bc_error(bc, node, "arguments length mismatch\n");
-                return 1;
-            }
+        if (bc_expr_method(bc, node->child[1], e, &obj, &e1)) {
+            return 1;
+        }
+    } else {
+        if (bc_expr_function(bc, node->child[1], e, &e1)) {
+            return 1;
         }
     }
-
-    xfree(expr);
-
-    e->type = fun->ret.type;
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
-    bc_call(bc, e, e1.u.c.reg);
 
     reg_free(bc, &e1);
     reg_free(bc, &obj);
@@ -965,8 +1024,6 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         if (node->child[0]->child[0]->type == IDENTIFIER_TOKEN) {
             id_token = (lgx_ast_node_token_t *)(node->child[0]->child[0]);
         }
-    } else if (node->child[0]->type == IDENTIFIER_TOKEN) {
-        id_token = (lgx_ast_node_token_t *)(node->child[0]);
     }
     
     if (!id_token) {
@@ -991,6 +1048,46 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     e->u.c.reg = reg_pop(bc);
 
     bc_object_new(bc, e, const_get(bc, v));
+
+    // 如果有构造函数，则调用之
+    // TODO 内存泄漏
+    lgx_val_t constructor_name;
+    constructor_name.type = T_STRING;
+    constructor_name.v.str = lgx_str_new_ref("constructor", sizeof("constructor") - 1);
+
+    lgx_val_t *constructor = lgx_obj_get(e->v.obj, &constructor_name);
+    if (!constructor) {
+        return 0;
+    }
+
+    if (constructor->type != T_FUNCTION) {
+        bc_error(bc, node, "`constructor` must be a method\n");
+        return 1;
+    }
+
+    lgx_val_t e1, e2, e3;
+    lgx_val_init(&e1);
+    lgx_val_init(&e2);
+    lgx_val_init(&e3);
+
+    e1 = *constructor;
+    e1.u.c.type = R_TEMP;
+    e1.u.c.reg = reg_pop(bc);
+    e2.u.c.type = R_TEMP;
+    e2.u.c.reg = reg_pop(bc);
+    e3.u.c.type = R_TEMP;
+    e3.u.c.reg = reg_pop(bc);
+
+    bc_load(bc, &e2, &constructor_name);
+    bc_object_get(bc, &e1, e, &e2);
+
+    if (bc_expr_method(bc, node->child[0]->child[1], &e3, e, &e1)) {
+        return 1;
+    }
+
+    reg_free(bc, &e1);
+    reg_free(bc, &e2);
+    reg_free(bc, &e3);
 
     return 0;
 }
