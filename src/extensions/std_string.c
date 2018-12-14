@@ -11,7 +11,7 @@
  */
 LGX_FUNCTION(string_length) {
     LGX_FUNCTION_ARGS_INIT();
-    LGX_FUNCTION_ARGS_GET(strval, 0);
+    LGX_FUNCTION_ARGS_GET(strval, 0, T_STRING);
 
     LGX_RETURN_LONG(strval->v.str->length);
     return 0;

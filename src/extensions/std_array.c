@@ -1,17 +1,9 @@
 #include "../common/fun.h"
 #include "std_array.h"
 
-/* @name array_length
- * 
- * @description 返回数组包含的元素数量
- * 
- * @param arrval T_ARRAY
- * 
- * @return T_LONG
- */
 LGX_FUNCTION(array_length) {
     LGX_FUNCTION_ARGS_INIT();
-    LGX_FUNCTION_ARGS_GET(arrval, 0);
+    LGX_FUNCTION_ARGS_GET(arrval, 0, T_ARRAY);
 
     LGX_RETURN_LONG(arrval->v.arr->length);
     return 0;

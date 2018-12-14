@@ -26,16 +26,16 @@ static wbt_status timer_wakeup(wbt_timer_t *timer) {
 extern time_t wbt_cur_mtime;
 
 LGX_FUNCTION(co_sleep) {
-    unsigned base = vm->regs[0].v.fun->stack_size;
-    long long sleep = vm->regs[base+4].v.l;
+    LGX_FUNCTION_ARGS_INIT();
+    LGX_FUNCTION_ARGS_GET(sleep, 0, T_LONG);
 
-    if (sleep > 0) {
+    if (sleep->v.l > 0) {
         co_sleep_ctx *ctx = (co_sleep_ctx *)xcalloc(1, sizeof(co_sleep_ctx));
         if (!ctx) {
             return LGX_RETURN_FALSE();
         }
         ctx->timer.on_timeout = timer_wakeup;
-        ctx->timer.timeout = wbt_cur_mtime + sleep;
+        ctx->timer.timeout = wbt_cur_mtime + sleep->v.l;
         ctx->vm = vm;
         ctx->co = vm->co_running;
 

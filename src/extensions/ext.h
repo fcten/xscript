@@ -135,10 +135,14 @@
     lgx_val_t *_this_stack = &vm->regs[_parent_func->stack_size]; \
     lgx_fun_t *_this_func  = _this_stack->v.fun
 
-#define LGX_FUNCTION_ARGS_GET(variable, position) \
+#define LGX_FUNCTION_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 4; \
     if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
         *variable = _this_func->args[position]; \
+    } \
+    if (valtype != T_UNDEFINED && valtype != variable->type) { \
+        lgx_vm_throw_s(vm, "param#%d: type error", position); \
+        return 1; \
     }
 
 #define LGX_METHOD_ARGS_INIT() \
@@ -149,10 +153,14 @@
 #define LGX_METHOD_ARGS_THIS(variable) \
     lgx_val_t *variable = _this_stack + 4
 
-#define LGX_METHOD_ARGS_GET(variable, position) \
+#define LGX_METHOD_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 5; \
     if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
         *variable = _this_func->args[position]; \
+    } \
+    if (valtype != T_UNDEFINED && valtype != variable->type) { \
+        lgx_vm_throw_s(vm, "param#%d: type error", position); \
+        return 1; \
     }
 
 typedef struct lgx_buildin_ext_s {

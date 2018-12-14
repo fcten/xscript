@@ -189,17 +189,17 @@ static wbt_status on_write(wbt_event_t *ev) {
 LGX_METHOD(Redis, constructor) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(ip, 0);
-    LGX_METHOD_ARGS_GET(port, 1);
+    LGX_METHOD_ARGS_GET(ip, 0, T_STRING);
+    LGX_METHOD_ARGS_GET(port, 1, T_LONG);
 
     wbt_debug("redis:connect");
 
-    if (!ip || ip->type != T_STRING || ip->v.str->length > 32) {
+    if (ip->v.str->length > 32) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
         return 1;
     }
 
-    if (!port || port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+    if (port->v.l <= 0 || port->v.l >= 65535) {
         lgx_vm_throw_s(vm, "invalid param `port`");
         return 1;
     }
@@ -291,14 +291,9 @@ LGX_METHOD(Redis, constructor) {
 LGX_METHOD(Redis, exec) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(arr, 0);
+    LGX_METHOD_ARGS_GET(arr, 0, T_ARRAY);
 
     wbt_debug("redis:exec");
-
-    if (!arr || arr->type != T_ARRAY) {
-        lgx_vm_throw_s(vm, "invalid param `arr`");
-        return 1;
-    }
 
     // 把数组转换成 redis 可以接受的格式
     int argc = arr->v.arr->length;

@@ -541,9 +541,9 @@ static void* worker(void *args) {
 LGX_METHOD(Server, listen) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(port, 0);
+    LGX_METHOD_ARGS_GET(port, 0, T_LONG);
 
-    if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+    if (port->v.l <= 0 || port->v.l >= 65535) {
         lgx_vm_throw_s(vm, "invalid param `port`");
         return 1;
     }
@@ -584,9 +584,9 @@ LGX_METHOD(Server, onRequest) {
 LGX_METHOD(Server, start) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(worker_num, 0);
+    LGX_METHOD_ARGS_GET(worker_num, 0, T_LONG);
 
-    if (worker_num->type != T_LONG || worker_num->v.l < 0 || worker_num->v.l > 128) {
+    if (worker_num->v.l < 0 || worker_num->v.l > 128) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
         return 1;
     }

@@ -307,15 +307,15 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
 LGX_METHOD(Client, get) {
     LGX_METHOD_ARGS_INIT();
     //LGX_METHOD_ARGS_THIS(obj);
-    LGX_METHOD_ARGS_GET(ip, 0);
-    LGX_METHOD_ARGS_GET(port, 1);
+    LGX_METHOD_ARGS_GET(ip, 0, T_STRING);
+    LGX_METHOD_ARGS_GET(port, 1, T_LONG);
 
-    if (ip->type != T_STRING || ip->v.str->length > 15) {
+    if (ip->v.str->length > 15) {
         lgx_vm_throw_s(vm, "invalid param `ip`");
         return 1;
     }
 
-    if (port->type != T_LONG || port->v.l <= 0 || port->v.l >= 65535) {
+    if (port->v.l <= 0 || port->v.l >= 65535) {
         lgx_vm_throw_s(vm, "invalid param `port`");
         return 1;
     }
