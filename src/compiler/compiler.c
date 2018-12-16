@@ -10,10 +10,10 @@
 #include "code.h"
 #include "constant.h"
 
-#define check_constant(v, t) ( !is_register((v)) && (v)->type == t )
-#define check_variable(v, t) (  is_register((v)) && ( (v)->type == t || (v)->type == T_UNDEFINED ) )
+#define check_constant(v, t) ( is_constant((v)) && (v)->type == t )
+#define check_variable(v, t) ( is_register((v)) && ( (v)->type == t || (v)->type == T_UNDEFINED ) )
 #define check_type(v, t)     ( check_constant(v, t) || check_variable(v, t) )
-#define is_auto(v)           (  is_register((v)) && (v)->type == T_UNDEFINED )
+#define is_auto(v)           ( is_register((v)) && (v)->type == T_UNDEFINED )
 
 void bc_error(lgx_bc_t *bc, lgx_ast_node_t *node, const char *fmt, ...) {
     va_list   args;
@@ -337,8 +337,11 @@ static int jmp_fix(lgx_bc_t *bc, lgx_ast_node_t *node, unsigned start, unsigned 
 
 static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e);
 
-// TODO 常量优化
 static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+    unsigned pos = bc->bc_top;
+    unsigned is_const = 1;
+    lgx_hash_t *arr = lgx_hash_new(8);
+
     e->type = T_ARRAY;
 
     e->u.c.type = R_TEMP;
@@ -351,8 +354,28 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         lgx_val_t expr;
         lgx_val_init(&expr);
         bc_expr(bc, node->child[i], &expr);
+        if (is_const && is_constant(&expr)) {
+            lgx_hash_add(arr, &expr);
+        } else {
+            is_const = 0;
+        }
         bc_array_add(bc, e, &expr);
         reg_free(bc, &expr);
+    }
+
+    // 如果是常量数组，则无需创建临时数组
+    if (is_const) {
+        // 丢弃之前生成的用于创建临时数组的字节码
+        bc->bc_top = pos;
+        // TODO 之前生成字节码的过程中把数组成员添加到了常量表中，这是不必要的
+        // TODO 直接从常量表中加载非基本类型变量需要使用写时复制机制
+
+        reg_free(bc, e);
+
+        e->type = T_ARRAY;
+        e->v.arr = arr;
+        e->u.c.type = 0;
+        e->u.c.reg = 0;
     }
 
     return 0;

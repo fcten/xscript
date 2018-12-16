@@ -9,6 +9,8 @@ int const_get(lgx_bc_t *bc, lgx_val_t *v) {
     if (!n) {
         lgx_hash_add(bc->constant, v);
         n = lgx_hash_find(bc->constant, v);
+    } else {
+        // TODO 如果已存在，则释放 v 避免内存泄漏
     }
 
     return n->k.v.l;

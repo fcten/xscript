@@ -249,6 +249,27 @@ lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v) {
     return NULL;
 }
 
+int lgx_hash_cmp(lgx_hash_t *hash1, lgx_hash_t *hash2) {
+    if (hash1 == hash2) {
+        return 0;
+    }
+
+    if (hash1->length != hash2->length) {
+        return 1;
+    }
+
+    lgx_hash_node_t *next1 = hash1->head, *next2 = hash2->head;
+    while (next1 && next2) {
+        if (!lgx_val_cmp(&next1->k, &next2->k) || !lgx_val_cmp(&next1->v, &next2->v)) {
+            return 1;
+        }
+        next1 = next1->order;
+        next2 = next2->order;
+    }
+
+    return 0;
+}
+
 int lgx_hash_print(lgx_hash_t *hash) {
     printf("[");
 

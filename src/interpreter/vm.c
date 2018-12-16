@@ -424,7 +424,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     lgx_val_t c;
                     c.type = T_LONG;
                     c.v.l = PC(i);
-                    if (lgx_op_add(&R(PA(i)), &R(PB(i)), &c)) {
+                    if (lgx_op_div(&R(PA(i)), &R(PB(i)), &c)) {
                         lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(PB(i))));
                     }
                 }

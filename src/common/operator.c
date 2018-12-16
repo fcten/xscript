@@ -8,6 +8,8 @@
 int lgx_op_add(lgx_val_t *ret, lgx_val_t *left, lgx_val_t *right) {
     if (left->type == T_STRING && right->type == T_STRING) {
         ret->type = T_STRING;
+        // TODO 执行 add a a b 指令时会导致内存泄漏
+        // TODO 这里没有必要执行复制，除非该变量位于常量表中
         ret->v.str = lgx_str_copy(left->v.str);
         if (lgx_str_concat(ret->v.str, right->v.str)) {
             return 1;

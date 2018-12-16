@@ -99,6 +99,10 @@ void lgx_str_delete(lgx_str_t *str) {
 }
 
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2) {
+    if (str1 == str2) {
+        return 0;
+    }
+
     if (str1->length != str2->length) {
         return 1;
     }

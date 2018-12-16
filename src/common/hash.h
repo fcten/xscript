@@ -34,6 +34,8 @@ lgx_hash_node_t* lgx_hash_get(lgx_hash_t *hash, lgx_val_t *k);
 lgx_val_t* lgx_hash_get_s(lgx_hash_t *hash, char *k);
 lgx_hash_node_t* lgx_hash_find(lgx_hash_t *hash, lgx_val_t *v);
 
+int lgx_hash_cmp(lgx_hash_t *hash1, lgx_hash_t *hash2);
+
 int lgx_hash_print(lgx_hash_t *hash);
 
 #endif	/* LGX_HASH_H */

@@ -107,7 +107,8 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
                 }
                 break;
             case T_ARRAY:
-                if (src->v.arr == dst->v.arr) {
+                // 比较大数组可能会很慢，需要关注
+                if (lgx_hash_cmp(src->v.arr, dst->v.arr) == 0) {
                     return 1;
                 }
                 break;
