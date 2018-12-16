@@ -178,9 +178,6 @@ struct lgx_hash_s {
     // 已使用的容量
     unsigned length;
 
-    // 是否包含非基本类型元素
-    unsigned char flag_non_basic_elements;
-
     // 是否包含非连续元素
     unsigned char flag_non_compact_elements;
 

@@ -68,9 +68,7 @@ int lgx_hash_delete(lgx_hash_t *hash) {
         wbt_list_del(&hash->gc.head);
     }
 
-    if (hash->flag_non_basic_elements) {
-        lgx_hash_remove_all(hash);
-    }
+    lgx_hash_remove_all(hash);
 
     xfree(hash->table);
 
@@ -162,10 +160,6 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         hash->flag_non_compact_elements = 1;
     }
 
-    if (IS_GC_VALUE(&node->v) || IS_GC_VALUE(&node->k)) {
-        hash->flag_non_basic_elements = 1;
-    }
-
     if (EXPECTED(hash->table[k].k.type == T_UNDEFINED)) {
         // 插入位置是空的
         lgx_gc_ref_add(&node->k);
@@ -205,7 +199,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     
     hash->length ++;
 
-    if (EXPECTED(hash->size >= hash->length * 2)) {
+    if (EXPECTED(hash->size >= hash->length * (hash->flag_non_compact_elements ? 2 : 1))) {
         return 0;
     } else {
         return hash_resize(hash);
