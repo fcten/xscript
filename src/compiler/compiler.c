@@ -376,6 +376,8 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         e->v.arr = arr;
         e->u.c.type = 0;
         e->u.c.reg = 0;
+    } else {
+        lgx_hash_delete(arr);
     }
 
     return 0;
