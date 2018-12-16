@@ -157,7 +157,9 @@ struct lgx_ref_s {
 };
 
 typedef struct lgx_hash_node_s {
+    // 下一个相同哈希值的元素
     struct lgx_hash_node_s *next;
+    // 下一个插入哈希表的元素
     struct lgx_hash_node_s *order;
     lgx_val_t k;
     lgx_val_t v;

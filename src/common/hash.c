@@ -30,6 +30,38 @@ lgx_hash_t* _lgx_hash_new(unsigned size) {
     return hash;
 }
 
+// 清空哈希表
+int lgx_hash_remove_all(lgx_hash_t *hash) {
+    int i, length;
+    if (hash->flag_non_compact_elements) {
+        length = hash->size;
+    } else {
+        length = hash->length;
+    }
+    for (i = 0; i < length; i ++) {
+        lgx_gc_ref_del(&hash->table[i].k);
+        lgx_gc_ref_del(&hash->table[i].v);
+        hash->table[i].k.type = T_UNDEFINED;
+        hash->table[i].v.type = T_UNDEFINED;
+        // 释放其它哈希值相同的元素
+        lgx_hash_node_t *cur, *next = hash->table[i].next;
+        while (next) {
+            cur = next;
+            next = cur->next;
+            lgx_gc_ref_del(&cur->k);
+            lgx_gc_ref_del(&cur->v);
+            xfree(cur);
+        }
+        hash->table[i].next = NULL;
+        hash->table[i].order = NULL;
+    }
+
+    hash->length = 0;
+    hash->head = hash->tail = NULL;
+
+    return 0;
+}
+
 // 删除哈希表，并删除有所引用计数小于等于 1 的子元素
 int lgx_hash_delete(lgx_hash_t *hash) {
     if (!wbt_list_empty(&hash->gc.head)) {
@@ -37,24 +69,7 @@ int lgx_hash_delete(lgx_hash_t *hash) {
     }
 
     if (hash->flag_non_basic_elements) {
-        int i, length;
-        if (hash->flag_non_compact_elements) {
-            length = hash->size;
-        } else {
-            length = hash->length;
-        }
-        for (i = 0; i < length; i ++) {
-            lgx_gc_ref_del(&hash->table[i].k);
-            lgx_gc_ref_del(&hash->table[i].v);
-            lgx_hash_node_t *cur, *next = hash->table[i].next;
-            while (next) {
-                cur = next;
-                next = cur->next;
-                lgx_gc_ref_del(&cur->k);
-                lgx_gc_ref_del(&cur->v);
-                xfree(cur);
-            }
-        }
+        lgx_hash_remove_all(hash);
     }
 
     xfree(hash->table);
@@ -82,10 +97,12 @@ static int hash_resize(lgx_hash_t *hash) {
     }
 
     hash_copy(hash, resize);
+    lgx_hash_remove_all(hash);
 
     xfree(hash->table);
     hash->table = resize->table;
     hash->size = resize->size;
+    hash->length = resize->length;
     hash->gc.size = resize->gc.size;
     hash->head = resize->head;
     hash->tail = resize->tail;

@@ -131,9 +131,16 @@
     } while (0);
 
 #define LGX_FUNCTION_ARGS_INIT() \
-    lgx_fun_t *_parent_func = vm->regs[0].v.fun; \
-    lgx_val_t *_this_stack = &vm->regs[_parent_func->stack_size]; \
-    lgx_fun_t *_this_func  = _this_stack->v.fun
+    if (vm->regs[0].type != T_FUNCTION || !vm->regs[0].v.fun ) { \
+        lgx_vm_throw_s(vm, "param#function: stack error"); \
+        return 1; \
+    } \
+    lgx_val_t *_this_stack = &vm->regs[vm->regs[0].v.fun->stack_size]; \
+    lgx_fun_t *_this_func  = _this_stack->v.fun; \
+    if (!_this_func || _this_stack->type != T_FUNCTION) { \
+        lgx_vm_throw_s(vm, "param#function: type error"); \
+        return 1; \
+    }
 
 #define LGX_FUNCTION_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 4; \
@@ -146,12 +153,23 @@
     }
 
 #define LGX_METHOD_ARGS_INIT() \
-    lgx_fun_t *_parent_func = vm->regs[0].v.fun; \
-    lgx_val_t *_this_stack = &vm->regs[_parent_func->stack_size]; \
-    lgx_fun_t *_this_func = _this_stack->v.fun
+    if (vm->regs[0].type != T_FUNCTION || !vm->regs[0].v.fun ) { \
+        lgx_vm_throw_s(vm, "param#function: stack error"); \
+        return 1; \
+    } \
+    lgx_val_t *_this_stack = &vm->regs[vm->regs[0].v.fun->stack_size]; \
+    lgx_fun_t *_this_func = _this_stack->v.fun; \
+    if (!_this_func || _this_stack->type != T_FUNCTION) { \
+        lgx_vm_throw_s(vm, "param#function: type error"); \
+        return 1; \
+    }
 
 #define LGX_METHOD_ARGS_THIS(variable) \
-    lgx_val_t *variable = _this_stack + 4
+    lgx_val_t *variable = _this_stack + 4; \
+    if (variable->type != T_OBJECT) { \
+        lgx_vm_throw_s(vm, "param#this: type error"); \
+        return 1; \
+    }
 
 #define LGX_METHOD_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 5; \

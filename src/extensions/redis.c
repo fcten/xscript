@@ -60,6 +60,11 @@ static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
     lgx_co_resume(vm, co);
 
     redisReply *reply = r;
+    if (reply == NULL) {
+        lgx_vm_throw_s(vm, c->errstr);
+        return;
+    }
+
     switch (reply->type) {
     case REDIS_REPLY_ERROR:
         lgx_vm_throw_s(vm, "%.*s", reply->len, reply->str);
@@ -93,6 +98,19 @@ static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
     }
 }
 
+static void on_close(const redisAsyncContext *c, int status) {
+    wbt_debug("redis:on_close");
+
+    lgx_redis_t *redis = c->ev.data;
+    //lgx_vm_t *vm = redis->vm;
+
+    if (status != REDIS_OK) {
+        wbt_debug("Error: %s", c->errstr);
+    }
+
+    redis->ctx = NULL;
+}
+
 static void on_connect(const redisAsyncContext *c, int status) {
     wbt_debug("redis:on_connect");
 
@@ -102,14 +120,12 @@ static void on_connect(const redisAsyncContext *c, int status) {
     // 恢复协程执行
     lgx_co_resume(vm, redis->co);
 
-    // 写入返回值
-    LGX_RETURN_TRUE();
-}
-
-static void on_close(const redisAsyncContext *c, int status) {
-    wbt_debug("redis:on_close");
-
-
+    if (status != REDIS_OK) {
+        lgx_vm_throw_s(vm, c->errstr);
+    } else {
+        // 写入返回值
+        LGX_RETURN_TRUE();
+    }
 }
 
 static void ev_add_read(void *privdata) {
@@ -217,8 +233,8 @@ LGX_METHOD(Redis, constructor) {
     }
 
     if (c->err) {
-        redisAsyncFree(c);
         lgx_vm_throw_s(vm, c->errstr);
+        redisAsyncFree(c);
         return 1;
     }
 
@@ -314,10 +330,47 @@ LGX_METHOD(Redis, exec) {
     }
 
     if (count != argc) {
-        // TODO 释放内存
         lgx_vm_throw_s(vm, "invalid param `arr`");
-        return 1;
+        goto err;
     }
+
+    lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `ctx`");
+        goto err;
+    }
+
+    lgx_redis_t *redis = (lgx_redis_t *)res->v.res->buf;
+    if (!redis->ctx) {
+        lgx_vm_throw_s(vm, "connection alreay closed");
+        goto err;
+    }
+
+    if (redisAsyncCommandArgv(redis->ctx, on_complete, vm->co_running,
+            argc, (const char **)argv, argvlen) != REDIS_OK) {
+        lgx_vm_throw_s(vm, "redisAsyncCommandArgv() failed");
+        goto err;
+    }
+
+    LGX_RETURN_TRUE();
+
+    lgx_co_suspend(vm);
+
+err:
+    xfree(argvlen);
+    while (count) {
+        count --;
+        xfree(argv[count]);
+    }
+    xfree(argv);
+    return 0;
+}
+
+LGX_METHOD(Redis, close) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    wbt_debug("redis:close");
 
     lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
     if (!res || res->type != T_RESOURCE) {
@@ -326,27 +379,11 @@ LGX_METHOD(Redis, exec) {
     }
 
     lgx_redis_t *redis = (lgx_redis_t *)res->v.res->buf;
-
-    if (redisAsyncCommandArgv(redis->ctx, on_complete, vm->co_running,
-            argc, (const char **)argv, argvlen) != REDIS_OK) {
-        lgx_vm_throw_s(vm, "redisAsyncCommandArgv() failed");
-        return 1;
+    if (redis->ctx) {
+        redisAsyncDisconnect(redis->ctx);
     }
-
-    // TODO 释放内存
-
-    /*
-    if (redisAsyncCommand(redis->ctx, on_complete, vm->co_running, "SET %b %b",
-        key->v.str->buffer, key->v.str->length,
-        value->v.str->buffer, value->v.str->length) != REDIS_OK) {
-        lgx_vm_throw_s(vm, "redisAsyncCommand() failed");
-        return 1;
-    }
-    */
 
     LGX_RETURN_TRUE();
-
-    lgx_co_suspend(vm);
 
     return 0;
 }
@@ -362,6 +399,11 @@ LGX_CLASS(Redis) {
     LGX_METHOD_BEGIN(Redis, exec, 1)
         LGX_METHOD_RET(T_BOOL)
         LGX_METHOD_ARG(0, T_ARRAY)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Redis, close, 0)
+        LGX_METHOD_RET(T_BOOL)
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 
