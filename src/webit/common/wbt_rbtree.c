@@ -597,8 +597,8 @@ void wbt_rb_destroy(wbt_rb_t *rbt) {
 
 void wbt_rbtree_destroy_recursive_ignore_value(wbt_rb_node_t *node) {
     if(node) {
-        wbt_rbtree_destroy_recursive(node->left);
-        wbt_rbtree_destroy_recursive(node->right);
+        wbt_rbtree_destroy_recursive_ignore_value(node->left);
+        wbt_rbtree_destroy_recursive_ignore_value(node->right);
         
         wbt_free(node->key.str.s);
         //wbt_free(node->value.str);

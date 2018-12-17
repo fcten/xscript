@@ -2114,7 +2114,11 @@ int lgx_bc_cleanup(lgx_bc_t *bc) {
     xfree(bc->bc);
     xfree(bc->err_info);
 
-    wbt_rb_destroy(bc->exception);
+    wbt_rb_node_t *node;
+    for (node = wbt_rb_first(bc->exception); node; node = wbt_rb_next(node)) {
+        lgx_exception_delete((lgx_exception_t *)node->value.str);
+    }
+    wbt_rb_destroy_ignore_value(bc->exception);
     xfree(bc->exception);
 
     lgx_hash_delete(bc->constant);
