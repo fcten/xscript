@@ -242,7 +242,9 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
         vm->events = NULL;
     }
 
-    // 清理所有变量
+    lgx_bc_cleanup(vm->bc);
+
+    // 清理存在循环引用的变量
     wbt_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
         wbt_list_t *next = list->next;
@@ -255,8 +257,6 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
         xfree(list);
         list = next;
     }
-
-    lgx_bc_cleanup(vm->bc);
 
     return 0;
 }
@@ -337,7 +337,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     if (lgx_op_add(&R(PA(i)), &R(PB(i)), &R(PC(i)))) {
                         lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(PB(i))), "+", lgx_val_typeof(&R(PC(i))));
                     }
-                    lgx_gc_trace(vm, &R(PA(i)));
                     lgx_gc_ref_add(&R(PA(i)));
                 }
                 break;
@@ -854,8 +853,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         n.k = R(PB(i));
                         n.v = R(PC(i));
                         lgx_hash_set(R(PA(i)).v.arr, &n);
-                        lgx_gc_ref_add(&R(PB(i)));
-                        lgx_gc_ref_add(&R(PC(i)));
                     } else {
                         // runtime warning
                         lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_val_typeof(&R(PA(i))));
@@ -869,7 +866,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_ARRAY_ADD:{
                 if (EXPECTED(R(PA(i)).type == T_ARRAY)) {
                     lgx_hash_add(R(PA(i)).v.arr, &R(PB(i)));
-                    lgx_gc_ref_add(&R(PB(i)));
                 } else {
                     // runtime error
                     lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(PA(i))));

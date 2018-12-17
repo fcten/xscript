@@ -76,6 +76,7 @@ static int minor_gc(lgx_vm_t *vm) {
     return 0;
 }
 
+// 只需要跟踪可能存在循环引用的变量
 int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
     if (IS_BASIC_VALUE(v)) {
         return 0;

@@ -4,12 +4,10 @@ for file in ./basic/*
 do
     if test -f $file
     then
-        echo $file
-        valgrind --log-fd=1 --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ../xscript $file | grep -q "All heap blocks were freed -- no leaks are possible"
+        
+        valgrind --log-fd=1 --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ../xscript $file | grep -q "ERROR SUMMARY: 0 errors"
         if [ $? -ne 0 ] ;then
-            echo "ERROR"
-        else
-            echo "OK"
+            echo "ERROR" $file
         fi
     fi
 done
