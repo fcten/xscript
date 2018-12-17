@@ -151,7 +151,7 @@ static wbt_status on_close(wbt_event_t *ev) {
 
     // 写入返回值
     if (!client->is_return) {
-        lgx_vm_throw_s(client->vm, "get failed");
+        lgx_co_throw_s(client->vm, client->co, "get failed");
     }
 
     xfree(client);

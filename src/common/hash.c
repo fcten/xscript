@@ -176,6 +176,9 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
                 // 覆盖旧元素
                 lgx_gc_ref_del(&next->v);
                 lgx_gc_ref_add(&node->v);
+                if (IS_GC_VALUE(&node->k) && node->k.v.gc->ref_cnt == 0) {
+                    lgx_val_free(&node->k);
+                }
                 next->v = node->v;
                 return 0;
             }

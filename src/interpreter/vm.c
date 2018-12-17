@@ -16,13 +16,13 @@
 #define LGX_MAX_STACK_SIZE (256 << 8)
 
 // 输出当前的调用栈
-int lgx_vm_backtrace(lgx_vm_t *vm) {
-    unsigned int base = vm->co_running->stack.base;
+int lgx_vm_backtrace(lgx_vm_t *vm, lgx_co_t *co) {
+    unsigned int base = co->stack.base;
     while (1) {
-        printf("  <function:%d> %d\n", vm->co_running->stack.buf[base].v.fun->addr, base);
+        printf("  <function:%d> %d\n", co->stack.buf[base].v.fun->addr, base);
 
         if (base != 0) {
-            base = vm->co_running->stack.buf[base+3].v.l;
+            base = co->stack.buf[base+3].v.l;
         } else {
             break;
         }
@@ -31,10 +31,8 @@ int lgx_vm_backtrace(lgx_vm_t *vm) {
     return 0;
 }
 
-void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
-    assert(vm->co_running);
-
-    unsigned pc = vm->co_running->pc - 1;
+void lgx_co_throw(lgx_vm_t *vm, lgx_co_t *co, lgx_val_t *e) {
+    unsigned pc = co->pc - 1;
 
     // 匹配最接近的 try-catch 块
     unsigned long long int key = ((unsigned long long int)pc + 1) << 32;
@@ -72,7 +70,7 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
 
     if (block) {
         // 跳转到指定的 catch block
-        vm->co_running->pc = block->start;
+        co->pc = block->start;
 
         // 把异常变量写入到 catch block 的参数中
         //printf("%d\n",block->e->u.c.reg);
@@ -80,8 +78,8 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
         vm->regs[block->e->u.c.reg] = *e;
     } else {
         // 没有匹配的 catch 块，递归向上寻找
-        unsigned base = vm->co_running->stack.base;
-        lgx_val_t *regs = vm->co_running->stack.buf + base;
+        unsigned base = co->stack.base;
+        lgx_val_t *regs = co->stack.buf + base;
 
         assert(regs[0].type == T_FUNCTION);
         assert(regs[2].type == T_LONG);
@@ -96,26 +94,49 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
             }
 
             // 切换执行堆栈
-            vm->co_running->stack.base = regs[3].v.l;
-            vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
+            co->stack.base = regs[3].v.l;
+            vm->regs = co->stack.buf + co->stack.base;
 
             // 在函数调用点重新抛出异常
-            vm->co_running->pc = regs[2].v.l;
-            lgx_vm_throw(vm, e);
+            co->pc = regs[2].v.l;
+            lgx_co_throw(vm, co, e);
         } else {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
-            printf("[uncaught exception] [%llu] ", vm->co_running->id);
+            printf("[uncaught exception] [%llu] ", co->id);
             lgx_val_print(e);
             printf("\n");
 
-            lgx_vm_backtrace(vm);
+            lgx_vm_backtrace(vm, co);
 
-            vm->co_running->pc = regs[0].v.fun->end;
+            co->pc = regs[0].v.fun->end;
         }
     }
 }
 
-// 抛出一个异常
+void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
+    assert(vm->co_running);
+    lgx_co_throw(vm, vm->co_running, e);
+}
+
+void lgx_co_throw_s(lgx_vm_t *vm, lgx_co_t *co, const char *fmt, ...) {
+    char *buf = (char *)xmalloc(128);
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(buf, 128, fmt, args);
+    va_end(args);
+
+    lgx_val_t e;
+    e.type = T_STRING;
+    e.v.str = lgx_str_new_ref(buf, 128);
+    e.v.str->length = len;
+    e.v.str->is_ref = 0;
+
+    lgx_gc_ref_add(&e);
+
+    lgx_co_throw(vm, co, &e);
+}
+
 void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     char *buf = (char *)xmalloc(128);
 
@@ -133,6 +154,16 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     lgx_gc_ref_add(&e);
 
     lgx_vm_throw(vm, &e);
+}
+
+void lgx_co_throw_v(lgx_vm_t *vm, lgx_co_t *co, lgx_val_t *v) {
+    lgx_val_t e;
+    e = *v;
+
+    // 把原始变量标记为 undefined，避免 exception 值被释放
+    v->type = T_UNDEFINED;
+
+    lgx_co_throw(vm, co, &e);
 }
 
 void lgx_vm_throw_v(lgx_vm_t *vm, lgx_val_t *v) {
@@ -737,11 +768,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             if (!ret.v.obj) {
                                 lgx_vm_throw_s(vm, "out of memory");
                             } else {
-                                lgx_gc_ref_add(&ret);
-                                lgx_gc_trace(vm, &ret);
-
                                 co->on_yield = lgx_co_await;
-                                co->ctx = ret.v.obj;
 
                                 lgx_co_return_object(vm->co_running, ret.v.obj);
                             }

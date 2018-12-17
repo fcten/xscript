@@ -196,10 +196,10 @@ int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     wbt_list_add_tail(&co->head, &vm->co_ready);
 
     if (vm->co_running) {
-        lgx_co_yield(vm);
+        return 0;
+    } else {
+        return lgx_co_run(vm, co);
     }
-
-    return lgx_co_run(vm, co);
 }
 
 int lgx_co_yield(lgx_vm_t *vm) {
@@ -358,6 +358,9 @@ void lgx_co_obj_on_delete(lgx_res_t *res) {
     lgx_co_t *co = res->buf;
 
     co->ref_cnt --;
+    if (co->ref_cnt == 0 && co->status == CO_DIED) {
+        lgx_co_delete(co->vm, co);
+    }
 
     res->buf = NULL;
 }
@@ -403,7 +406,6 @@ lgx_obj_t* lgx_co_obj_new(lgx_vm_t *vm, lgx_co_t *co) {
 
 int lgx_co_await(lgx_vm_t *vm) {
     lgx_co_t *co = vm->co_running;
-    lgx_obj_t *obj = (lgx_obj_t *)co->ctx;
 
     if (co->status != CO_DIED) {
         return 0;
@@ -417,12 +419,6 @@ int lgx_co_await(lgx_vm_t *vm) {
     }
 
     co->on_yield = NULL;
-    co->ctx = NULL;
-
-    lgx_val_t ret;
-    ret.type = T_OBJECT;
-    ret.v.obj = obj;
-    lgx_gc_ref_del(&ret);
 
     return 0;
 }

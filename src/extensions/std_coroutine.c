@@ -20,6 +20,8 @@ static wbt_status timer_wakeup(wbt_timer_t *timer) {
 
     lgx_co_resume(ctx->vm, ctx->co);
 
+    xfree(ctx);
+
     return WBT_OK;
 }
 
