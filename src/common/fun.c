@@ -18,6 +18,9 @@ lgx_fun_t* lgx_fun_new(unsigned args_num) {
 
     // 不含任何局部变量和临时变量情况下所需要的最小栈长度
     fun->stack_size = 4 + args_num;
+    // 如果是 method，则还要额外 + 1 以容纳隐藏的 this 参数
+    // TODO 区分是否为 method
+    fun->stack_size ++;
 
     return fun;
 }
