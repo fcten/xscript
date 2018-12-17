@@ -695,6 +695,9 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_
             lgx_val_t *t;
             if ((t = lgx_scope_val_add(block_statement, &s))) {
                 ast_set_variable_type(t, n->child[i]);
+                if (t->type == T_OBJECT) {
+                    lgx_gc_ref_add(t);
+                }
                 // 函数参数不检查是否使用
                 t->u.c.used = 1;
             } else {
@@ -1300,6 +1303,9 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
         lgx_val_t *t;
         if ((t = lgx_scope_val_add(variable_declaration, &s))) {
             ast_set_variable_type(t, variable_declaration);
+            if (t->type == T_OBJECT) {
+                lgx_gc_ref_add(t);
+            }
             // TODO 只检查局部变量
             t->u.c.used = 1;
             t->u.c.modifier = *modifier;
@@ -1367,6 +1373,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
     // 根据参数数量创建函数
     f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
     f->v.fun->modifier = *modifier;
+    lgx_gc_ref_add(f);
     int i;
     for (i = 0; i < function_declaration->child[1]->children; i++) {
         lgx_ast_node_t *n = function_declaration->child[1]->child[i];
@@ -1462,6 +1469,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
         f->type = T_OBJECT;
         f->v.obj = lgx_obj_create(&s);
         f->u.c.used = 1;
+        lgx_gc_ref_add(f);
         // 总是把符号表中的类标记为 const
         f->u.c.modifier.is_const = 1;
     } else {
@@ -1648,6 +1656,7 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast
         f->v.obj = lgx_obj_create(&s);
         f->v.obj->is_interface = 1;
         f->u.c.used = 1;
+        lgx_gc_ref_add(f);
         // 总是把符号表中的接口标记为 const
         f->u.c.modifier.is_const = 1;
     } else {

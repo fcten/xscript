@@ -195,7 +195,11 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
     // TODO 释放消息队列
 
-    // TODO 释放事件池
+    // 释放事件池
+    if (vm->events) {
+        wbt_event_cleanup(vm->events);
+        vm->events = NULL;
+    }
 
     // 清理所有变量
     wbt_list_t *list = vm->heap.young.next;

@@ -159,7 +159,6 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
-    // TODO 内存泄漏
     expr->v.str = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
     expr->u.c.type = 0;
@@ -750,7 +749,6 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         }
 
         e2.type = T_STRING;
-        // TODO 内存泄漏
         e2.v.str = lgx_str_new_ref(
             ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_start,
             ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_length
@@ -917,7 +915,6 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         lgx_val_t e2;
         lgx_val_init(&e2);
         e2.type = T_STRING;
-        // TODO 内存泄漏
         e2.v.str = lgx_str_new_ref(
             ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_start,
             ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_length
@@ -1021,7 +1018,6 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     }
 
     e2.type = T_STRING;
-    // TODO 内存泄漏
     e2.v.str = lgx_str_new_ref(
         ((lgx_ast_node_token_t *)(node->child[1]))->tk_start,
         ((lgx_ast_node_token_t *)(node->child[1]))->tk_length
@@ -1103,12 +1099,7 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     bc_object_new(bc, e, const_get(bc, v));
 
     // 如果有构造函数，则调用之
-    // TODO 内存泄漏
-    lgx_val_t constructor_name;
-    constructor_name.type = T_STRING;
-    constructor_name.v.str = lgx_str_new_ref("constructor", sizeof("constructor") - 1);
-
-    lgx_val_t *constructor = lgx_obj_get(e->v.obj, &constructor_name);
+    lgx_val_t *constructor = lgx_obj_get_s(e->v.obj, "constructor");
     if (!constructor) {
         return 0;
     }
@@ -1126,12 +1117,11 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     e1 = *constructor;
     e1.u.c.type = R_TEMP;
     e1.u.c.reg = reg_pop(bc);
-    e2.u.c.type = R_TEMP;
-    e2.u.c.reg = reg_pop(bc);
+    e2.type = T_STRING;
+    e2.v.str = lgx_str_new_ref("constructor", sizeof("constructor") - 1);
     e3.u.c.type = R_TEMP;
     e3.u.c.reg = reg_pop(bc);
 
-    bc_load(bc, &e2, &constructor_name);
     bc_object_get(bc, &e1, e, &e2);
 
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
@@ -2063,13 +2053,13 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
             lgx_val_t k;
             k.type = T_STRING;
-            // TODO 内存泄漏
             k.v.str = lgx_str_new_ref(
                 ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_start,
                 ((lgx_ast_node_token_t *)(node->child[0]->child[0]))->tk_length
             );
 
             lgx_val_t *val = lgx_obj_get(o->v.obj, &k);
+            assert(val);
 
             if (!check_type(&v, val->type)) {
                 bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(val), lgx_val_typeof(&v));

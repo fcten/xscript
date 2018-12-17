@@ -126,16 +126,14 @@ int lgx_val_cmp(lgx_val_t *src, lgx_val_t *dst) {
 }
 
 void lgx_val_free(lgx_val_t *src) {
-    if (src->v.gc->ref_cnt == 0) {
-        switch (src->type) {
-            case T_STRING:   lgx_str_delete(src->v.str); break;
-            case T_ARRAY:    lgx_hash_delete(src->v.arr); break;
-            case T_FUNCTION: lgx_fun_delete(src->v.fun); break;
-            case T_OBJECT:   lgx_obj_delete(src->v.obj); break;
-            case T_RESOURCE: lgx_res_delete(src->v.res); break;
-            default: break;
-        }
-    } else {
-        src->v.gc->ref_cnt --;
+    assert(src->v.gc->ref_cnt == 0);
+
+    switch (src->type) {
+        case T_STRING:   lgx_str_delete(src->v.str); break;
+        case T_ARRAY:    lgx_hash_delete(src->v.arr); break;
+        case T_FUNCTION: lgx_fun_delete(src->v.fun); break;
+        case T_OBJECT:   lgx_obj_delete(src->v.obj); break;
+        case T_RESOURCE: lgx_res_delete(src->v.res); break;
+        default: break;
     }
 }

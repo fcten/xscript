@@ -14,6 +14,8 @@ lgx_obj_t* lgx_obj_create(lgx_str_t *name) {
     obj->properties = lgx_hash_new(4);
     obj->methods = lgx_hash_new(4);
 
+    obj->gc.size = sizeof(lgx_obj_t);
+    obj->gc.type = T_OBJECT;
     wbt_list_init(&obj->gc.head);
 
     if (!obj->name || !obj->properties || !obj->methods) {
@@ -87,6 +89,16 @@ lgx_val_t* lgx_obj_get_s(lgx_obj_t *obj, char *s) {
     lgx_str_t str;
     str.buffer = s;
     str.length = strlen(s);
+    lgx_val_t v;
+    v.type = T_STRING;
+    v.v.str = &str;
+    return lgx_obj_get(obj, &v);
+}
+
+lgx_val_t* lgx_obj_get_sl(lgx_obj_t *obj, char *s, unsigned l) {
+    lgx_str_t str;
+    str.buffer = s;
+    str.length = l;
     lgx_val_t v;
     v.type = T_STRING;
     v.v.str = &str;

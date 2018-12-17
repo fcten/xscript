@@ -293,13 +293,14 @@ int lgx_hash_print(lgx_hash_t *hash) {
 }
 
 lgx_val_t* lgx_hash_get_s(lgx_hash_t *hash, char *k) {
+    lgx_str_t s;
+    s.buffer = k;
+    s.length = strlen(k);
     lgx_val_t key;
     key.type = T_STRING;
-    key.v.str = lgx_str_new_ref(k, strlen(k));
+    key.v.str = &s;
 
     lgx_hash_node_t *n = lgx_hash_get(hash, &key);
-
-    lgx_str_delete(key.v.str);
 
     if (n == NULL) {
         return NULL;
