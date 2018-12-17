@@ -196,6 +196,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
         next->v = node->v;
         next->next = hash->table[k].next;
         hash->table[k].next = next;
+        next->order = NULL;
 
         lgx_hash_update_list(hash, next);
     }
