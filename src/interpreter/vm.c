@@ -413,7 +413,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_DIVI:{
                 lgx_gc_ref_del(&R(PA(i)));
 
-                // TODO 判断除数是否为 0
                 if (R(PB(i)).type == T_LONG) {
                     R(PA(i)).type = T_LONG;
                     R(PA(i)).v.l = R(PB(i)).v.l / PC(i);

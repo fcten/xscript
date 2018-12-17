@@ -549,10 +549,21 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
             bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&e1), lgx_val_typeof(&e2));
             return 1;
         }
-    } else if (node->u.op == '+') {
-        if (check_type(&e1, T_STRING) || check_type(&e2, T_STRING)) {
-            // OK
-        } else {
+    } else {
+        int checked = 0;
+        if (node->u.op == '+') {
+            if (check_type(&e1, T_STRING) || check_type(&e2, T_STRING)) {
+                checked = 1;
+            }
+        } else if (node->u.op == '/') {
+            if (is_constant(&e2)) {
+                if ((e2.type == T_LONG && e2.v.l == 0) || (e2.type == T_DOUBLE && e2.v.d == 0)) {
+                    bc_error(bc, node, "division by zero\n");
+                    return 1;
+                }
+            }
+        }
+        if (!checked) {
             if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
                 bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e1));
                 return 1;
@@ -561,15 +572,6 @@ static int bc_expr_binary_math(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
                 bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e2));
                 return 1;
             }
-        }
-    } else {
-        if (!check_type(&e1, T_LONG) && !check_type(&e1, T_DOUBLE)) {
-            bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e1));
-            return 1;
-        }
-        if (!check_type(&e2, T_LONG) && !check_type(&e2, T_DOUBLE)) {
-            bc_error(bc, node, "makes number from %s without a cast\n", lgx_val_typeof(&e2));
-            return 1;
         }
     }
 

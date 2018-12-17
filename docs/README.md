@@ -1,4 +1,4 @@
-# XScript
+# The XScript Programming Language
 
 A scripting language characterized as dynamic, strongly typed, object-oriented and syntactically similar to C.
 
@@ -663,6 +663,8 @@ xscript 使用协程处理异步。
 ## async
 
 ## await
+
+## 并发 (Concurrency)
 
 # 垃圾回收 (garbage collection)
 

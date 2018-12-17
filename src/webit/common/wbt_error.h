@@ -25,7 +25,7 @@ wbt_status _wbt_debug(const char *fmt, ...);
                     __FILE__ : strrchr (__FILE__, '/') + 1, \
                 __LINE__, \
                 ##__VA_ARGS__);
-    #else // TODO LINUX
+    #else
         #define wbt_debug(fmt, ...) \
             _wbt_debug("%s@%d " fmt, \
                 strrchr (__FILE__, '\\') == 0 ?  \
