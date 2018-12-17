@@ -1,4 +1,4 @@
-auto i = 1000000;
+auto i = 10000;
 
 while (i > 0) {
     auto arr = [i];

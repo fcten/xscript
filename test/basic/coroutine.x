@@ -2,7 +2,7 @@ async function print(int from, int to) {
     int i;
     for (i = from; i <= to; i = i + 1) {
         echo i;
-        co_sleep(100);
+        co_sleep(10);
     }
 }
 
@@ -14,7 +14,7 @@ class MyClass {
         for (i = from; i <= to; i = i + 1) {
             echo this->name;
             echo i;
-            co_sleep(100);
+            co_sleep(10);
         }
     }
 }

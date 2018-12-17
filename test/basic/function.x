@@ -21,7 +21,7 @@ function fib(auto n) {
     return fib(n-1) + fib(n-2);
 }
 
-echo fib(30);
+echo fib(20);
 /*
 function test(auto n) {
     return n;
