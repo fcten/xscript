@@ -106,6 +106,9 @@ void lgx_co_throw(lgx_vm_t *vm, lgx_co_t *co, lgx_val_t *e) {
             lgx_val_print(e);
             printf("\n");
 
+            lgx_gc_ref_del(e);
+            // TODO 写入到协程返回值中？
+
             lgx_vm_backtrace(vm, co);
 
             co->pc = regs[0].v.fun->end;
