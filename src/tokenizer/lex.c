@@ -202,6 +202,16 @@ void dict_tree_add(int token, char* s) {
     node->token = token;
 }
 
+void dict_tree_delete(struct dict_tree* p) {
+    int i;
+    for (i = 0; i < 26; i++) {
+        if (p->next[i]) {
+            dict_tree_delete(p->next[i]);
+            xfree(p->next[i]);
+        }
+    }
+}
+
 static int is_reserved(lgx_lex_t* ctx) {
     struct dict_tree* node = &root;
     char n;
@@ -234,6 +244,11 @@ int lgx_lex_init() {
         dict_tree_add(lgx_reserved_words[i].token, lgx_reserved_words[i].s);
     }
     //printf("[Info] %d reserved words\n", LGX_RESERVED_WORDS);
+    return 0;
+}
+
+int lgx_lex_cleanup() {
+    dict_tree_delete(&root);
     return 0;
 }
 

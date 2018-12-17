@@ -53,5 +53,7 @@ int main(int argc, char* argv[]) {
 
     lgx_vm_cleanup(&vm);
 
+    lgx_lex_cleanup();
+
     return 0;
 }
