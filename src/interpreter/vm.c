@@ -961,9 +961,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_OBJECT_SET:{
                 if (EXPECTED(R(PA(i)).type == T_OBJECT)) {
                     if (EXPECTED(R(PB(i)).type == T_STRING)) {
-                        if (lgx_obj_set(R(PA(i)).v.obj, &R(PB(i)), &R(PC(i))) == 0) {
-                            lgx_gc_ref_add(&R(PC(i)));
-                        } else {
+                        if (lgx_obj_set(R(PA(i)).v.obj, &R(PB(i)), &R(PC(i))) != 0) {
                             lgx_vm_throw_s(vm, "property %.*s not exists", R(PB(i)).v.str->length, R(PB(i)).v.str->buffer);
                         }
                     } else {
