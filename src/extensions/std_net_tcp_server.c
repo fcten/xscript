@@ -646,8 +646,6 @@ LGX_METHOD(Server, start) {
 
     p_ev->ctx = server;
 
-    LGX_RETURN_TRUE();
-
     lgx_co_suspend(vm);
 
     return 0;

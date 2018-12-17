@@ -297,8 +297,6 @@ LGX_METHOD(Redis, constructor) {
     c->ev.data = redis;
     c->data = p_ev;
 
-    LGX_RETURN_TRUE();
-
     lgx_co_suspend(vm);
 
     return 0;
@@ -351,8 +349,6 @@ LGX_METHOD(Redis, exec) {
         lgx_vm_throw_s(vm, "redisAsyncCommandArgv() failed");
         goto err;
     }
-
-    LGX_RETURN_TRUE();
 
     lgx_co_suspend(vm);
 
