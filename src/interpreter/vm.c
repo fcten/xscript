@@ -88,7 +88,7 @@ void lgx_co_throw(lgx_vm_t *vm, lgx_co_t *co, lgx_val_t *e) {
         if (regs[2].v.l >= 0) {
             // 释放所有局部变量和临时变量
             int n;
-            for (n = 4; n < regs[0].v.fun->stack_size; n ++) {
+            for (n = 0; n < regs[0].v.fun->stack_size; n ++) {
                 lgx_gc_ref_del(&regs[n]);
                 regs[n].type = T_UNDEFINED;
             }
@@ -218,8 +218,20 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
-    // TODO 释放协程
-    //xfree(vm->stack.buf);
+    // 释放主协程堆栈
+    assert(vm->co_main);
+    lgx_co_t *co = vm->co_main;
+    assert(co->stack.buf[0].type == T_FUNCTION);
+    unsigned size = co->stack.buf[0].v.fun->stack_size;
+    int n;
+    for (n = 0; n < size; n ++) {
+        lgx_gc_ref_del(&co->stack.buf[n]);
+        R(n).type = T_UNDEFINED;
+    }
+ 
+    // 释放主协程
+    vm->co_main = NULL;
+    lgx_co_delete(vm, co);
 
     // TODO 释放消息队列
 
@@ -271,7 +283,7 @@ int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
         return 1;
     }
     // 初始化新空间
-    memset(s + stack->size, 0, size - stack->size);
+    memset(s + stack->size, 0, (size - stack->size) * sizeof(lgx_val_t));
 
     stack->buf = s;
     stack->size = size;
@@ -730,6 +742,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     // 写入函数信息
                     R(base + 0) = R(PD(i));
+                    lgx_gc_ref_add(&R(base + 0));
 
                     // 写入返回值地址
                     R(base + 1).type = T_LONG;
@@ -805,7 +818,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     // 主协程退出时保留堆栈，以保证全局变量可以访问
                 } else {
                     int n;
-                    for (n = 4; n < R(0).v.fun->stack_size; n ++) {
+                    for (n = 0; n < R(0).v.fun->stack_size; n ++) {
                         lgx_gc_ref_del(&R(n));
                         R(n).type = T_UNDEFINED;
                     }
@@ -1008,7 +1021,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_HLT: {
                 // 释放所有局部变量和临时变量
                 int n;
-                for (n = 4; n < R(0).v.fun->stack_size; n ++) {
+                for (n = 0; n < R(0).v.fun->stack_size; n ++) {
                     lgx_gc_ref_del(&R(n));
                     R(n).type = T_UNDEFINED;
                 }

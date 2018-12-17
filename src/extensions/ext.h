@@ -85,7 +85,9 @@
         symbol.k.v.str = lgx_str_new_ref(#method, sizeof(#method) - 1); \
         symbol.v.type = T_FUNCTION; \
         symbol.v.v.fun = lgx_fun_new(args); \
-        symbol.v.v.fun->buildin = lgx_internal_method_##class##method; \
+        symbol.v.v.fun->name.buffer = #class "::" #method; \
+        symbol.v.v.fun->name.length = sizeof(#class "::" #method) - 1; \
+        symbol.v.v.fun->buildin = lgx_internal_method_##class##method;
 
 #define LGX_METHOD_RET(rettype) \
         symbol.v.v.fun->ret.type = rettype;

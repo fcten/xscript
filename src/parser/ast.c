@@ -1396,6 +1396,8 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
 
     // 根据参数数量创建函数
     f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
+    f->v.fun->name.buffer = s.buffer;
+    f->v.fun->name.length = s.length;
     f->v.fun->modifier = *modifier;
     lgx_gc_ref_add(f);
     int i;

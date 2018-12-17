@@ -115,6 +115,11 @@ int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co) {
         wbt_list_del(&co->head);
     }
 
+    // 主协程不能删除，必须和虚拟机一起销毁
+    if (co == vm->co_main) {
+        return 0;
+    }
+
     lgx_co_stack_cleanup(&co->stack);
     xfree(co);
 
@@ -270,9 +275,11 @@ int lgx_co_died(lgx_vm_t *vm) {
 }
 
 int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
+    assert(co->stack.buf[co->stack.base].type == T_FUNCTION);
     // 参数起始地址
     int base = co->stack.base + co->stack.buf[co->stack.base].v.fun->stack_size;
 
+    assert(co->stack.buf[base].type == T_FUNCTION);
     // 返回值地址
     int ret = co->stack.buf[base + 1].v.l;
 
@@ -283,7 +290,8 @@ int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
 
     // 释放函数栈
     int n;
-    for (n = 4; n < co->stack.buf[base].v.fun->stack_size; n ++) {
+    int size = co->stack.buf[base].v.fun->stack_size;
+    for (n = 0; n < size; n ++) {
         lgx_gc_ref_del(&co->stack.buf[base + n]);
         co->stack.buf[base + n].type = T_UNDEFINED;
     }
@@ -411,7 +419,8 @@ int lgx_co_await(lgx_vm_t *vm) {
         return 0;
     }
 
-    // TODO 写入返回值
+    // TODO 取回返回值
+    lgx_gc_ref_del(&co->stack.buf[1]);
 
     // 恢复父协程执行
     if (co->parent && co->parent->status == CO_SUSPEND && co->parent->child == co) {
