@@ -2117,8 +2117,7 @@ int lgx_bc_cleanup(lgx_bc_t *bc) {
     wbt_rb_destroy(bc->exception);
     xfree(bc->exception);
 
-    // TODO 需要处理内存泄漏和重复释放问题
-    //lgx_hash_delete(bc->constant);
+    lgx_hash_delete(bc->constant);
 
     lgx_ast_cleanup(bc->ast);
 

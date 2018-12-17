@@ -119,6 +119,23 @@ void ast_set_variable_type(lgx_val_t *t, lgx_ast_node_t* node) {
     }
 }
 
+// 根据变量类型初始化变量的值
+void ast_init_value(lgx_val_t *v) {
+    switch (v->type) {
+        case T_UNDEFINED: break;
+        case T_LONG:      v->v.l = 0; break;
+        case T_DOUBLE:    v->v.d = 0; break;
+        case T_BOOL:      v->v.l = 0; break;
+        case T_REDERENCE: break;
+        case T_STRING:    v->v.str = lgx_str_new_ref("", 0); break;
+        case T_ARRAY:     v->v.arr = lgx_hash_new(8); break;
+        case T_OBJECT:    break;
+        case T_FUNCTION:  break;
+        case T_RESOURCE:  break;
+        default: assert(0);
+    }
+}
+
 void ast_node_cleanup(lgx_ast_node_t* node) {
     int i;
     switch (node->type) {
@@ -134,14 +151,6 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
             return;
         case BLOCK_STATEMENT:
             if (node->u.symbols) {
-                // value 会被标识类型，但只有 function 类型会真正分配空间
-                lgx_hash_node_t *next = node->u.symbols->head;
-                while (next) {
-                    if (next->v.type != T_FUNCTION) {
-                        next->v.type = T_UNDEFINED;
-                    }
-                    next = next->order;
-                }
                 lgx_hash_delete(node->u.symbols);
             }
             break;
@@ -158,6 +167,7 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
                 xfree(node->u.jmps);
             }
             break;
+        case VARIABLE_DECLARATION:
         case FUNCTION_DECLARATION:
             if (node->u.type.obj_name) {
                 lgx_str_delete(node->u.type.obj_name);
@@ -176,8 +186,20 @@ void ast_node_cleanup(lgx_ast_node_t* node) {
 
 int lgx_ast_cleanup(lgx_ast_t* ast) {
     xfree(ast->err_info);
-    // TODO 释放所有源文件
-    //xfree(ast->lex.source);
+
+    // 释放所有源文件
+    lgx_package_t *pkg = &ast->imported;
+    if (pkg->lex.source) {
+        xfree(pkg->lex.source);
+        xfree(pkg->lex.file);
+    }
+    while (!wbt_list_empty(&ast->imported.head)) {
+        pkg = wbt_list_first_entry(&ast->imported.head, lgx_package_t, head);
+        wbt_list_del(&pkg->head);
+        xfree(pkg->lex.source);
+        xfree(pkg->lex.file);
+        xfree(pkg);
+    }
 
     ast_node_cleanup(ast->root);
 
@@ -695,7 +717,8 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_
             lgx_val_t *t;
             if ((t = lgx_scope_val_add(block_statement, &s))) {
                 ast_set_variable_type(t, n->child[i]);
-                if (t->type == T_OBJECT) {
+                ast_init_value(t);
+                if (IS_GC_VALUE(t)) {
                     lgx_gc_ref_add(t);
                 }
                 // 函数参数不检查是否使用
@@ -1303,7 +1326,8 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
         lgx_val_t *t;
         if ((t = lgx_scope_val_add(variable_declaration, &s))) {
             ast_set_variable_type(t, variable_declaration);
-            if (t->type == T_OBJECT) {
+            ast_init_value(t);
+            if (IS_GC_VALUE(t)) {
                 lgx_gc_ref_add(t);
             }
             // TODO 只检查局部变量
@@ -1424,23 +1448,6 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
     } else {
         ast_error(ast, pkg, "invalid function declaration before `%.*s`\n", pkg->cur_length, pkg->cur_start);
         return;
-    }
-}
-
-// 根据变量类型初始化变量的值
-void ast_init_value(lgx_val_t *v) {
-    switch (v->type) {
-        case T_UNDEFINED: break;
-        case T_LONG:      v->v.l = 0; break;
-        case T_DOUBLE:    v->v.d = 0; break;
-        case T_BOOL:      v->v.l = 0; break;
-        case T_REDERENCE: break;
-        case T_STRING:    v->v.str = lgx_str_new_ref("", 0); break;
-        case T_ARRAY:     v->v.arr = lgx_hash_new(8); break;
-        case T_OBJECT:    break;
-        case T_FUNCTION:  break;
-        case T_RESOURCE:  break;
-        default: assert(0);
     }
 }
 

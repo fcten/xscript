@@ -187,9 +187,6 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
-    // 释放 main 函数
-    //lgx_fun_delete(vm->regs[0].v.fun);
-
     // TODO 释放协程
     //xfree(vm->stack.buf);
 
@@ -198,6 +195,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     // 释放事件池
     if (vm->events) {
         wbt_event_cleanup(vm->events);
+        wbt_free(vm->events);
         vm->events = NULL;
     }
 
