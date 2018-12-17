@@ -1776,6 +1776,11 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         lgx_hash_node_t *n = lgx_hash_get(condition.v.arr, &k);
                         n->v.v.l = bc->bc_top;
 
+                        // 这里只应该出现 T_LONG 和 T_STRING
+                        if (IS_GC_VALUE(&k)) {
+                            lgx_val_free(&k);
+                        }
+
                         if (bc_stat(bc, child->child[1])) {
                             return 1;
                         }

@@ -1,4 +1,4 @@
-import "test/import_test.x";
+import "basic/import_test.x";
 
 import_test();
 
