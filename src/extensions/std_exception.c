@@ -1,4 +1,3 @@
-
 #include "../common/obj.h"
 #include "../common/str.h"
 #include "../common/fun.h"

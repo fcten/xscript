@@ -187,8 +187,9 @@ wbt_status wbt_event_del(wbt_event_pool_t *pool, wbt_event_t *ev) {
 
             return WBT_ERROR;
         }
-        wbt_close_socket(ev->fd);
-        ev->fd = -1;
+        // 不再自动 close fd
+        //wbt_close_socket(ev->fd);
+        //ev->fd = -1;
     }
     
     return WBT_OK;

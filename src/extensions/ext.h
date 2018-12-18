@@ -27,6 +27,9 @@
 #define LGX_RETURN_FALSE() \
     lgx_co_return_false(vm->co_running)
 
+#define LGX_RETURN_OBJECT(v) \
+    lgx_co_return_object(vm->co_running, v)
+
 #define LGX_FUNCTION(function) \
     static int lgx_internal_function_##function(lgx_vm_t *vm)
 
@@ -57,7 +60,7 @@
     } while (0);
 
 #define LGX_CLASS(class) \
-    static int lgx_internal_class_##class(lgx_obj_t *obj)
+    static int lgx_internal_class_##class(lgx_hash_t *hash, lgx_obj_t *obj)
 
 #define LGX_CLASS_INIT(class) \
     do { \
@@ -70,7 +73,7 @@
         if (lgx_ext_add_symbol(hash, #class, &symbol)) { \
             return 1; \
         } \
-        if (lgx_internal_class_##class(symbol.v.obj)) { \
+        if (lgx_internal_class_##class(hash, symbol.v.obj)) { \
             return 1; \
         } \
     } while (0)
@@ -92,8 +95,24 @@
 #define LGX_METHOD_RET(rettype) \
         symbol.v.v.fun->ret.type = rettype;
 
+#define LGX_METHOD_RET_OBJECT(objname) \
+        do { \
+            lgx_val_t *objval = lgx_ext_get_symbol(hash, #objname); \
+            assert(objval && objval->type == T_OBJECT); \
+            symbol.v.v.fun->ret.type = T_OBJECT; \
+            symbol.v.v.fun->ret.v.obj = objval->v.obj; \
+        } while (0);
+
 #define LGX_METHOD_ARG(pos, argtype) \
         symbol.v.v.fun->args[pos].type = argtype;
+
+#define LGX_METHOD_ARG_OBJECT(pos, objname) \
+        do { \
+            lgx_val_t *objval = lgx_ext_get_symbol(hash, #objname); \
+            assert(objval && objval->type == T_OBJECT); \
+            symbol.v.v.fun->args[pos].type = T_OBJECT; \
+            symbol.v.v.fun->args[pos].v.obj = objval->v.obj; \
+        } while (0);
 
 #define LGX_METHOD_ARG_OPTIONAL(pos, argtype, argvalue) \
         symbol.v.v.fun->args[pos].type = argtype; \

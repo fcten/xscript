@@ -268,6 +268,9 @@ LGX_METHOD(Redis, constructor) {
     symbol.v.type = T_RESOURCE;
     symbol.v.v.res = res;
     if (lgx_obj_add_property(obj->v.obj, &symbol)) {
+        lgx_res_delete(res);
+        redisAsyncFree(c);
+        lgx_vm_throw_s(vm, "lgx_obj_add_property() failed");
         return 1;
     }
 
@@ -281,7 +284,7 @@ LGX_METHOD(Redis, constructor) {
     tmp_ev.fd      = c->c.fd;
 
     if((p_ev = wbt_event_add(vm->events, &tmp_ev)) == NULL) {
-        xfree(redis);
+        lgx_res_delete(res);
         redisAsyncFree(c);
         lgx_vm_throw_s(vm, "add event faild");
         return 1;
