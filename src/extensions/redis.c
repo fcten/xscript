@@ -61,17 +61,17 @@ static void on_complete(redisAsyncContext *c, void *r, void *privdata) {
 
     redisReply *reply = r;
     if (reply == NULL) {
-        lgx_co_throw_s(vm, co, c->errstr);
+        lgx_co_throw_s(co, c->errstr);
         return;
     }
 
     switch (reply->type) {
     case REDIS_REPLY_ERROR:
-        lgx_co_throw_s(vm, co, "%.*s", reply->len, reply->str);
+        lgx_co_throw_s(co, "%.*s", reply->len, reply->str);
         break;
     case REDIS_REPLY_STATUS:
         if (redis->ctx->err) {
-            lgx_co_throw_s(vm, co, "%s (%d)", redis->ctx->errstr, redis->ctx->err);
+            lgx_co_throw_s(co, "%s (%d)", redis->ctx->errstr, redis->ctx->err);
         } else {
             LGX_RETURN_STRING(lgx_str_new(reply->str, reply->len));
         }
@@ -121,7 +121,7 @@ static void on_connect(const redisAsyncContext *c, int status) {
     lgx_co_resume(vm, redis->co);
 
     if (status != REDIS_OK) {
-        lgx_co_throw_s(vm, redis->co, c->errstr);
+        lgx_co_throw_s(redis->co, c->errstr);
     } else {
         // 写入返回值
         LGX_RETURN_TRUE();

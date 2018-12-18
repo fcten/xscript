@@ -192,7 +192,7 @@ static void do_accept(lgx_socket_t *sock) {
         if ( wbt_nonblocking(conn_sock) == -1 ) {
             wbt_close_socket(conn_sock);
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, "wbt_nonblocking() failed");
+            lgx_co_throw_s(co, "wbt_nonblocking() failed");
             return;
         }
     }
@@ -203,7 +203,7 @@ static void do_accept(lgx_socket_t *sock) {
         if (setsockopt(conn_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&on, sizeof(on)) != 0) {
             wbt_close_socket(conn_sock);
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, "setsockopt(TCP_NODELAY) failed");
+            lgx_co_throw_s(co, "setsockopt(TCP_NODELAY) failed");
             return;
         }
 
@@ -211,7 +211,7 @@ static void do_accept(lgx_socket_t *sock) {
         if (!newsock) {
             wbt_close_socket(conn_sock);
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, "xcalloc() failed");
+            lgx_co_throw_s(co, "xcalloc() failed");
             return;
         }
 
@@ -220,7 +220,7 @@ static void do_accept(lgx_socket_t *sock) {
             wbt_close_socket(conn_sock);
             xfree(newsock);
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, "lgx_res_new() failed");
+            lgx_co_throw_s(co, "lgx_res_new() failed");
             return;
         }
 
@@ -236,7 +236,7 @@ static void do_accept(lgx_socket_t *sock) {
             wbt_close_socket(conn_sock);
             lgx_res_delete(res);
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, "lgx_obj_set() failed");
+            lgx_co_throw_s(co, "lgx_obj_set() failed");
             return;
         }
 
@@ -244,14 +244,14 @@ static void do_accept(lgx_socket_t *sock) {
         newsock->fd = conn_sock;
 
         sock->co = NULL;
-        LGX_RETURN_OBJECT(newobj);
+        lgx_co_return_object(co, newobj);
     } else {
         wbt_err_t err = wbt_socket_errno;
 
         if (err == WBT_EAGAIN) {
             if (!(co && co->status == CO_RUNNING)) {
                 sock->co = NULL;
-                lgx_co_throw_s(vm, co, "unexpected EAGAIN");
+                lgx_co_throw_s(co, "unexpected EAGAIN");
                 return;
             }
 
@@ -266,7 +266,7 @@ static void do_accept(lgx_socket_t *sock) {
 
             if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
                 sock->co = NULL;
-                lgx_co_throw_s(vm, co, "wbt_event_add() failed");
+                lgx_co_throw_s(co, "wbt_event_add() failed");
                 return;
             }
 
@@ -275,7 +275,7 @@ static void do_accept(lgx_socket_t *sock) {
             lgx_co_suspend(vm);
         } else {
             sock->co = NULL;
-            lgx_co_throw_s(vm, co, strerror(err));
+            lgx_co_throw_s(co, strerror(err));
         }
     }
 }
@@ -328,7 +328,7 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
 
     lgx_socket_t *sock = ev->ctx;
     lgx_co_resume(sock->co->vm, sock->co);
-    lgx_co_throw_s(sock->co->vm, sock->co, "timeout");
+    lgx_co_throw_s(sock->co, "timeout");
 
     wbt_event_del(sock->co->vm->events, ev);
 
@@ -359,7 +359,7 @@ static void do_send(lgx_socket_t *sock) {
                 goto wait_send;
             } else {
                 sock->co = NULL;
-                lgx_co_throw_s(vm, co, strerror(err));
+                lgx_co_throw_s(co, strerror(err));
                 return;
             }
         }
@@ -375,7 +375,7 @@ static void do_send(lgx_socket_t *sock) {
 
     // 发送完毕
     sock->co = NULL;
-    LGX_RETURN_TRUE();
+    lgx_co_return_true(co);
     return;
 
 wait_send:;
@@ -391,7 +391,7 @@ wait_send:;
 
     if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
         sock->co = NULL;
-        lgx_co_throw_s(vm, co, "wbt_event_add() failed");
+        lgx_co_throw_s(co, "wbt_event_add() failed");
         return;
     }
 
@@ -465,7 +465,7 @@ static void do_recv(lgx_socket_t *sock) {
                 xfree(sock->buffer);
                 sock->buffer= NULL;
                 sock->length = sock->offset = 0;
-                lgx_co_throw_s(vm, co, strerror(err));
+                lgx_co_throw_s(co, strerror(err));
                 return;
             }
         } else if (nread == 0) {
@@ -473,7 +473,7 @@ static void do_recv(lgx_socket_t *sock) {
             xfree(sock->buffer);
             sock->buffer= NULL;
             sock->length = sock->offset = 0;
-            lgx_co_throw_s(vm, co, "connection closed by peer");
+            lgx_co_throw_s(co, "connection closed by peer");
             return;
         }
 
@@ -488,7 +488,7 @@ static void do_recv(lgx_socket_t *sock) {
     str->is_ref = 0;
 
     sock->co = NULL;
-    LGX_RETURN_STRING(str);
+    lgx_co_return_string(co, str);
     return;
 
 wait_recv:;
@@ -504,7 +504,7 @@ wait_recv:;
 
     if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
         sock->co = NULL;
-        lgx_co_throw_s(vm, co, "wbt_event_add() failed");
+        lgx_co_throw_s(co, "wbt_event_add() failed");
         return;
     }
 

@@ -39,4 +39,12 @@ int lgx_co_set_object(lgx_co_t *co, unsigned pos, lgx_obj_t *obj);
 lgx_obj_t* lgx_co_obj_new(lgx_vm_t *vm, lgx_co_t *co);
 int lgx_co_await(lgx_vm_t *vm);
 
+int lgx_co_backtrace(lgx_co_t *co);
+
+void lgx_co_throw(lgx_co_t *co, lgx_val_t *e);
+void lgx_co_throw_s(lgx_co_t *co, const char *fmt, ...);
+void lgx_co_throw_v(lgx_co_t *co, lgx_val_t *v);
+
+int lgx_co_checkstack(lgx_co_t *co, unsigned int stack_size);
+
 #endif // LGX_COROUTINE_H

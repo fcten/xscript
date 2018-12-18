@@ -3,8 +3,11 @@
 #include "../common/str.h"
 #include "../common/obj.h"
 #include "../common/res.h"
+#include "../common/exception.h"
 #include "coroutine.h"
 #include "gc.h"
+
+#define LGX_MAX_STACK_SIZE (256 << 8)
 
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     stack->size = size;
@@ -428,6 +431,168 @@ int lgx_co_await(lgx_vm_t *vm) {
     }
 
     co->on_yield = NULL;
+
+    return 0;
+}
+
+// 输出协程的当前调用栈
+int lgx_co_backtrace(lgx_co_t *co) {
+    unsigned int base = co->stack.base;
+    while (1) {
+        printf("  <function:%d> %d\n", co->stack.buf[base].v.fun->addr, base);
+
+        if (base != 0) {
+            base = co->stack.buf[base+3].v.l;
+        } else {
+            break;
+        }
+    }
+
+    return 0;
+}
+
+void lgx_co_throw(lgx_co_t *co, lgx_val_t *e) {
+    unsigned pc = co->pc - 1;
+
+    // 匹配最接近的 try-catch 块
+    unsigned long long int key = ((unsigned long long int)pc + 1) << 32;
+
+    wbt_str_t k;
+    k.str = (char *)&key;
+    k.len = sizeof(key);
+
+    lgx_exception_t *exception;
+    lgx_exception_block_t *block = NULL;
+    wbt_rb_node_t *n = wbt_rb_get_lesser(co->vm->exception, &k);
+    if (n) {
+        exception = (lgx_exception_t *)n->value.str;
+        if (pc >= exception->try_block.start && pc <= exception->try_block.end) {
+            // 匹配参数类型符合的 catch block
+            lgx_exception_block_t *b;
+            wbt_list_for_each_entry(b, lgx_exception_block_t, &exception->catch_blocks, head) {
+                if (b->e->type == T_UNDEFINED) {
+                    block = b;
+                    break;
+                } else if (b->e->type == e->type) {
+                    if (b->e->type == T_OBJECT) {
+                        if (lgx_obj_is_same_class(b->e->v.obj, e->v.obj) == 0) {
+                            block = b;
+                            break;
+                        }
+                    } else {
+                        block = b;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (block) {
+        // 跳转到指定的 catch block
+        co->pc = block->start;
+
+        // 把异常变量写入到 catch block 的参数中
+        //printf("%d\n",block->e->u.c.reg);
+        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->e->u.c.reg]);
+        co->stack.buf[co->stack.base + block->e->u.c.reg] = *e;
+    } else {
+        // 没有匹配的 catch 块，递归向上寻找
+        unsigned base = co->stack.base;
+        lgx_val_t *regs = co->stack.buf + base;
+
+        assert(regs[0].type == T_FUNCTION);
+        assert(regs[2].type == T_LONG);
+        assert(regs[3].type == T_LONG);
+
+        if (regs[2].v.l >= 0) {
+            // 释放所有局部变量和临时变量
+            int n;
+            for (n = 0; n < regs[0].v.fun->stack_size; n ++) {
+                lgx_gc_ref_del(&regs[n]);
+                regs[n].type = T_UNDEFINED;
+            }
+
+            // 切换执行堆栈
+            co->stack.base = regs[3].v.l;
+
+            // 在函数调用点重新抛出异常
+            co->pc = regs[2].v.l;
+            lgx_co_throw(co, e);
+        } else {
+            // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
+            printf("[uncaught exception] [%llu] ", co->id);
+            lgx_val_print(e);
+            printf("\n");
+
+            lgx_gc_ref_del(e);
+            // TODO 写入到协程返回值中？
+
+            lgx_co_backtrace(co);
+
+            co->pc = regs[0].v.fun->end;
+        }
+    }
+}
+
+void lgx_co_throw_s(lgx_co_t *co, const char *fmt, ...) {
+    char *buf = (char *)xmalloc(128);
+
+    va_list args;
+    va_start(args, fmt);
+    int len = vsnprintf(buf, 128, fmt, args);
+    va_end(args);
+
+    lgx_val_t e;
+    e.type = T_STRING;
+    e.v.str = lgx_str_new_ref(buf, 128);
+    e.v.str->length = len;
+    e.v.str->is_ref = 0;
+
+    lgx_gc_ref_add(&e);
+
+    lgx_co_throw(co, &e);
+}
+
+void lgx_co_throw_v(lgx_co_t *co, lgx_val_t *v) {
+    lgx_val_t e;
+    e = *v;
+
+    // 把原始变量标记为 undefined，避免 exception 值被释放
+    v->type = T_UNDEFINED;
+
+    lgx_co_throw(co, &e);
+}
+
+// 确保堆栈上有足够的剩余空间
+int lgx_co_checkstack(lgx_co_t *co, unsigned int stack_size) {
+    lgx_co_stack_t *stack = &co->stack;
+    lgx_val_t *regs = &stack->buf[stack->base];
+
+    assert(regs[0].type == T_FUNCTION);
+
+    if (stack->base + regs[0].v.fun->stack_size + stack_size < stack->size) {
+        return 0;
+    }
+
+    unsigned int size = stack->size;
+    while (stack->base + regs[0].v.fun->stack_size + stack_size >= size) {
+        size *= 2;
+    }
+
+    if (size > LGX_MAX_STACK_SIZE) {
+        return 1;
+    }
+
+    lgx_val_t *s = (lgx_val_t *)xrealloc(stack->buf, size * sizeof(lgx_val_t));
+    if (!s) {
+        return 1;
+    }
+    // 初始化新空间
+    memset(s + stack->size, 0, (size - stack->size) * sizeof(lgx_val_t));
+
+    stack->buf = s;
+    stack->size = size;
 
     return 0;
 }
