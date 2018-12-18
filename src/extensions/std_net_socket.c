@@ -9,10 +9,19 @@
 #include "../common/res.h"
 #include "std_net_socket.h"
 
+extern time_t wbt_cur_mtime;
+
 typedef struct {
+    // socket
     wbt_socket_t fd;
+    // 当前阻塞的协程，没有则为 NULL
     lgx_co_t *co;
+    // 所属的对象
     lgx_obj_t *obj;
+    // send/recv数据缓存
+    char *buffer;
+    unsigned length;
+    unsigned offset;
 } lgx_socket_t;
 
 LGX_METHOD(Socket, constructor) {
@@ -182,6 +191,7 @@ static void do_accept(lgx_socket_t *sock) {
     if (conn_sock >= 0) {
         if ( wbt_nonblocking(conn_sock) == -1 ) {
             wbt_close_socket(conn_sock);
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, "wbt_nonblocking() failed");
             return;
         }
@@ -192,6 +202,7 @@ static void do_accept(lgx_socket_t *sock) {
         int on = 1;
         if (setsockopt(conn_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&on, sizeof(on)) != 0) {
             wbt_close_socket(conn_sock);
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, "setsockopt(TCP_NODELAY) failed");
             return;
         }
@@ -199,16 +210,16 @@ static void do_accept(lgx_socket_t *sock) {
         lgx_socket_t *newsock = xcalloc(1, sizeof(lgx_socket_t));
         if (!newsock) {
             wbt_close_socket(conn_sock);
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, "xcalloc() failed");
             return;
         }
-
-        newsock->fd = conn_sock;
 
         lgx_res_t *res = lgx_res_new(0, newsock);
         if (!res) {
             wbt_close_socket(conn_sock);
             xfree(newsock);
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, "lgx_res_new() failed");
             return;
         }
@@ -224,18 +235,22 @@ static void do_accept(lgx_socket_t *sock) {
         if (lgx_obj_set(newobj, &k, &v)) {
             wbt_close_socket(conn_sock);
             lgx_res_delete(res);
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, "lgx_obj_set() failed");
             return;
         }
 
+        newsock->obj = newobj;
+        newsock->fd = conn_sock;
+
+        sock->co = NULL;
         LGX_RETURN_OBJECT(newobj);
     } else {
         wbt_err_t err = wbt_socket_errno;
 
         if (err == WBT_EAGAIN) {
-            if (co && co->status == CO_RUNNING) {
-                lgx_co_suspend(vm);
-            } else {
+            if (!(co && co->status == CO_RUNNING)) {
+                sock->co = NULL;
                 lgx_co_throw_s(vm, co, "unexpected EAGAIN");
                 return;
             }
@@ -250,12 +265,16 @@ static void do_accept(lgx_socket_t *sock) {
             ev.fd = sock->fd;
 
             if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
+                sock->co = NULL;
                 lgx_co_throw_s(vm, co, "wbt_event_add() failed");
                 return;
             }
 
             p_ev->ctx = sock;
+
+            lgx_co_suspend(vm);
         } else {
+            sock->co = NULL;
             lgx_co_throw_s(vm, co, strerror(err));
         }
     }
@@ -263,6 +282,8 @@ static void do_accept(lgx_socket_t *sock) {
 
 static wbt_status on_accept(wbt_event_t *ev) {
     lgx_socket_t *sock = (lgx_socket_t *)ev->ctx;
+
+    wbt_debug("socket:on_accept %d", ev->fd);
 
     wbt_event_del(sock->co->vm->events, ev);
 
@@ -289,11 +310,29 @@ LGX_METHOD(Socket, accept) {
         return 1;
     }
 
-    // TODO 不能在多个协程中并发执行
+    // 不能在多个协程中并发执行
+    if (sock->co) {
+        lgx_vm_throw_s(vm, "concurrent accept");
+        return 1;
+    }
     sock->co = vm->co_running;
 
     do_accept(sock);
     return 0;
+}
+
+static wbt_status on_timeout(wbt_timer_t *timer) {
+    wbt_event_t *ev = wbt_timer_entry(timer, wbt_event_t, timer);
+
+    wbt_debug("socket:on_timeout %d", ev->fd);
+
+    lgx_socket_t *sock = ev->ctx;
+    lgx_co_resume(sock->co->vm, sock->co);
+    lgx_co_throw_s(sock->co->vm, sock->co, "timeout");
+
+    wbt_event_del(sock->co->vm->events, ev);
+
+    return WBT_OK;
 }
 
 LGX_METHOD(Socket, connect) {
@@ -304,8 +343,67 @@ LGX_METHOD(Socket, connect) {
     return 0;
 }
 
+static wbt_status on_send(wbt_event_t *ev);
+
+static void do_send(lgx_socket_t *sock) {
+    lgx_vm_t *vm = sock->co->vm;
+    lgx_co_t *co = sock->co;
+
+    if (sock->length > sock->offset) {
+        int nwrite = send(sock->fd, sock->buffer + sock->offset,
+            sock->length - sock->offset, 0);
+
+        if (nwrite <= 0) {
+            wbt_err_t err = wbt_socket_errno;
+            if (err == WBT_EAGAIN) {
+                goto wait_send;
+            } else {
+                sock->co = NULL;
+                lgx_co_throw_s(vm, co, strerror(err));
+                return;
+            }
+        }
+
+        wbt_debug("socket:send %.*s", nwrite, sock->buffer + sock->offset);
+
+        sock->offset += nwrite;
+
+        if (sock->length > sock->offset) {
+            goto wait_send;
+        }
+    }
+
+    // 发送完毕
+    sock->co = NULL;
+    LGX_RETURN_TRUE();
+    return;
+
+wait_send:;
+    // 阻塞等待
+    wbt_event_t ev, *p_ev;
+    memset(&ev, 0, sizeof(wbt_event_t));
+    ev.timer.on_timeout = on_timeout;
+    ev.timer.timeout    = wbt_cur_mtime + 30 * 1000;
+    ev.on_recv = NULL;
+    ev.on_send = on_send;
+    ev.events = WBT_EV_WRITE | WBT_EV_ET;
+    ev.fd = sock->fd;
+
+    if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
+        sock->co = NULL;
+        lgx_co_throw_s(vm, co, "wbt_event_add() failed");
+        return;
+    }
+
+    p_ev->ctx = sock;
+
+    lgx_co_suspend(vm);
+}
+
 static wbt_status on_send(wbt_event_t *ev) {
     lgx_socket_t *sock = (lgx_socket_t *)ev->ctx;
+
+    wbt_debug("socket:on_send %d", ev->fd);
 
     wbt_event_del(sock->co->vm->events, ev);
 
@@ -321,19 +419,110 @@ LGX_METHOD(Socket, send) {
     LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(data, 0, T_STRING);
 
-    LGX_RETURN_TRUE();
+    lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `ctx`");
+        return 1;
+    }
+
+    lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
+    if (sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket alreay closed");
+        return 1;
+    }
+
+    // 不能在多个协程中并发执行
+    if (sock->co) {
+        lgx_vm_throw_s(vm, "concurrent send");
+        return 1;
+    }
+    sock->co = vm->co_running;
+
+    sock->buffer = data->v.str->buffer;
+    sock->length = data->v.str->length;
+    sock->offset = 0;
+
+    do_send(sock);
     return 0;
+}
+
+static wbt_status on_recv(wbt_event_t *ev);
+
+static void do_recv(lgx_socket_t *sock) {
+    lgx_vm_t *vm = sock->co->vm;
+    lgx_co_t *co = sock->co;
+
+    if (sock->length > sock->offset) {
+        int nread = recv(sock->fd, sock->buffer + sock->offset,
+            sock->length - sock->offset, 0);
+
+        if (nread < 0) {
+            wbt_err_t err = wbt_socket_errno;
+            if (err == WBT_EAGAIN) {
+                goto wait_recv;
+            } else {
+                sock->co = NULL;
+                xfree(sock->buffer);
+                sock->buffer= NULL;
+                sock->length = sock->offset = 0;
+                lgx_co_throw_s(vm, co, strerror(err));
+                return;
+            }
+        } else if (nread == 0) {
+            sock->co = NULL;
+            xfree(sock->buffer);
+            sock->buffer= NULL;
+            sock->length = sock->offset = 0;
+            lgx_co_throw_s(vm, co, "connection closed by peer");
+            return;
+        }
+
+        wbt_debug("socket:recv %.*s", nread, sock->buffer + sock->offset);
+
+        sock->offset += nread;
+    }
+
+    // 接收完毕
+    lgx_str_t *str = lgx_str_new_ref(sock->buffer, sock->offset);
+    str->size = sock->length;
+    str->is_ref = 0;
+
+    sock->co = NULL;
+    LGX_RETURN_STRING(str);
+    return;
+
+wait_recv:;
+    // 阻塞等待
+    wbt_event_t ev, *p_ev;
+    memset(&ev, 0, sizeof(wbt_event_t));
+    ev.timer.on_timeout = on_timeout;
+    ev.timer.timeout    = wbt_cur_mtime + 30 * 1000;
+    ev.on_recv = on_recv;
+    ev.on_send = NULL;
+    ev.events = WBT_EV_READ | WBT_EV_ET;
+    ev.fd = sock->fd;
+
+    if((p_ev = wbt_event_add(vm->events, &ev)) == NULL) {
+        sock->co = NULL;
+        lgx_co_throw_s(vm, co, "wbt_event_add() failed");
+        return;
+    }
+
+    p_ev->ctx = sock;
+
+    lgx_co_suspend(vm);
 }
 
 static wbt_status on_recv(wbt_event_t *ev) {
     lgx_socket_t *sock = (lgx_socket_t *)ev->ctx;
+
+    wbt_debug("socket:on_recv %d", ev->fd);
 
     wbt_event_del(sock->co->vm->events, ev);
 
     lgx_co_resume(sock->co->vm, sock->co);
 
     do_recv(sock);
-
     return WBT_OK;
 }
 
@@ -342,7 +531,35 @@ LGX_METHOD(Socket, recv) {
     LGX_METHOD_ARGS_THIS(obj);
     LGX_METHOD_ARGS_GET(length, 0, T_LONG);
 
-    LGX_RETURN_TRUE();
+    lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `ctx`");
+        return 1;
+    }
+
+    lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
+    if (sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket alreay closed");
+        return 1;
+    }
+
+    // 不能在多个协程中并发执行
+    if (sock->co) {
+        lgx_vm_throw_s(vm, "concurrent recv");
+        return 1;
+    }
+    sock->co = vm->co_running;
+
+    sock->buffer = xmalloc(length->v.l);
+    sock->length = length->v.l;
+    sock->offset = 0;
+    if (!sock->buffer) {
+        sock->co = NULL;
+        lgx_vm_throw_s(vm, "xmalloc() failed");
+        return 1;
+    }
+
+    do_recv(sock);
     return 0;
 }
 

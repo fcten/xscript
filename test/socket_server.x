@@ -11,7 +11,7 @@ async function handleConnection (Socket conn) {
         while (true) {
             string data = conn->recv(1024);
             echo data;
-            conn->send("test");
+            conn->send(data);
         }
     } catch (auto e) {
         echo e;
