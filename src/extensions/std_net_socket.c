@@ -335,12 +335,138 @@ static wbt_status on_timeout(wbt_timer_t *timer) {
     return WBT_OK;
 }
 
+static wbt_status try_connect(wbt_socket_t fd, char *ip, int port) {
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+#ifdef WIN32
+    addr.sin_addr.S_un.S_addr = inet_addr(ip);
+#else
+    addr.sin_addr.s_addr = inet_addr(ip);
+#endif
+    memset(addr.sin_zero, 0x00, 8);
+
+    int ret = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+    if (ret < 0) {
+        wbt_err_t err = wbt_socket_errno;
+
+        if (err != WBT_EINPROGRESS
+#ifdef WIN32
+            /* Winsock returns WSAEWOULDBLOCK (WBT_EAGAIN) */
+            && err != WBT_EAGAIN
+#endif
+            )
+        {
+            if (err == WBT_ECONNREFUSED
+#ifndef WIN32 // TODO 判断 LINUX 平台
+                /*
+                 * Linux returns EAGAIN instead of ECONNREFUSED
+                 * for unix sockets if listen queue is full
+                 */
+                || err == WBT_EAGAIN
+#endif
+                || err == WBT_ECONNRESET
+                || err == WBT_ENETDOWN
+                || err == WBT_ENETUNREACH
+                || err == WBT_EHOSTDOWN
+                || err == WBT_EHOSTUNREACH)
+            {
+                // 普通错误
+                return WBT_ERROR;
+            } else {
+                // 未知错误
+                return WBT_ERROR;
+            }
+        } else {
+            return WBT_AGAIN;
+        }
+    }
+
+    return WBT_OK;
+}
+
+static wbt_status on_connect(wbt_event_t *ev) {
+    lgx_socket_t *sock = (lgx_socket_t *)ev->ctx;
+
+    wbt_debug("socket:on_connect %d", ev->fd);
+
+    wbt_event_del(sock->co->vm->events, ev);
+
+    lgx_co_resume(sock->co->vm, sock->co);
+
+    sock->co = NULL;
+
+    return WBT_OK;
+}
+
 LGX_METHOD(Socket, connect) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
+    LGX_METHOD_ARGS_GET(ip, 0, T_STRING);
+    LGX_METHOD_ARGS_GET(port, 1, T_LONG);
 
-    LGX_RETURN_TRUE();
-    return 0;
+    if (ip->v.str->length > 32) {
+        lgx_vm_throw_s(vm, "invalid param `ip`");
+        return 1;
+    }
+
+    if (port->v.l <= 0 || port->v.l >= 65535) {
+        lgx_vm_throw_s(vm, "invalid param `port`");
+        return 1;
+    }
+
+    lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `ctx`");
+        return 1;
+    }
+
+    lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
+    if (sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket alreay closed");
+        return 1;
+    }
+
+    // 不能在多个协程中并发执行
+    if (sock->co) {
+        lgx_vm_throw_s(vm, "concurrent connect");
+        return 1;
+    }
+    sock->co = vm->co_running;
+
+    char ip_str[32];
+    memcpy(ip_str, ip->v.str->buffer, ip->v.str->length);
+    ip_str[ip->v.str->length] = '\0';
+
+    wbt_status ret = try_connect(sock->fd, ip_str, port->v.l);
+
+    if (ret == WBT_ERROR) {
+        sock->co = NULL;
+        lgx_vm_throw_s(vm, "connect faild");
+        return 1;
+    } else if (ret == WBT_OK) {
+        sock->co = NULL;
+        LGX_RETURN_TRUE();
+        return 0;
+    } else { // ret == WBT_AGAIN
+        // 添加事件
+        wbt_event_t *p_ev, tmp_ev;
+        tmp_ev.timer.on_timeout = on_timeout;
+        tmp_ev.timer.timeout    = wbt_cur_mtime + 15 * 1000;
+        tmp_ev.on_recv = NULL;
+        tmp_ev.on_send = on_connect;
+        tmp_ev.events  = WBT_EV_WRITE | WBT_EV_ET;
+        tmp_ev.fd      = sock->fd;
+
+        if((p_ev = wbt_event_add(vm->events, &tmp_ev)) == NULL) {
+            lgx_vm_throw_s(vm, "add event faild");
+            return 1;
+        }
+
+        p_ev->ctx = sock;
+        lgx_co_suspend(vm);
+        return 0;
+    }
 }
 
 static wbt_status on_send(wbt_event_t *ev);
@@ -610,8 +736,10 @@ LGX_CLASS(Socket) {
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 
-    LGX_METHOD_BEGIN(Socket, connect, 0)
+    LGX_METHOD_BEGIN(Socket, connect, 2)
         LGX_METHOD_RET(T_BOOL)
+        LGX_METHOD_ARG(0, T_STRING)
+        LGX_METHOD_ARG(1, T_LONG)
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 

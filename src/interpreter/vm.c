@@ -93,12 +93,13 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     // 释放主协程堆栈
     assert(vm->co_main);
     lgx_co_t *co = vm->co_main;
-    assert(co->stack.buf[0].type == T_FUNCTION);
-    unsigned size = co->stack.buf[0].v.fun->stack_size;
+    unsigned base = co->stack.base;
+    assert(co->stack.buf[base].type == T_FUNCTION);
+    unsigned size = base + co->stack.buf[base].v.fun->stack_size;
     int n;
     for (n = 0; n < size; n ++) {
         lgx_gc_ref_del(&co->stack.buf[n]);
-        R(n).type = T_UNDEFINED;
+        co->stack.buf[n].type = T_UNDEFINED;
     }
  
     // 释放主协程

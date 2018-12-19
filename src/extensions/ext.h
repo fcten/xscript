@@ -46,9 +46,11 @@
         symbol.v.fun->ret.type = rettype;
 
 #define LGX_FUNCTION_ARG(pos, argtype) \
+        assert(pos < symbol.v.fun->args_num); \
         symbol.v.fun->args[pos].type = argtype;
 
 #define LGX_FUNCTION_ARG_OPTIONAL(pos, argtype, argvalue) \
+        assert(pos < symbol.v.fun->args_num); \
         symbol.v.fun->args[pos].type = argtype; \
         symbol.v.fun->args[pos].v.l = (long long)(argvalue); \
         symbol.v.fun->args[pos].u.c.init = 1;
@@ -104,10 +106,12 @@
         } while (0);
 
 #define LGX_METHOD_ARG(pos, argtype) \
+        assert(pos < symbol.v.v.fun->args_num); \
         symbol.v.v.fun->args[pos].type = argtype;
 
 #define LGX_METHOD_ARG_OBJECT(pos, objname) \
         do { \
+            assert(pos < symbol.v.v.fun->args_num); \
             lgx_val_t *objval = lgx_ext_get_symbol(hash, #objname); \
             assert(objval && objval->type == T_OBJECT); \
             symbol.v.v.fun->args[pos].type = T_OBJECT; \
@@ -115,6 +119,7 @@
         } while (0);
 
 #define LGX_METHOD_ARG_OPTIONAL(pos, argtype, argvalue) \
+        assert(pos < symbol.v.v.fun->args_num); \
         symbol.v.v.fun->args[pos].type = argtype; \
         symbol.v.v.fun->args[pos].v.l = (long long)(argvalue); \
         symbol.v.v.fun->args[pos].u.c.init = 1;
