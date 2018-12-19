@@ -567,6 +567,18 @@ LGX_METHOD(Socket, close) {
     LGX_METHOD_ARGS_INIT();
     LGX_METHOD_ARGS_THIS(obj);
 
+    lgx_val_t *res = lgx_obj_get_s(obj->v.obj, "ctx");
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `ctx`");
+        return 1;
+    }
+
+    lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
+    if (sock->fd) {
+        wbt_close_socket(sock->fd);
+        sock->fd = -1;
+    }
+
     LGX_RETURN_TRUE();
     return 0;
 }
