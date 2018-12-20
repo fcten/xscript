@@ -654,17 +654,76 @@ throw 3; // uncaught exception 3
 
 ## 捕获异常 (catch)
 
-# 异步
+# 协程 (Coroutine)
 
-xscript 使用协程处理异步。
-
-## 协程
+xscript 使用协程隐藏了异步处理的细节，使用户可以以同步的方式来编写异步程序。
 
 ## async
 
+async 是一个修饰符，用于把一个函数或方法声明为异步执行。
+
+```
+async function sleep10s() {
+    co_sleep(10 * 1000);
+    echo "wake up";
+}
+
+sleep10s();
+
+echo "sleep10s";
+```
+
+调用一个 async 函数时，xscript 会自动创建一个新的协程并立即返回。因此 async 函数不会阻塞当前协程的执行。
+
+因为调用 async 函数并不会真正执行该函数，所以无法获取到该函数的返回值。xscript 会自动返回一个 Coroutine 对象作为 async 函数的返回值。
+
 ## await
 
+await 是一个单目运算符，用于获取 async 函数真正的返回值。
+
+```
+async function sleep10s() string {
+    co_sleep(10 * 1000);
+    return "wake up";
+}
+
+echo await sleep10s();
+
+echo "sleep10s";
+```
+
+await 只接受一个 Coroutine 对象作为操作数。
+
+await 运算符会阻塞当前协程，直至对应的协程执行完毕。
+
 ## 并发 (Concurrency)
+
+通过调用多个 async 函数，可以实现多个任务的并发执行。
+
+```
+async function task1() string {
+    co_sleep(10 * 1000);
+    return "task1 complete";
+}
+
+async function task2() string {
+    co_sleep(10 * 1000);
+    return "task2 complete";
+}
+
+async function task3() string {
+    co_sleep(10 * 1000);
+    return "task3 complete";
+}
+
+Coroutine t1 = task1();
+Coroutine t2 = task2();
+Coroutine t3 = task3();
+
+echo await t1;
+echo await t2;
+echo await t3;
+```
 
 # 垃圾回收 (garbage collection)
 
@@ -683,7 +742,7 @@ xscript 默认使用引用计数为主，标记清除为辅的垃圾回收策略
 
 # 标准库 (std)
 
-xscript 标准库是以包的形式提供的。
+xscript 运行时依赖于标准库所提供的功能，因此标准库会在 xscript 启动时自动加载。你不需要手动 import 就可以使用标准库。
 
 - std.io
 - std.time
@@ -694,6 +753,8 @@ xscript 标准库是以包的形式提供的。
 - std.exception
 
 ## 扩展库
+
+扩展库和标准库一样是 xscript 内置的。扩展库提供了一些常用的功能，但是需要手动 import 之后才能使用它们。
 
 - os.thread
 - os.process

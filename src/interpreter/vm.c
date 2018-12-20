@@ -826,11 +826,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_AWAIT: {
+                // TODO is_instanceof 判断
+                // static lgx_obj_t *coroutine = NULL;
+
                 if (EXPECTED(R(PB(i)).type == T_OBJECT)) {
                     // 参数为 Coroutine 对象
-                    lgx_gc_ref_del(&R(PA(i)));
-                    R(PA(i)).type = T_UNDEFINED;
-
                     lgx_str_t s;
                     lgx_str_set(s, "res");
                     lgx_val_t k, *v;
@@ -848,7 +848,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             return 0;
                         } else {
                             // 该 Coroutine 已经退出
-                            // TODO 读取返回值
+                            lgx_gc_ref_del(&R(PA(i)));
+                            R(PA(i)) = co->stack.buf[1];
+                            co->stack.buf[1].type = T_UNDEFINED;
                         }
                     }
                 } else {

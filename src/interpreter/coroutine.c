@@ -422,11 +422,10 @@ int lgx_co_await(lgx_vm_t *vm) {
         return 0;
     }
 
-    // TODO 取回返回值
-    lgx_gc_ref_del(&co->stack.buf[1]);
-
     // 恢复父协程执行
     if (co->parent && co->parent->status == CO_SUSPEND && co->parent->child == co) {
+        // 重新执行 await 指令以写入返回值
+        co->parent->pc --;
         lgx_co_resume(vm, co->parent);
     }
 

@@ -925,11 +925,6 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e,
     lgx_val_init(&e1);
     lgx_val_init(&obj);
 
-    if (node->type != BINARY_EXPRESSION || node->u.op != TK_CALL) {
-        bc_error(bc, node, "function call expected\n");
-        return 1;
-    }
-
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
         if (bc_expr_binary_ptr(bc, node->child[0], &e1, &obj)) {
             return 1;
@@ -956,7 +951,7 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e,
     }
 
     if (fun) {
-        *fun= e1;
+        *fun = e1;
     } else {
         reg_free(bc, &e1);
     }    
@@ -1056,37 +1051,52 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, 
 }
 
 static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1, fun;
+    lgx_val_t e1, funval;
     lgx_val_init(&e1);
-    lgx_val_init(&fun);
+    lgx_val_init(&funval);
 
-    if (bc_expr_binary_call(bc, node->child[0], &e1, &fun)) {
-        return 1;
-    }
+    lgx_fun_t *fun = NULL;
 
-    if (!fun.v.fun->modifier.is_async) {
-        bc_error(bc, node, "async function expected\n", lgx_val_typeof(e));
-        return 1;
-    }
-
-    if (!is_register(&e1)) {
-        if (lgx_op_unary(node->u.op, e, &e1)) {
+    if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
+        if (bc_expr_binary_call(bc, node->child[0], &e1, &funval)) {
             return 1;
         }
+
+        fun = funval.v.fun;
+        reg_free(bc, &funval);
     } else {
-        if (bc_expr_unary(bc, node, e, &e1)) {
+        if (bc_expr(bc, node->child[0], &e1)) {
             return 1;
         }
     }
 
-    // 返回值类型等于函数原本的返回值类型
-    e->type = fun.v.fun->ret.type;
-    e->v = fun.v.fun->ret.v;
+    lgx_str_t s;
+    lgx_str_set(s, "Coroutine");
+    lgx_val_t *v = lgx_scope_global_val_get(node, &s);
+    assert(v && v->type == T_OBJECT);
+
+    if (!check_variable(&e1, T_OBJECT) || !lgx_obj_is_instanceof(e1.v.obj, v->v.obj)) {
+        bc_error(bc, node, "object<Coroutine> expected\n");
+        return 1;
+    }
+
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
 
+    if (bc_expr_unary(bc, node, e, &e1)) {
+        return 1;
+    }
+
+    // 返回值类型等于函数原本的返回值类型
+    if (fun) {
+        e->type = fun->ret.type;
+        e->v = fun->ret.v;
+    } else {
+        // TODO 目前的机制导致编译时无法判断 await 的返回值，考虑变更 await 实现
+        e->type = T_UNDEFINED;
+    }
+
     reg_free(bc, &e1);
-    reg_free(bc, &fun);
     return 0;
 }
 
