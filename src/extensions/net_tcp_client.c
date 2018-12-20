@@ -415,13 +415,13 @@ LGX_CLASS(Client) {
     return 0;
 }
 
-static int std_net_tcp_client_load_symbols(lgx_hash_t *hash) {
+static int net_tcp_client_load_symbols(lgx_hash_t *hash) {
     LGX_CLASS_INIT(Client);
 
     return 0;
 }
 
-lgx_buildin_ext_t ext_std_net_tcp_client_ctx = {
-    "std.net.tcp",
-    std_net_tcp_client_load_symbols
+lgx_buildin_ext_t ext_net_tcp_client_ctx = {
+    "net.tcp.client",
+    net_tcp_client_load_symbols
 };

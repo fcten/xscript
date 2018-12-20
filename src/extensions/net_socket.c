@@ -7,7 +7,7 @@
 #include "../common/str.h"
 #include "../common/fun.h"
 #include "../common/res.h"
-#include "std_net_socket.h"
+#include "net_socket.h"
 
 extern time_t wbt_cur_mtime;
 
@@ -763,13 +763,13 @@ LGX_CLASS(Socket) {
     return 0;
 }
 
-int std_net_socket_load_symbols(lgx_hash_t *hash) {
+int net_socket_load_symbols(lgx_hash_t *hash) {
     LGX_CLASS_INIT(Socket);
 
     return 0;
 }
 
-lgx_buildin_ext_t ext_std_net_socket_ctx = {
-    "std.net",
-    std_net_socket_load_symbols
+lgx_buildin_ext_t ext_net_socket_ctx = {
+    "net.socket",
+    net_socket_load_symbols
 };

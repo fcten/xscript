@@ -685,23 +685,25 @@ xscript 默认使用引用计数为主，标记清除为辅的垃圾回收策略
 
 xscript 标准库是以包的形式提供的。
 
-- std.io.*
-- std.time.*
-- std.math.*
-- std.string.*
-- std.array.*
-- std.coroutine.*
-- std.exception.*
+- std.io
+- std.time
+- std.math
+- std.string
+- std.array
+- std.coroutine
+- std.exception
 
 ## 扩展库
 
-- os.thread.*
-- os.process.*
-- redis.*
-- mysql.*
-- net.http.*
-- encoding.json.*
-- compress.*
-- crypto.*
-- image.*
-- regexp.*
+- os.thread
+- os.process
+- redis
+- mysql
+- net.socket
+- net.ssl
+- net.http
+- encoding.json
+- compress
+- crypto
+- image
+- regexp

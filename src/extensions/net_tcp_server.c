@@ -677,13 +677,13 @@ LGX_CLASS(Server) {
     return 0;
 }
 
-static int std_net_tcp_server_load_symbols(lgx_hash_t *hash) {
+static int net_tcp_server_load_symbols(lgx_hash_t *hash) {
     LGX_CLASS_INIT(Server);
 
     return 0;
 }
 
-lgx_buildin_ext_t ext_std_net_tcp_server_ctx = {
-    "std.net.tcp",
-    std_net_tcp_server_load_symbols
+lgx_buildin_ext_t ext_net_tcp_server_ctx = {
+    "net.tcp.server",
+    net_tcp_server_load_symbols
 };

@@ -8,9 +8,9 @@
 #include "std_array.h"
 #include "std_coroutine.h"
 #include "std_exception.h"
-#include "std_net_socket.h"
-#include "std_net_tcp_server.h"
-#include "std_net_tcp_client.h"
+#include "net_socket.h"
+#include "net_tcp_server.h"
+#include "net_tcp_client.h"
 
 #include "redis.h"
 
@@ -21,9 +21,9 @@ lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_array_ctx,
     &ext_std_coroutine_ctx,
     &ext_std_exception_ctx,
-    &ext_std_net_socket_ctx,
-    &ext_std_net_tcp_server_ctx,
-    &ext_std_net_tcp_client_ctx,
+    &ext_net_socket_ctx,
+    &ext_net_tcp_server_ctx,
+    &ext_net_tcp_client_ctx,
     &ext_redis_ctx
 };
 
