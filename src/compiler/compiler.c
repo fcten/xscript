@@ -15,6 +15,8 @@
 #define check_type(v, t)     ( check_constant(v, t) || check_variable(v, t) )
 #define is_auto(v)           ( is_register((v)) && (v)->type == T_UNDEFINED )
 
+static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *obj);
+
 void bc_error(lgx_bc_t *bc, lgx_ast_node_t *node, const char *fmt, ...) {
     va_list   args;
 
@@ -774,7 +776,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
     return 0;
 }
 
-static int bc_expr_method_without_params(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
+static int bc_expr_binary_call_method_without_params(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
     lgx_fun_t *fun = funval->v.fun;
 
     int i;
@@ -798,7 +800,7 @@ static int bc_expr_method_without_params(lgx_bc_t *bc, lgx_ast_node_t *node, lgx
     return 0;
 }
 
-static int bc_expr_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
+static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *objval, lgx_val_t *funval) {
     lgx_fun_t *fun = funval->v.fun;
 
     // 实参数量必须小于等于形参
@@ -860,7 +862,7 @@ static int bc_expr_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
     return 0;
 }
 
-static int bc_expr_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *funval) {
+static int bc_expr_binary_call_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *funval) {
     lgx_fun_t *fun = funval->v.fun;
 
     // 实参数量必须小于等于形参
@@ -919,40 +921,20 @@ static int bc_expr_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lg
     return 0;
 }
 
-static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *fun) {
     lgx_val_t e1, obj;
     lgx_val_init(&e1);
     lgx_val_init(&obj);
 
+    if (node->type != BINARY_EXPRESSION || node->u.op != TK_CALL) {
+        bc_error(bc, node, "function call expected\n");
+        return 1;
+    }
+
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
-        if (bc_expr(bc, node->child[0]->child[0], &obj)) {
+        if (bc_expr_binary_ptr(bc, node->child[0], &e1, &obj)) {
             return 1;
         }
-
-        if (!check_type(&obj, T_OBJECT)) {
-            bc_error(bc, node, "makes object from %s without a cast\n", lgx_val_typeof(&e1));
-            return 1;
-        }
-
-        lgx_val_t e2;
-        lgx_val_init(&e2);
-        e2.type = T_STRING;
-        e2.v.str = lgx_str_new_ref(
-            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_start,
-            ((lgx_ast_node_token_t *)(node->child[0]->child[1]))->tk_length
-        );
-
-        // 判断类型
-        lgx_val_t *v = lgx_obj_get(obj.v.obj, &e2);
-        if (!v) {
-            bc_error(bc, node, "property or method `%.*s` not exists\n", e2.v.str->length, e2.v.str->buffer);
-            return 1;
-        }
-        e1 = *v;
-
-        e1.u.c.type = R_TEMP;
-        e1.u.c.reg = reg_pop(bc);
-        bc_object_get(bc, &e1, &obj, &e2);
     } else {
         if (bc_expr(bc, node->child[0], &e1)) {
             return 1;
@@ -965,16 +947,20 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
     }
 
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
-        if (bc_expr_method(bc, node->child[1], e, &obj, &e1)) {
+        if (bc_expr_binary_call_method(bc, node->child[1], e, &obj, &e1)) {
             return 1;
         }
     } else {
-        if (bc_expr_function(bc, node->child[1], e, &e1)) {
+        if (bc_expr_binary_call_function(bc, node->child[1], e, &e1)) {
             return 1;
         }
     }
 
-    reg_free(bc, &e1);
+    if (fun) {
+        *fun= e1;
+    } else {
+        reg_free(bc, &e1);
+    }    
     reg_free(bc, &obj);
 
     return 0;
@@ -1024,7 +1010,7 @@ static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e
     return 0;
 }
 
-static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
+static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *obj) {
     lgx_val_t e1;
     lgx_val_t e2;
     lgx_val_init(&e1);
@@ -1060,16 +1046,27 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) 
     e->u.c.reg = reg_pop(bc);
     bc_object_get(bc, e, &e1, &e2);
 
-    reg_free(bc, &e1);
+    if (obj) {
+        *obj = e1;
+    } else {
+        reg_free(bc, &e1);
+    }
     reg_free(bc, &e2);
 
     return 0;
 }
 
 static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
-    lgx_val_t e1;
+    lgx_val_t e1, fun;
     lgx_val_init(&e1);
-    if (bc_expr(bc, node->child[0], &e1)) {
+    lgx_val_init(&fun);
+
+    if (bc_expr_binary_call(bc, node->child[0], &e1, &fun)) {
+        return 1;
+    }
+
+    if (!fun.v.fun->modifier.is_async) {
+        bc_error(bc, node, "async function expected\n", lgx_val_typeof(e));
         return 1;
     }
 
@@ -1083,16 +1080,14 @@ static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         }
     }
 
-    lgx_str_t s;
-    s.buffer = "Coroutine";
-    s.length = sizeof("Coroutine") - 1;
-
-    if (e->type == T_OBJECT && lgx_obj_is_instanceof(e->v.obj, &s)) {
-        // 如果 b 是 Coroutine 对象，则 a 的类型等于函数返回值类型
-
-    }
+    // 返回值类型等于函数原本的返回值类型
+    e->type = fun.v.fun->ret.type;
+    e->v = fun.v.fun->ret.v;
+    e->u.c.type = R_TEMP;
+    e->u.c.reg = reg_pop(bc);
 
     reg_free(bc, &e1);
+    reg_free(bc, &fun);
     return 0;
 }
 
@@ -1156,11 +1151,11 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     bc_object_get(bc, &e1, e, &e2);
 
     if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
-        if (bc_expr_method(bc, node->child[0]->child[1], &e3, e, &e1)) {
+        if (bc_expr_binary_call_method(bc, node->child[0]->child[1], &e3, e, &e1)) {
             return 1;
         }
     } else {
-        if (bc_expr_method_without_params(bc, node->child[0], &e3, e, &e1)) {
+        if (bc_expr_binary_call_method_without_params(bc, node->child[0], &e3, e, &e1)) {
             return 1;
         }
     }
@@ -1326,7 +1321,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 case TK_CALL:
-                    if (bc_expr_binary_call(bc, node, e)) {
+                    if (bc_expr_binary_call(bc, node, e, NULL)) {
                         return 1;
                     }
                     break;
@@ -1336,7 +1331,7 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
                     }
                     break;
                 case TK_PTR:
-                    if (bc_expr_binary_ptr(bc, node, e)) {
+                    if (bc_expr_binary_ptr(bc, node, e, NULL)) {
                         return 1;
                     }
                     break;
