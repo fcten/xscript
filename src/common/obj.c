@@ -140,7 +140,7 @@ int lgx_obj_is_same_class(lgx_obj_t *obj1, lgx_obj_t *obj2) {
 
     assert(n1 && n2);
 
-    return lgx_str_cmp(n1, n2);
+    return lgx_str_cmp(n1, n2) == 0;
 }
 
 int lgx_obj_is_instanceof(lgx_obj_t *obj, lgx_str_t *name) {

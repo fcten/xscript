@@ -475,7 +475,7 @@ void lgx_co_throw(lgx_co_t *co, lgx_val_t *e) {
                     break;
                 } else if (b->e->type == e->type) {
                     if (b->e->type == T_OBJECT) {
-                        if (lgx_obj_is_same_class(b->e->v.obj, e->v.obj) == 0) {
+                        if (lgx_obj_is_same_class(b->e->v.obj, e->v.obj)) {
                             block = b;
                             break;
                         }

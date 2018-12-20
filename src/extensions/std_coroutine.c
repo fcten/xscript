@@ -1,5 +1,6 @@
 #include "../common/str.h"
 #include "../common/fun.h"
+#include "../common/obj.h"
 #include "std_coroutine.h"
 
 LGX_FUNCTION(co_yield) {
@@ -55,7 +56,15 @@ LGX_FUNCTION(co_sleep) {
     }
 }
 
+// TODO
+LGX_CLASS(Coroutine) {
+
+    return 0;
+}
+
 int std_coroutine_load_symbols(lgx_hash_t *hash) {
+    LGX_CLASS_INIT(Coroutine);
+
     LGX_FUNCTION_BEGIN(co_yield, 0)
         LGX_FUNCTION_RET(T_BOOL)
     LGX_FUNCTION_END

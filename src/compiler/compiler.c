@@ -662,7 +662,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 }
             } else {
                 if (e1.type == T_OBJECT) {
-                    if (lgx_obj_is_same_class(e1.v.obj, e2.v.obj)) {
+                    if (!lgx_obj_is_instanceof(e2.v.obj, e1.v.obj->name)) {
                         lgx_str_t *n1 = lgx_obj_get_name(e1.v.obj);
                         lgx_str_t *n2 = lgx_obj_get_name(e2.v.obj);
                         bc_error(bc, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
@@ -841,7 +841,18 @@ static int bc_expr_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_
 
     xfree(expr);
 
-    e->type = fun->ret.type;
+    if (fun->modifier.is_async) {
+        lgx_str_t s;
+        s.buffer = "Coroutine";
+        s.length = sizeof("Coroutine") - 1;
+        lgx_val_t *v = lgx_scope_global_val_get(node, &s);
+        assert(v);
+        e->type = v->type;
+        e->v.obj = v->v.obj;
+    } else {
+        e->type = fun->ret.type;
+        e->v = fun->ret.v;
+    }
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
     bc_call(bc, e, funval->u.c.reg);
@@ -889,7 +900,18 @@ static int bc_expr_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lg
 
     xfree(expr);
 
-    e->type = fun->ret.type;
+    if (fun->modifier.is_async) {
+        lgx_str_t s;
+        s.buffer = "Coroutine";
+        s.length = sizeof("Coroutine") - 1;
+        lgx_val_t *v = lgx_scope_global_val_get(node, &s);
+        assert(v);
+        e->type = v->type;
+        e->v.obj = v->v.obj;
+    } else {
+        e->type = fun->ret.type;
+        e->v = fun->ret.v;
+    }
     e->u.c.type = R_TEMP;
     e->u.c.reg = reg_pop(bc);
     bc_call(bc, e, funval->u.c.reg);
@@ -1059,6 +1081,15 @@ static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         if (bc_expr_unary(bc, node, e, &e1)) {
             return 1;
         }
+    }
+
+    lgx_str_t s;
+    s.buffer = "Coroutine";
+    s.length = sizeof("Coroutine") - 1;
+
+    if (e->type == T_OBJECT && lgx_obj_is_instanceof(e->v.obj, &s)) {
+        // 如果 b 是 Coroutine 对象，则 a 的类型等于函数返回值类型
+
     }
 
     reg_free(bc, &e1);
@@ -1907,7 +1938,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 s.buffer = ((lgx_ast_node_token_t *)(n->child[0]))->tk_start;
                 s.length = ((lgx_ast_node_token_t *)(n->child[0]))->tk_length;
                 lgx_val_t *f = lgx_scope_val_get(n, &s);
-                ret.type = f->v.fun->ret.type;
+                ret = f->v.fun->ret;
             } else {
                 ret.type = T_UNDEFINED;
             }
@@ -1920,6 +1951,18 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
                     bc_error(bc, node, "makes %s from %s without a cast\n", lgx_val_typeof(&ret), lgx_val_typeof(&r));
+                    return 1;
+                }
+
+                if (ret.type == T_OBJECT && !lgx_obj_is_instanceof(r.v.obj, ret.v.obj->name)) {
+                    lgx_str_t *n1 = lgx_obj_get_name(r.v.obj);
+                    lgx_str_t *n2 = lgx_obj_get_name(ret.v.obj);
+                    bc_error(bc, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
+                        lgx_val_typeof(&r),
+                        n1->length, n1->buffer,
+                        lgx_val_typeof(&ret),
+                        n2->length, n2->buffer
+                    );
                     return 1;
                 }
             } else {
