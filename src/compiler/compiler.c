@@ -664,7 +664,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
                 }
             } else {
                 if (e1.type == T_OBJECT) {
-                    if (!lgx_obj_is_instanceof(e2.v.obj, e1.v.obj->name)) {
+                    if (!lgx_obj_is_instanceof(e2.v.obj, e1.v.obj)) {
                         lgx_str_t *n1 = lgx_obj_get_name(e1.v.obj);
                         lgx_str_t *n2 = lgx_obj_get_name(e2.v.obj);
                         bc_error(bc, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
@@ -845,8 +845,7 @@ static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_va
 
     if (fun->modifier.is_async) {
         lgx_str_t s;
-        s.buffer = "Coroutine";
-        s.length = sizeof("Coroutine") - 1;
+        lgx_str_set(s, "Coroutine");
         lgx_val_t *v = lgx_scope_global_val_get(node, &s);
         assert(v);
         e->type = v->type;
@@ -1113,6 +1112,16 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t *v = lgx_scope_global_val_get(node, &s);
     if (!v || v->type != T_OBJECT) {
         bc_error(bc, node, "`%.*s` is not a class\n", s.length, s.buffer);
+        return 1;
+    }
+
+    if (v->v.obj->is_interface) {
+        bc_error(bc, node, "can't instantiate an interface\n");
+        return 1;
+    }
+
+    if (v->v.obj->is_abstract) {
+        bc_error(bc, node, "can't instantiate an abstract class\n");
         return 1;
     }
 
@@ -1949,7 +1958,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                     return 1;
                 }
 
-                if (ret.type == T_OBJECT && !lgx_obj_is_instanceof(r.v.obj, ret.v.obj->name)) {
+                if (ret.type == T_OBJECT && !lgx_obj_is_instanceof(r.v.obj, ret.v.obj)) {
                     lgx_str_t *n1 = lgx_obj_get_name(r.v.obj);
                     lgx_str_t *n2 = lgx_obj_get_name(ret.v.obj);
                     bc_error(bc, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",

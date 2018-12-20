@@ -134,25 +134,23 @@ lgx_str_t * lgx_obj_get_name(lgx_obj_t *obj) {
     return obj->name;
 }
 
-int lgx_obj_is_same_class(lgx_obj_t *obj1, lgx_obj_t *obj2) {
-    lgx_str_t *n1 = lgx_obj_get_name(obj1);
-    lgx_str_t *n2 = lgx_obj_get_name(obj2);
-
-    assert(n1 && n2);
-
-    return lgx_str_cmp(n1, n2) == 0;
-}
-
-int lgx_obj_is_instanceof(lgx_obj_t *obj, lgx_str_t *name) {
-    while (obj) {
-        if (obj->name && lgx_str_cmp(obj->name, name) == 0) {
-            return 1;
-        } else {
-            obj = obj->parent;
+int lgx_obj_is_instanceof(lgx_obj_t *obj1, lgx_obj_t *obj2) {
+    if (obj2->is_interface) {
+        // TODO 判断 interface
+        return 0;
+    } else {
+        assert(obj2->name);
+        while (obj1) {
+            assert(obj1->name);
+            if (lgx_str_cmp(obj1->name, obj2->name) == 0) {
+                return 1;
+            } else {
+                obj1 = obj1->parent;
+            }
         }
-    }
 
-    return 0;
+        return 0;
+    }
 }
 
 int lgx_obj_print(lgx_obj_t *obj) {

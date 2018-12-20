@@ -826,10 +826,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_AWAIT: {
-                lgx_str_t name;
-                lgx_str_set(name, "Coroutine");
-
-                if (EXPECTED(R(PB(i)).type == T_OBJECT && lgx_obj_is_instanceof(R(PB(i)).v.obj, &name))) {
+                if (EXPECTED(R(PB(i)).type == T_OBJECT)) {
                     // 参数为 Coroutine 对象
                     lgx_gc_ref_del(&R(PA(i)));
                     R(PA(i)).type = T_UNDEFINED;
@@ -856,13 +853,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     if (R(PB(i)).type == T_OBJECT) {
-                        lgx_vm_throw_s(vm, "attempt to access a %s<%.*s> value, object<Coroutine> expected",
+                        lgx_vm_throw_s(vm, "attempt to await a %s<%.*s> value, object<Coroutine> expected",
                             lgx_val_typeof(&R(PB(i))),
                             R(PB(i)).v.obj->name->length,
                             R(PB(i)).v.obj->name->buffer
                         );
                     } else {
-                        lgx_vm_throw_s(vm, "attempt to access a %s value, object<Coroutine> expected", lgx_val_typeof(&R(PB(i))));
+                        lgx_vm_throw_s(vm, "attempt to await a %s value, object<Coroutine> expected", lgx_val_typeof(&R(PB(i))));
                     }
                 }
                 break;

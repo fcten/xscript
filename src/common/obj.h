@@ -10,7 +10,7 @@ lgx_obj_t* lgx_obj_new(lgx_obj_t *obj);
 
 lgx_obj_t* lgx_obj_copy(lgx_obj_t *obj);
 
-int lgx_obj_is_instanceof(lgx_obj_t *obj, lgx_str_t *name);
+int lgx_obj_is_instanceof(lgx_obj_t *obj1, lgx_obj_t *obj2);
 
 int lgx_obj_set(lgx_obj_t *obj, lgx_val_t *k, lgx_val_t *v);
 
@@ -22,8 +22,6 @@ int lgx_obj_add_property(lgx_obj_t *obj, lgx_hash_node_t *node);
 int lgx_obj_add_method(lgx_obj_t *obj, lgx_hash_node_t *node);
 
 lgx_str_t * lgx_obj_get_name(lgx_obj_t *obj);
-
-int lgx_obj_is_same_class(lgx_obj_t *obj1, lgx_obj_t *obj2);
 
 int lgx_obj_print(lgx_obj_t *obj);
 

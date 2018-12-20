@@ -25,7 +25,11 @@ static const struct type lgx_val_types[] = {
 
 const char *lgx_val_typeof(lgx_val_t *v) {
     if (v->type >= T_UNDEFINED && v->type <= T_RESOURCE) {
-        return lgx_val_types[v->type].s;
+        if (v->type == T_OBJECT && v->v.obj && v->v.obj->is_interface) {
+            return "interface";
+        } else {
+            return lgx_val_types[v->type].s;
+        }
     } else {
         return lgx_val_types[T_UNDEFINED].s;
     }
