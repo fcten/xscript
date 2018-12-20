@@ -17,6 +17,7 @@
 void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
     assert(vm->co_running);
     lgx_co_throw(vm->co_running, e);
+    vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
 }
 
 void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
@@ -138,10 +139,12 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size) {
     assert(vm->co_running);
 
-    lgx_co_checkstack(vm->co_running, stack_size);
-    vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
-
-    return 0;
+    if (lgx_co_checkstack(vm->co_running, stack_size) == 0) {
+        vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 int lgx_vm_execute(lgx_vm_t *vm) {
