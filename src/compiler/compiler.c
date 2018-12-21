@@ -960,6 +960,21 @@ static int bc_expr_binary_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e,
     return 0;
 }
 
+static int bc_expr_binary_tail_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, unsigned *is_tail) {
+    lgx_val_t funval;
+    if (bc_expr_binary_call(bc, node, e, &funval)) {
+        return 1;
+    }
+
+    if (!funval.v.fun->buildin && !funval.v.fun->modifier.is_async) {
+        bc->bc_top --;
+        bc_tail_call(bc, funval.u.c.reg);
+        *is_tail = 1;
+    }
+
+    return 0;
+}
+
 static int bc_expr_binary_index(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_t e1, e2;
     lgx_val_init(&e1);
@@ -1957,10 +1972,20 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 ret.type = T_UNDEFINED;
             }
 
+            unsigned is_tail = 0;
+
             // 计算返回值
             if (node->child[0]) {
-                if (bc_expr(bc, node->child[0], &r)) {
-                    return 1;
+                if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
+                    // 尾调用
+                    // 内建函数以及 async 函数不能也不需要做尾调用优化，所以这里也可能生成一个普通调用
+                    if (bc_expr_binary_tail_call(bc, node->child[0], &r, &is_tail)) {
+                        return 1;
+                    }
+                } else {
+                    if (bc_expr(bc, node->child[0], &r)) {
+                        return 1;
+                    }
                 }
 
                 if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
@@ -1989,7 +2014,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             }
 
             // 写入返回指令
-            bc_ret(bc, &r);
+            if (!is_tail) {
+                bc_ret(bc, &r);
+            }
             reg_free(bc, &r);
             break;
         }

@@ -66,6 +66,8 @@ enum {
     OP_CALL,      // CALL     F R       执行调用，返回值写入到 R 中
     OP_RET,       // RET      R
 
+    OP_TAIL_CALL, // TAIL_CALL F         复用当前的函数栈，执行调用
+
     // 数组
     OP_ARRAY_NEW, // ARRAY_NEW R
     OP_ARRAY_ADD, // ARRAY_ADD R R      R1[] = R2

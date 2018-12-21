@@ -47,6 +47,8 @@ void bc_call_set(lgx_bc_t *bc, unsigned char i, lgx_val_t *b);
 void bc_call(lgx_bc_t *bc, lgx_val_t *a, unsigned char i);
 void bc_ret(lgx_bc_t *bc, lgx_val_t *a);
 
+void bc_tail_call(lgx_bc_t *bc, unsigned char i);
+
 void bc_test(lgx_bc_t *bc, lgx_val_t *a, unsigned pos);
 void bc_jmp(lgx_bc_t *bc, lgx_val_t *a);
 void bc_jmpi(lgx_bc_t *bc, unsigned pos);

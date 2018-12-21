@@ -43,6 +43,7 @@ const char* op_name[] = {
     "CALL_SET",
     "CALL",
     "RET",
+    "TAIL_CALL",
     "ARRAY_NEW",
     "ARRAY_ADD",
     "ARRAY_GET",
@@ -120,6 +121,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_RET:
         case OP_CALL_NEW:
         case OP_THROW:
+        case OP_TAIL_CALL:
             printf("%4d %11s R[%d]\n", n, op_name[OP(i)], PA(i));
             break;
         case OP_JMPI:

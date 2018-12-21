@@ -478,6 +478,10 @@ void bc_call(lgx_bc_t *bc, lgx_val_t *a, unsigned char i) {
     bc_append(bc, I2(OP_CALL, a->u.c.reg, i));
 }
 
+void bc_tail_call(lgx_bc_t *bc, unsigned char i) {
+    bc_append(bc, I1(OP_TAIL_CALL, i));
+}
+
 void bc_ret(lgx_bc_t *bc, lgx_val_t *a) {
     if (!is_register(a)) {
         lgx_val_t r;

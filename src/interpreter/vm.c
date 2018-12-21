@@ -152,7 +152,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
         return 0;
     }
 
-    unsigned i;
+    unsigned i, pa, pb, pc, pd, pe;
     unsigned *bc = vm->bc->bc;
 
     for(;;) {
@@ -587,6 +587,31 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 lgx_gc_ref_del(&R(R(0).v.fun->stack_size + PA(i)));
                 R(R(0).v.fun->stack_size + PA(i)) = R(PB(i));
                 lgx_gc_ref_add(&R(R(0).v.fun->stack_size + PA(i)));
+                break;
+            }
+            case OP_TAIL_CALL:{
+                pa = PA(i);
+                if (EXPECTED(R(pa).type == T_FUNCTION)) {
+                    lgx_fun_t *fun = R(pa).v.fun;
+                    unsigned int base = R(0).v.fun->stack_size;
+
+                    lgx_gc_ref_del(&R(0));
+                    R(0) = R(pa);
+                    lgx_gc_ref_add(&R(0));
+
+                    // 移动参数
+                    int n;
+                    for (n = 4; n < 4 + fun->args_num + 1; n ++) {
+                        R(n) = R(base + n);
+                        R(base + n).type = T_UNDEFINED;
+                    }
+
+                    // 跳转到函数入口
+                    vm->co_running->pc = fun->addr;
+                } else {
+                    // runtime error
+                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(pa)));
+                }
                 break;
             }
             case OP_CALL:{
