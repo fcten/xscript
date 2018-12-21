@@ -11,7 +11,7 @@ aux_source_directory(extensions XSCRIPT_SRCS)
 aux_source_directory(webit XSCRIPT_SRCS)
 aux_source_directory(webit/common XSCRIPT_SRCS)
 aux_source_directory(webit/thread XSCRIPT_SRCS)
-aux_source_directory(webit/http XSCRIPT_SRCS)
+aux_source_directory(webit/protocol XSCRIPT_SRCS)
 
 if (UNIX)
     set (XSCRIPT_SRCS ${XSCRIPT_SRCS}

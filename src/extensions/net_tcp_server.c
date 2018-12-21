@@ -8,7 +8,7 @@
 #include "../common/fun.h"
 #include "../common/obj.h"
 #include "../interpreter/coroutine.h"
-#include "../webit/http/wbt_http.h"
+#include "../webit/protocol/wbt_http.h"
 #include "std_coroutine.h"
 
 #define WBT_MAX_PROTO_BUF_LEN (64 * 1024)

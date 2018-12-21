@@ -15,7 +15,6 @@ int wbt_init();
 #include "common/wbt_timer.h"
 #include "event/wbt_event.h"
 #include "thread/wbt_thread.h"
-#include "http/wbt_http.h"
 
 #ifdef	__cplusplus
 }

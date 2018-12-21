@@ -8,10 +8,11 @@ while (true) {
 
 async function handleConnection (Socket conn) {
     try {
+        Http http = new Http(conn);
         while (true) {
-            string data = conn->recv(1024);
+            string data = http->getRequest();
             echo data;
-            conn->send(data);
+            conn->send("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n");
         }
     } catch (auto e) {
         echo e;
