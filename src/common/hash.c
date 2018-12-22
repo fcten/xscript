@@ -77,14 +77,17 @@ int lgx_hash_delete(lgx_hash_t *hash) {
     return 0;
 }
 
-// 把 src 的元素复制到 dst 中，忽略 undefined 类型的 key
-// dst->size 应当大于等于 src->size
-static void hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
+// 把 src 的元素复制到 dst 中
+int lgx_hash_copy(lgx_hash_t *src, lgx_hash_t *dst) {
     lgx_hash_node_t *next = src->head;
     while (next) {
-        lgx_hash_set(dst, next);
+        if (lgx_hash_set(dst, next) != 0) {
+            return 1;
+        }
         next = next->order;
     }
+
+    return 0;
 }
 
 // 将 hash table 扩容一倍
@@ -94,7 +97,7 @@ static int hash_resize(lgx_hash_t *hash) {
         return 1;
     }
 
-    hash_copy(hash, resize);
+    lgx_hash_copy(hash, resize);
     lgx_hash_remove_all(hash);
 
     xfree(hash->table);

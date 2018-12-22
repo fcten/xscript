@@ -69,7 +69,7 @@ enum {
     OP_TAIL_CALL, // TAIL_CALL F         复用当前的函数栈，执行调用
 
     // 数组
-    OP_ARRAY_NEW, // ARRAY_NEW R
+    OP_ARRAY_NEW, // ARRAY_NEW R        R = []
     OP_ARRAY_GET, // ARRAY_GET R R R    R1 = R2[R3]
     OP_ARRAY_SET, // ARRAY_SET R R R    R1[R2] = R3
 

@@ -334,6 +334,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_NEG:{
+                lgx_gc_ref_del(&R(pa));
+
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = -R(pb).v.l;
@@ -756,7 +758,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 R(pa).type = T_ARRAY;
                 R(pa).v.arr = lgx_hash_new(0);
                 if (UNEXPECTED(!R(pa).v.arr)) {
+                    R(pa).type = T_UNDEFINED;
                     lgx_vm_throw_s(vm, "out of memory");
+                    break;
                 }
                 lgx_gc_ref_add(&R(pa));
                 lgx_gc_trace(vm, &R(pa));
@@ -785,9 +789,25 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 unsigned pd = PD(i);
-                lgx_gc_ref_add(&C(pd));
-                lgx_gc_ref_del(&R(pa));
-                R(pa) = C(pd);
+                if (C(pd).type == T_ARRAY) {
+                    lgx_gc_ref_del(&R(pa));
+                    R(pa).type = T_ARRAY;
+                    R(pa).v.arr = lgx_hash_new(C(pd).v.arr->size);
+                    if (UNEXPECTED(!R(pa).v.arr)) {
+                        R(pa).type = T_UNDEFINED;
+                        lgx_vm_throw_s(vm, "out of memory");
+                        break;
+                    }
+                    lgx_gc_ref_add(&R(pa));
+                    lgx_gc_trace(vm, &R(pa));
+                    if (UNEXPECTED(lgx_hash_copy(C(pd).v.arr, R(pa).v.arr) != 0)) {
+                        lgx_vm_throw_s(vm, "copy hash table failed");
+                    }
+                } else {
+                    lgx_gc_ref_add(&C(pd));
+                    lgx_gc_ref_del(&R(pa));
+                    R(pa) = C(pd);
+                }
                 break;
             }
             case OP_GLOBAL_GET:{
@@ -808,6 +828,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     lgx_gc_ref_del(&R(pa));
                     R(pa).type = T_OBJECT;
                     R(pa).v.obj = lgx_obj_new(C(pd).v.obj);
+                    if (UNEXPECTED(!R(pa).v.obj)) {
+                        R(pa).type = T_UNDEFINED;
+                        lgx_vm_throw_s(vm, "out of memory");
+                        break;
+                    }
                     lgx_gc_ref_add(&R(pa));
                     lgx_gc_trace(vm, &R(pa));
                 } else {
