@@ -1612,6 +1612,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
 
                     lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
                     n.v.type = v->type;
+                    n.v.v = v->v;
                     ast_init_value(&n.v);
 
                     // TODO 检查继承关系
