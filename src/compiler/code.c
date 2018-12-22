@@ -528,10 +528,10 @@ void bc_array_add(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
     if (!is_register(b)) {
         lgx_val_t r;
         bc_load_to_reg(bc, &r, b);
-        bc_append(bc, I2(OP_ARRAY_ADD, a->u.c.reg, r.u.c.reg));
+        bc_append(bc, I3(OP_ARRAY_SET, a->u.c.reg, 0, r.u.c.reg));
         reg_free(bc, &r);
     } else {
-        bc_append(bc, I2(OP_ARRAY_ADD, a->u.c.reg, b->u.c.reg));
+        bc_append(bc, I3(OP_ARRAY_SET, a->u.c.reg, 0, b->u.c.reg));
     }
 }
 

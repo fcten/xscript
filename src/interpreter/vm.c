@@ -733,7 +733,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_ARRAY_SET:{
                 if (EXPECTED(R(pa).type == T_ARRAY)) {
-                    if (EXPECTED(R(pb).type == T_LONG || R(pb).type == T_STRING)) {
+                    if (pb == 0) {
+                        lgx_hash_add(R(pa).v.arr, &R(pc));
+                    } else if (R(pb).type == T_LONG || R(pb).type == T_STRING) {
                         lgx_hash_node_t n;
                         n.k = R(pb);
                         n.v = R(pc);
@@ -742,15 +744,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         // runtime warning
                         lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_val_typeof(&R(pa)));
                     }
-                } else {
-                    // runtime error
-                    lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(pa)));
-                }
-                break;
-            }
-            case OP_ARRAY_ADD:{
-                if (EXPECTED(R(pa).type == T_ARRAY)) {
-                    lgx_hash_add(R(pa).v.arr, &R(pb));
                 } else {
                     // runtime error
                     lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(pa)));

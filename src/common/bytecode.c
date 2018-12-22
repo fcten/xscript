@@ -45,7 +45,6 @@ const char* op_name[] = {
     "RET",
     "TAIL_CALL",
     "ARRAY_NEW",
-    "ARRAY_ADD",
     "ARRAY_GET",
     "ARRAY_SET",
     "GLOBAL_GET",
@@ -96,7 +95,6 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_NEG:
         case OP_NOT:
         case OP_LNOT:
-        case OP_ARRAY_ADD:
         case OP_CALL_SET:
         case OP_TYPEOF:
         case OP_CALL:
