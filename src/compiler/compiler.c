@@ -1454,7 +1454,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 lgx_str_t s;
                 s.buffer = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_start;
                 s.length = ((lgx_ast_node_token_t *)(node->parent->child[0]))->tk_length;
-                e = lgx_scope_val_get(node, &s);
+                e = lgx_scope_val_get(node->parent, &s);
                 assert(e);
 
                 int i;

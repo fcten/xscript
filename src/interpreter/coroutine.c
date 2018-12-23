@@ -287,9 +287,9 @@ int lgx_co_return(lgx_co_t *co, lgx_val_t *v) {
     int ret = co->stack.buf[base + 1].v.l;
 
     // 写入返回值
-    lgx_gc_ref_del(&co->stack.buf[ret]);
-    co->stack.buf[ret] = *v;
-    lgx_gc_ref_add(&co->stack.buf[ret]);
+    lgx_gc_ref_add(v);
+    lgx_gc_ref_del(&co->stack.buf[co->stack.base + ret]);
+    co->stack.buf[co->stack.base + ret] = *v;    
 
     // 释放函数栈
     int n;

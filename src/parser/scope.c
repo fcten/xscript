@@ -40,7 +40,11 @@ lgx_val_t* lgx_scope_local_val_get(lgx_ast_node_t *node, lgx_str_t *s) {
             n->v.u.c.type = R_LOCAL;
             return &n->v;
         } else {
-            cur = find_scope(cur->parent);
+            if (cur->parent->type == FUNCTION_DECLARATION) {
+                break;
+            } else {
+                cur = find_scope(cur->parent);
+            }
         }
     }
 

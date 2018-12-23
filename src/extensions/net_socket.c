@@ -116,8 +116,8 @@ LGX_METHOD(Socket, bind) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -160,8 +160,8 @@ LGX_METHOD(Socket, listen) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -305,8 +305,8 @@ LGX_METHOD(Socket, accept) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -422,8 +422,8 @@ LGX_METHOD(Socket, connect) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -552,8 +552,8 @@ LGX_METHOD(Socket, send) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -664,8 +664,8 @@ LGX_METHOD(Socket, recv) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd < 0) {
-        lgx_vm_throw_s(vm, "socket alreay closed");
+    if (!sock || sock->fd < 0) {
+        lgx_vm_throw_s(vm, "socket not open or alreay closed");
         return 1;
     }
 
@@ -700,7 +700,7 @@ LGX_METHOD(Socket, close) {
     }
 
     lgx_socket_t *sock = (lgx_socket_t *)res->v.res->buf;
-    if (sock->fd) {
+    if (sock && sock->fd) {
         wbt_close_socket(sock->fd);
         sock->fd = -1;
     }
