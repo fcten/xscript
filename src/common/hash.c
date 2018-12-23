@@ -206,7 +206,7 @@ int lgx_hash_set(lgx_hash_t *hash, lgx_hash_node_t *node) {
     
     hash->length ++;
 
-    if (EXPECTED(hash->size >= hash->length * (hash->flag_non_compact_elements ? 2 : 1))) {
+    if (EXPECTED(hash->size > hash->length * (hash->flag_non_compact_elements ? 2 : 1))) {
         return 0;
     } else {
         return hash_resize(hash);
