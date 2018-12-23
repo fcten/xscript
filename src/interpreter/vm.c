@@ -91,6 +91,13 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
+    // 释放事件池
+    if (vm->events) {
+        wbt_event_cleanup(vm->events);
+        wbt_free(vm->events);
+        vm->events = NULL;
+    }
+
     // 释放主协程堆栈
     assert(vm->co_main);
     lgx_co_t *co = vm->co_main;
@@ -102,19 +109,12 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
         lgx_gc_ref_del(&co->stack.buf[n]);
         co->stack.buf[n].type = T_UNDEFINED;
     }
- 
+
     // 释放主协程
     vm->co_main = NULL;
     lgx_co_delete(vm, co);
 
     // TODO 释放消息队列
-
-    // 释放事件池
-    if (vm->events) {
-        wbt_event_cleanup(vm->events);
-        wbt_free(vm->events);
-        vm->events = NULL;
-    }
 
     lgx_bc_cleanup(vm->bc);
 
@@ -769,14 +769,15 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_ARRAY_GET:{
                 if (EXPECTED(R(pb).type == T_ARRAY)) {
                     if (EXPECTED(R(pc).type == T_LONG || R(pc).type == T_STRING)) {
-                        lgx_gc_ref_del(&R(pa));
                         lgx_hash_node_t *n = lgx_hash_get(R(pb).v.arr, &R(pc));
+                        lgx_val_t v = R(pa);
                         if (n) {
                             R(pa) = n->v;
                         } else {
                             // runtime warning
                             R(pa).type = T_UNDEFINED;
                         }
+                        lgx_gc_ref_del(&v);
                         lgx_gc_ref_add(&R(pa));
                     } else {
                         // runtime warning
@@ -789,6 +790,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 unsigned pd = PD(i);
+                // TODO switch 所使用的数组以及常量类型的数组无需执行复制
                 if (C(pd).type == T_ARRAY) {
                     lgx_gc_ref_del(&R(pa));
                     R(pa).type = T_ARRAY;
