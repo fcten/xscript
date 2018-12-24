@@ -511,6 +511,13 @@ void ast_parse_bsc_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t
 
             ast_step(pkg);
             break;
+        case TK_CHAR:
+            id = ast_node_token_new(ast, pkg);
+            id->type = CHAR_TOKEN;
+            ast_node_append_child(parent, (lgx_ast_node_t*)id);
+
+            ast_step(pkg);
+            break;
         case TK_TRUE:
             id = ast_node_token_new(ast, pkg);
             id->type = TRUE_TOKEN;

@@ -159,6 +159,24 @@ static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     return 0;
 }
 
+static int bc_char(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
+    lgx_str_t *s = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
+    if (!s || s->length != 1) {
+        bc_error(bc, node, "Invalid char '%.*s'\n", s->length, s->buffer);
+        return 1;
+    }
+
+    expr->type = T_LONG;
+    expr->v.l = (unsigned char)s->buffer[0];
+
+    expr->u.c.type = 0;
+    expr->u.c.reg = 0;
+
+    lgx_str_delete(s);
+
+    return 0;
+}
+
 static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
     expr->v.str = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
@@ -1304,6 +1322,8 @@ static int bc_expr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     switch (node->type) {
         case STRING_TOKEN:
             return bc_string(bc, node, e);
+        case CHAR_TOKEN:
+            return bc_char(bc, node, e);
         case LONG_TOKEN:
             return bc_long(bc, node, e);
         case DOUBLE_TOKEN:

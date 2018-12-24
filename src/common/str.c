@@ -2,6 +2,23 @@
 #include "str.h"
 #include "val.h"
 
+static int is_hex_char(char c) {
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+static unsigned int hex_to_dec(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else if (c >= 'a' && c <= 'f') {
+        return c - 'a' + 10;
+    } else if (c >= 'A' && c <= 'F') {
+        return c - 'A' + 10;
+    } else {
+        // error
+        return 0;
+    }
+}
+
 static lgx_str_t* _lgx_str_new(char *str, unsigned len, int decode) {
     unsigned head_size = sizeof(lgx_str_t);
     unsigned data_size = len * sizeof(char);
@@ -38,7 +55,16 @@ static lgx_str_t* _lgx_str_new(char *str, unsigned len, int decode) {
                     case 't':  ret->buffer[j++] = '\t'; break;
                     case '\\': ret->buffer[j++] = '\\'; break;
                     case '"':  ret->buffer[j++] = '\"'; break;
+                    case '\'': ret->buffer[j++] = '\''; break;
                     case '0':  ret->buffer[j++] = '\0'; break;
+                    case 'x': case 'X':
+                        if ((len - i > 2) && is_hex_char(str[i+1]) && is_hex_char(str[i+2]) ) {
+                            ret->buffer[j++] = (hex_to_dec(str[i+1]) << 4) | hex_to_dec(str[i+2]);
+                            i += 2;
+                        } else {
+                            ret->buffer[j++] = str[i];
+                        }
+                        break;
                     default:
                         ret->buffer[j++] = '\\';
                         ret->buffer[j++] = str[i];

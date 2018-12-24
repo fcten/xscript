@@ -16,6 +16,7 @@ static int is_next(lgx_lex_t* ctx, char n) {
     }
 }
 
+// 行
 static void step_to_eol(lgx_lex_t* ctx) {
     char n;
     while (ctx->offset < ctx->length) {
@@ -34,26 +35,14 @@ static void step_to_eol(lgx_lex_t* ctx) {
     }
 }
 
-static void step_to_eos(lgx_lex_t* ctx) {
+// 字符串
+static void step_to_eos(lgx_lex_t* ctx, char end) {
     while (ctx->offset < ctx->length) {
-        // 处理转义字符 \r \n \t \\ \" \0
+        // 处理转义字符 \r \n \t \\ \" \' \0 \xFF
         if (is_next(ctx, '\\')) {
-            if (is_next(ctx, 'r')) {
-                // '\r'
-            } else if (is_next(ctx, 'n')) {
-                // '\n'
-            } else if (is_next(ctx, 't')) {
-                // '\t'
-            } else if (is_next(ctx, '\\')) {
-                // '\\'
-            } else if (is_next(ctx, '\"')) {
-                // '\"'
-            } else if (is_next(ctx, '0')) {
-                // '\0'
-            } else {
-                // 不构成转义字符
-            }
-        } else if (is_next(ctx, '"')) {
+            // 这里只要确保读到正确的字符串结尾，不需要判断转义字符是否合法
+            ctx->offset++;
+        } else if (is_next(ctx, end)) {
             break;
         } else {
             ctx->offset++;
@@ -61,6 +50,7 @@ static void step_to_eos(lgx_lex_t* ctx) {
     }
 }
 
+// 注释
 static void step_to_eoc(lgx_lex_t* ctx) {
     char n;
     while (ctx->offset < ctx->length) {
@@ -81,6 +71,7 @@ static void step_to_eoc(lgx_lex_t* ctx) {
     }
 }
 
+// 空格与制表符
 static void step_to_eot(lgx_lex_t* ctx) {
     char n;
     while (ctx->offset < ctx->length) {
@@ -148,6 +139,7 @@ static int step_to_eond(lgx_lex_t* ctx) {
     }
 }
 
+// 数字
 static int step_to_eon(lgx_lex_t* ctx) {
     char n = ctx->source[ctx->offset++];
     if (n == '0') {
@@ -167,6 +159,7 @@ static int step_to_eon(lgx_lex_t* ctx) {
     }
 }
 
+// 标识符
 static void step_to_eoi(lgx_lex_t* ctx) {
     char n;
     while (ctx->offset < ctx->length) {
@@ -374,8 +367,11 @@ int lgx_lex(lgx_lex_t* ctx) {
         case ',':
             return n;
         case '"':
-            step_to_eos(ctx);
+            step_to_eos(ctx, '"');
             return TK_STRING;
+        case '\'':
+            step_to_eos(ctx, '\'');
+            return TK_CHAR;
         default:
             if (n >= '0' && n <= '9') {
                 ctx->offset--;
