@@ -1309,6 +1309,11 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
             //printf("[Info] [Line:%d] variable `%.*s` declared\n", pkg->cur_length, pkg->cur_start);
             ast_parse_id_token(ast, pkg, variable_declaration);
         }
+
+        if (modifier->is_const && pkg->cur_token != '=') {
+            ast_error(ast, pkg, "`=` expected, constant variable must be initialized\n");
+            return;
+        }
         
         if (pkg->cur_token == '=') {
             ast_step(pkg);

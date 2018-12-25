@@ -5,6 +5,7 @@
 #include "../common/operator.h"
 #include "../common/obj.h"
 #include "../common/exception.h"
+#include "../interpreter/gc.h"
 #include "register.h"
 #include "compiler.h"
 #include "code.h"
@@ -64,8 +65,15 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     v = lgx_scope_local_val_get(node, &s);
     if (v) {
         v->u.symbol.is_used = 1;
-
         *expr = *v;
+
+        if (v->u.symbol.type == S_CONSTANT) {
+            expr->u.symbol.reg_type = R_NOT;
+        } else if (v->u.symbol.type == S_VARIABLE) {
+            //*expr = *v;
+        } else {
+            assert(0);
+        }
 
         return 0;
     }
@@ -73,25 +81,28 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     // 全局变量
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
+        v->u.symbol.is_used = 1;
+        *expr = *v;
+
         if (v->u.symbol.type == S_CLASS) {
             bc_error(bc, node, "class name `%.*s` can't be used as variable\n", s.length, s.buffer);
             return 1;
-        }
-
-        v->u.symbol.is_used = 1;
-
-        *expr = *v;
-
-        if (v->type == T_FUNCTION) {
+        } else if (v->u.symbol.type == S_CONSTANT) {
+            expr->u.symbol.reg_type = R_NOT;
+        } else if (v->u.symbol.type == S_VARIABLE) {
+            if (global || v->u.symbol.reg_type == R_LOCAL) {
+                //*expr = *v;
+            } else {
+                expr->u.symbol.reg_type = R_TEMP;
+                expr->u.symbol.reg_num = reg_pop(bc);
+                bc_global_get(bc, expr, v);
+            }
+        } else if (v->u.symbol.type == S_FUNCTION) {
             expr->u.symbol.reg_type = R_TEMP;
             expr->u.symbol.reg_num = reg_pop(bc);
             bc_load(bc, expr, v);
-        } else if (global || v->u.symbol.reg_type == R_LOCAL) {
-            //*expr = *v;
         } else {
-            expr->u.symbol.reg_type = R_TEMP;
-            expr->u.symbol.reg_num = reg_pop(bc);
-            bc_global_get(bc, expr, v);
+            assert(0);
         }
 
         return 0;
@@ -704,8 +715,30 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
 
         if (e1.u.symbol.reg_type == R_LOCAL) {
             bc_mov(bc, &e1, &e2);
-        } else {
+        } else if (e1.u.symbol.reg_type == R_GLOBAL) {
             bc_global_set(bc, &e1, &e2);
+        } else if (e1.u.symbol.reg_type == R_NOT) {
+            lgx_str_t s;
+            s.buffer = ((lgx_ast_node_token_t *)node->child[0])->tk_start;
+            s.length = ((lgx_ast_node_token_t *)node->child[0])->tk_length;
+
+            if (node->type == VARIABLE_DECLARATION) {
+                if (!is_constant(&e2)) {
+                    bc_error(bc, node, "constant expression expected\n");
+                    return 1;
+                }
+
+                lgx_val_t *v = lgx_scope_val_get(node, &s);
+                assert(v);
+                lgx_gc_ref_del(v);
+                v->v = e2.v;
+                lgx_gc_ref_add(v);
+            } else {
+                bc_error(bc, node, "assignment of a constant variable `%.*s`\n", s.length, s.buffer);
+                return 1;
+            }
+        } else {
+            assert(0);
         }
 
         // 写入表达式的值
