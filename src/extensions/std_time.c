@@ -30,6 +30,6 @@ int std_time_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_std_time_ctx = {
-    "std.time",
+    wbt_string("std.time"),
     std_time_load_symbols
 };

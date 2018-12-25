@@ -73,11 +73,20 @@ lgx_val_t* lgx_ext_get_symbol(lgx_hash_t *hash, char *symbol) {
 }
 
 int lgx_ext_load_symbols(lgx_hash_t *hash) {
-    // 从内建扩展中加载符号
+    // 加载标准库
     int i;
+    lgx_buildin_ext_t *ext;
+
+    wbt_str_t std;
+    wbt_str_set(std, "std.");
+
     for (i = 0; i < sizeof(buildin_exts)/sizeof(lgx_buildin_ext_t*); i++) {
-        if (buildin_exts[i]->load_symbols) {
-            if (buildin_exts[i]->load_symbols(hash)) {
+        ext = buildin_exts[i];
+        if (wbt_strncmp(&ext->package, &std, std.len) != 0) {
+            continue;
+        }
+        if (ext->load_symbols) {
+            if (ext->load_symbols(hash)) {
                 return 1;
             }
         }

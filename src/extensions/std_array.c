@@ -19,6 +19,6 @@ int std_array_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_std_array_ctx = {
-    "std.array",
+    wbt_string("std.array"),
     std_array_load_symbols
 };

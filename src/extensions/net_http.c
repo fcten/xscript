@@ -29,6 +29,6 @@ int net_http_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_net_http_ctx = {
-    "x.net.http",
+    wbt_string("x.net.http"),
     net_http_load_symbols
 };

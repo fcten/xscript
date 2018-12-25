@@ -770,6 +770,6 @@ int net_socket_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_net_socket_ctx = {
-    "x.net.socket",
+    wbt_string("x.net.socket"),
     net_socket_load_symbols
 };

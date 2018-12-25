@@ -78,6 +78,6 @@ int std_coroutine_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_std_coroutine_ctx = {
-    "std.coroutine",
+    wbt_string("std.coroutine"),
     std_coroutine_load_symbols
 };

@@ -208,7 +208,7 @@
     }
 
 typedef struct lgx_buildin_ext_s {
-    const char *package;
+    wbt_str_t package;
     int (*load_symbols)(lgx_hash_t *hash);
 } lgx_buildin_ext_t;
 

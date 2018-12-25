@@ -33,6 +33,6 @@ int std_exception_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_std_exception_ctx = {
-    "std.exception",
+    wbt_string("std.exception"),
     std_exception_load_symbols
 };

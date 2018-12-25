@@ -38,6 +38,6 @@ int std_string_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_std_string_ctx = {
-    "std.string",
+    wbt_string("std.string"),
     std_string_load_symbols
 };
