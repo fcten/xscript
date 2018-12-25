@@ -33,11 +33,11 @@ unsigned char reg_pop(lgx_bc_t *bc) {
 }
 
 void reg_free(lgx_bc_t *bc, lgx_val_t *e) {
-    if (e->u.c.type == R_TEMP) {
-        reg_push(bc, e->u.c.reg);
+    if (e->u.symbol.reg_type == R_TEMP) {
+        reg_push(bc, e->u.symbol.reg_num);
         e->type = 0;
         e->v.l = 0;
-        e->u.c.type = 0;
-        e->u.c.reg = 0;
+        e->u.symbol.reg_type = 0;
+        e->u.symbol.reg_num = 0;
     }
 }

@@ -729,7 +729,7 @@ void ast_parse_block_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_
                     lgx_gc_ref_add(t);
                 }
                 // 函数参数不检查是否使用
-                t->u.c.used = 1;
+                t->u.symbol.is_used = 1;
             } else {
                 ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", s.length, s.buffer);
                 return;
@@ -1178,7 +1178,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
             case ';':
                 // null statement
                 ast_step(pkg);
-                break;
+                continue;
             case '}': case TK_EOF: case TK_CASE: case TK_DEFAULT:
                 return;
             case TK_IF:
@@ -1233,18 +1233,9 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
             }
             case TK_FUNCTION:
             case TK_ASYNC:
-            case TK_STATIC:
-            case TK_CONST:
-            case TK_PUBLIC:
-            case TK_PROTECTED:
-            case TK_PRIVATE: {
+            case TK_CONST: {
                 lgx_modifier_t modifier;
                 ast_parse_modifier(ast, pkg, &modifier);
-
-                if (modifier.access) {
-                    ast_error(ast, pkg, "unexpected access modifier before `%.*s`\n", pkg->cur_length, pkg->cur_start);
-                    return;
-                }
 
                 if (pkg->cur_token == TK_FUNCTION) {
                     if (modifier.is_const) {
@@ -1252,7 +1243,7 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
                         return;
                     }
                     if (parent->parent) {
-                        ast_error(ast, pkg, "functions can only be defined in top-level scope\n");
+                        ast_error(ast, pkg, "function can only be defined in top-level scope\n");
                         return;
                     }
                     ast_parse_function_declaration(ast, pkg, parent, &modifier);
@@ -1267,6 +1258,11 @@ void ast_parse_statement(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* par
                 }
             }
             case TK_CLASS:
+                if (parent->parent) {
+                    ast_error(ast, pkg, "class can only be defined in top-level scope\n");
+                    return;
+                }
+
                 ast_parse_class_declaration(ast, pkg, parent);
                 continue;
             case TK_INTERFACE:
@@ -1325,7 +1321,7 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
             }
         }
 
-        // 创建变量加入作用域
+        // 加入符号表
         lgx_str_t s;
         s.buffer = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_start;
         s.length = ((lgx_ast_node_token_t *)(variable_declaration->child[0]))->tk_length;
@@ -1337,9 +1333,12 @@ void ast_parse_variable_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
             if (IS_GC_VALUE(t)) {
                 lgx_gc_ref_add(t);
             }
-            // TODO 只检查局部变量
-            t->u.c.used = 1;
-            t->u.c.modifier = *modifier;
+            if (modifier->is_const) {
+                t->u.symbol.type = S_CONSTANT;
+            } else {
+                t->u.symbol.type = S_VARIABLE;
+            }
+            t->u.symbol.is_static = modifier->is_static;
         } else {
             ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", s.length, s.buffer);
             return;
@@ -1375,14 +1374,8 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
     s.buffer = n->tk_start;
     s.length = n->tk_length;
 
-    lgx_val_t *f;
-    if ((f = lgx_scope_val_add(function_declaration, &s))) {
-        f->type = T_FUNCTION;
-        f->u.c.used = 1;
-        f->u.c.modifier = *modifier;
-        // 总是把符号表中的函数标记为 const
-        f->u.c.modifier.is_const = 1;
-    } else {
+    lgx_val_t *f = lgx_scope_val_add(function_declaration, &s);
+    if (!f) {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;
     }
@@ -1402,10 +1395,12 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
     ast_step(pkg);
 
     // 根据参数数量创建函数
+    f->type = T_FUNCTION;
     f->v.fun = lgx_fun_new(function_declaration->child[1]->children);
     f->v.fun->name.buffer = s.buffer;
     f->v.fun->name.length = s.length;
-    f->v.fun->modifier = *modifier;
+    f->v.fun->is_async = modifier->is_async;
+    f->u.symbol.type = S_FUNCTION;
     lgx_gc_ref_add(f);
     int i;
     for (i = 0; i < function_declaration->child[1]->children; i++) {
@@ -1414,7 +1409,7 @@ void ast_parse_function_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_
         ast_set_variable_type(&f->v.fun->args[i], n);
         // 是否有默认参数
         if (n->child[1]) {
-            f->v.fun->args[i].u.c.init = 1;
+            f->v.fun->args[i].u.args.init = 1;
         }
     }
 
@@ -1484,10 +1479,8 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
     if ((f = lgx_scope_val_add(class_declaration, &s))) {
         f->type = T_OBJECT;
         f->v.obj = lgx_obj_create(&s);
-        f->u.c.used = 1;
+        f->u.symbol.type = S_CLASS;
         lgx_gc_ref_add(f);
-        // 总是把符号表中的类标记为 const
-        f->u.c.modifier.is_const = 1;
     } else {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;
@@ -1509,6 +1502,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
             ast_error(ast, pkg, "`%.*s` is not a class\n", pkg->cur_length, pkg->cur_start);
             return;
         }
+        v->u.symbol.is_used = 1;
 
         f->v.obj->parent = v->v.obj;
 
@@ -1532,6 +1526,7 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
                 ast_error(ast, pkg, "`%.*s` is not a interface\n", pkg->cur_length, pkg->cur_start);
                 return;
             }
+            v->u.symbol.is_used = 1;
 
             // TODO 处理 interface
 
@@ -1672,10 +1667,8 @@ void ast_parse_interface_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast
         f->type = T_OBJECT;
         f->v.obj = lgx_obj_create(&s);
         f->v.obj->is_interface = 1;
-        f->u.c.used = 1;
+        f->u.symbol.type = S_CLASS;
         lgx_gc_ref_add(f);
-        // 总是把符号表中的接口标记为 const
-        f->u.c.modifier.is_const = 1;
     } else {
         ast_error(ast, pkg, "identifier `%.*s` has already been declared\n", n->tk_length, n->tk_start);
         return;

@@ -21,24 +21,34 @@ typedef enum {
     T_OBJECT,
     T_FUNCTION,
     T_RESOURCE
-} lgx_type_t;
+} lgx_val_type_t;
 
 // 寄存器类型
-enum {
+typedef enum {
     R_NOT = 0,  // 不是寄存器
     R_TEMP,     // 临时寄存器
     R_LOCAL,    // 局部变量
     R_GLOBAL    // 全局变量
-};
+} lgx_reg_type_t;
+
+// 符号表类型
+
+typedef enum {
+    S_VARIABLE = 0,
+    S_CONSTANT,
+    S_FUNCTION,
+    S_CLASS
+} lgx_symbol_type_t;
 
 // 访问权限
-enum {
+typedef enum {
     P_PACKAGE = 0,
     P_PUBLIC,
     P_PROTECTED,
     P_PRIVATE
-};
+} lgx_access_type_t;
 
+// 修饰符
 typedef struct {
     // 是否为静态
     unsigned char is_static:1;
@@ -49,7 +59,7 @@ typedef struct {
     // 是否为 abstract
     unsigned char is_abstract:1;
     // 访问权限
-    unsigned char access:2;
+    lgx_access_type_t access:2;
 } lgx_modifier_t;
 
 typedef struct lgx_val_s  lgx_val_t;
@@ -62,6 +72,7 @@ typedef struct lgx_fun_s  lgx_fun_t;
 typedef struct lgx_gc_s   lgx_gc_t;
 
 struct lgx_val_s {
+    // 8 字节
     union {
         long long         l; // 64 位有符号整数
         double            d; // 64 位有符号浮点数
@@ -73,23 +84,51 @@ struct lgx_val_s {
         lgx_fun_t  *fun;
         lgx_gc_t   *gc; // 方便访问任意高级类型的 gc 字段，gc 字段必须在高级类型结构体的头部
     } v;
-    lgx_type_t type:8;
-    // 这个 union 结构有 7 个字节可用
+
+    // 以下控制在 4 字节以内
+    lgx_val_type_t type:8;
+
+    // 所有成员控制在 4 个字节以内
     union {
-        // 仅在编译时使用
+        // 在符号表中使用
+        // 在常量表中使用
+        // 在 lgx_exceptipn_block_t 中使用
         struct {
-            // 寄存器编号
-            unsigned char reg;
+            // 符号类型
+            lgx_symbol_type_t type:2;
+            // 该符号在定义后是否被使用
+            unsigned char is_used:1;
+            // 是否为静态
+            unsigned char is_static:1;
+
+            // 作为变量时
             // 寄存器类型
-            unsigned char type:2;
-            // 是否使用过
-            unsigned char used:1;
-            // 是否有默认值(作为函数参数)
+            lgx_reg_type_t reg_type:2;
+            // 寄存器编号
+            unsigned char reg_num;
+
+            // 作为常量、函数、类时，编号从常量表中获取
+        } symbol;
+
+        // 在类的属性表中使用
+        struct {
+            unsigned char is_static:1;
+            unsigned char is_const:1;
+            lgx_access_type_t access:2;
+        } property;
+
+        // 在类的方法表中使用
+        struct {
+            unsigned char is_static:1;
+            unsigned char is_abstract:1;
+            lgx_access_type_t access:2;
+        } method;
+
+        // 在函数参数列表中使用
+        struct {
+            // 是否有默认值
             unsigned char init:1;
-            // 修饰符
-            lgx_modifier_t modifier;
-        } c;
-        // 仅运行时使用
+        } args;
     } u;
 };
 
@@ -132,8 +171,8 @@ struct lgx_fun_s {
     lgx_gc_t gc;
     // 函数名称
     lgx_str_t name;
-    // 修饰符
-    lgx_modifier_t modifier;
+    // 是否为异步函数
+    unsigned is_async;
     // 需求的堆栈空间
     unsigned stack_size;
     // 入口地址
@@ -142,7 +181,7 @@ struct lgx_fun_s {
     unsigned end;
     // 内建函数指针
     int (*buildin)(struct lgx_vm_s *vm);
-    // 返回值
+    // 返回值类型
     lgx_val_t ret;
     // 参数列表
     unsigned args_num;

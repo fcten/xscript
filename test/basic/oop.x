@@ -6,11 +6,7 @@ interface B {
     public function m2();
 }
 
-class C implements A, B {
-    private int i;
-}
-
-class C1 {
+class C1 implements A, B {
     public string msg = "C1:print";
 
     public function constructor(string msg) {

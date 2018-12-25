@@ -10,7 +10,7 @@ int const_get(lgx_bc_t *bc, lgx_val_t *v) {
         lgx_hash_add(bc->constant, v);
         n = lgx_hash_find(bc->constant, v);
         // 标记为常量
-        n->v.u.c.modifier.is_const = 1;
+        n->v.u.symbol.type = S_CONSTANT;
     } else {
         // 如果已存在，则释放 v
         if (IS_GC_VALUE(v)) {

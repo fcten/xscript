@@ -492,9 +492,9 @@ void lgx_co_throw(lgx_co_t *co, lgx_val_t *e) {
         co->pc = block->start;
 
         // 把异常变量写入到 catch block 的参数中
-        //printf("%d\n",block->e->u.c.reg);
-        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->e->u.c.reg]);
-        co->stack.buf[co->stack.base + block->e->u.c.reg] = *e;
+        //printf("%d\n",block->e->u.symbol.reg_num);
+        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->e->u.symbol.reg_num]);
+        co->stack.buf[co->stack.base + block->e->u.symbol.reg_num] = *e;
     } else {
         // 没有匹配的 catch 块，递归向上寻找
         unsigned base = co->stack.base;

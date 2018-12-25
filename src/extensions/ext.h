@@ -53,9 +53,11 @@
         assert(pos < symbol.v.fun->args_num); \
         symbol.v.fun->args[pos].type = argtype; \
         symbol.v.fun->args[pos].v.l = (long long)(argvalue); \
-        symbol.v.fun->args[pos].u.c.init = 1;
+        symbol.v.fun->args[pos].u.args.init = 1;
 
 #define LGX_FUNCTION_END \
+        symbol.u.symbol.type = S_FUNCTION; \
+        symbol.u.symbol.is_used = 1; \
         if (lgx_ext_add_symbol(hash, symbol.v.fun->name.buffer, &symbol)) { \
             return 1; \
         } \
@@ -72,6 +74,8 @@
         lgx_val_t symbol; \
         symbol.type = T_OBJECT; \
         symbol.v.obj = lgx_obj_create(&name); \
+        symbol.u.symbol.type = S_CLASS; \
+        symbol.u.symbol.is_used = 1; \
         if (lgx_ext_add_symbol(hash, #class, &symbol)) { \
             return 1; \
         } \
@@ -122,13 +126,13 @@
         assert(pos < symbol.v.v.fun->args_num); \
         symbol.v.v.fun->args[pos].type = argtype; \
         symbol.v.v.fun->args[pos].v.l = (long long)(argvalue); \
-        symbol.v.v.fun->args[pos].u.c.init = 1;
+        symbol.v.v.fun->args[pos].u.args.init = 1;
 
 #define LGX_METHOD_ACCESS(accessmodifier) \
-        symbol.v.u.c.modifier.access = accessmodifier;
+        symbol.v.u.method.access = accessmodifier;
 
 #define LGX_METHOD_STATIC() \
-        symbol.v.u.c.modifier.is_static = 1;
+        symbol.v.u.method.is_static = 1;
 
 #define LGX_METHOD_END \
         if (lgx_obj_add_method(obj, &symbol)) { \
@@ -145,10 +149,13 @@
         symbol.v.v.l = (long long)(propertyvalue);
 
 #define LGX_PROPERTY_ACCESS(accessmodifier) \
-        symbol.v.u.c.modifier.access = accessmodifier;
+        symbol.v.u.property.access = accessmodifier;
 
 #define LGX_PROPERTY_STATIC() \
-        symbol.v.u.c.modifier.is_static = 1;
+        symbol.v.u.property.is_static = 1;
+
+#define LGX_PROPERTY_CONST() \
+        symbol.v.u.property.is_const = 1;
 
 #define LGX_PROPERTY_END \
         if (lgx_obj_add_property(obj, &symbol)) { \
@@ -170,7 +177,7 @@
 
 #define LGX_FUNCTION_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 4; \
-    if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
+    if (variable->type == T_UNDEFINED && _this_func->args[position].u.args.init) { \
         *variable = _this_func->args[position]; \
     } \
     if (valtype != T_UNDEFINED && valtype != variable->type) { \
@@ -199,7 +206,7 @@
 
 #define LGX_METHOD_ARGS_GET(variable, position, valtype) \
     lgx_val_t *variable = _this_stack + position + 5; \
-    if (variable->type == T_UNDEFINED && _this_func->args[position].u.c.init) { \
+    if (variable->type == T_UNDEFINED && _this_func->args[position].u.args.init) { \
         *variable = _this_func->args[position]; \
     } \
     if (valtype != T_UNDEFINED && valtype != variable->type) { \

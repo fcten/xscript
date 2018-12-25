@@ -37,7 +37,7 @@ lgx_val_t* lgx_scope_local_val_get(lgx_ast_node_t *node, lgx_str_t *s) {
     while (cur->parent) {
         lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
         if (n) {
-            n->v.u.c.type = R_LOCAL;
+            n->v.u.symbol.reg_type = R_LOCAL;
             return &n->v;
         } else {
             if (cur->parent->type == FUNCTION_DECLARATION) {
@@ -69,7 +69,7 @@ lgx_val_t* lgx_scope_global_val_get(lgx_ast_node_t *node, lgx_str_t *s) {
 
     lgx_hash_node_t *n = lgx_hash_get(cur->u.symbols, &v);
     if (n) {
-        n->v.u.c.type = is_global ? R_GLOBAL : R_LOCAL;
+        n->v.u.symbol.reg_type = is_global ? R_GLOBAL : R_LOCAL;
         return &n->v;
     } else {
         return NULL;

@@ -648,7 +648,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         if (vm->co_running == NULL) {
                             return 0;
                         }
-                    } else if (fun->modifier.is_async) {
+                    } else if (fun->is_async) {
                         lgx_co_t *co = lgx_co_create(vm, fun);
                         if (!co) {
                             lgx_vm_throw_s(vm, "out of memory");

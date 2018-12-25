@@ -63,7 +63,7 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     // 局部变量
     v = lgx_scope_local_val_get(node, &s);
     if (v) {
-        v->u.c.used = 1;
+        v->u.symbol.is_used = 1;
 
         *expr = *v;
 
@@ -73,19 +73,24 @@ static int bc_identifier(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr, in
     // 全局变量
     v = lgx_scope_global_val_get(node, &s);
     if (v) {
-        v->u.c.used = 1;
+        if (v->u.symbol.type == S_CLASS) {
+            bc_error(bc, node, "class name `%.*s` can't be used as variable\n", s.length, s.buffer);
+            return 1;
+        }
+
+        v->u.symbol.is_used = 1;
 
         *expr = *v;
 
         if (v->type == T_FUNCTION) {
-            expr->u.c.type = R_TEMP;
-            expr->u.c.reg = reg_pop(bc);
+            expr->u.symbol.reg_type = R_TEMP;
+            expr->u.symbol.reg_num = reg_pop(bc);
             bc_load(bc, expr, v);
-        } else if (global || v->u.c.type == R_LOCAL) {
+        } else if (global || v->u.symbol.reg_type == R_LOCAL) {
             //*expr = *v;
         } else {
-            expr->u.c.type = R_TEMP;
-            expr->u.c.reg = reg_pop(bc);
+            expr->u.symbol.reg_type = R_TEMP;
+            expr->u.symbol.reg_num = reg_pop(bc);
             bc_global_get(bc, expr, v);
         }
 
@@ -114,8 +119,8 @@ static int bc_long(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
         expr->v.l = strtoll(s, NULL, 10);
     }
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -124,8 +129,8 @@ static int bc_double(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_DOUBLE;
     expr->v.d = strtod(((lgx_ast_node_token_t *)node)->tk_start, NULL);
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -134,8 +139,8 @@ static int bc_true(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_BOOL;
     expr->v.l = 1;
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -144,8 +149,8 @@ static int bc_false(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_BOOL;
     expr->v.l = 0;
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -153,8 +158,8 @@ static int bc_false(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
 static int bc_undefined(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_UNDEFINED;
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -169,8 +174,8 @@ static int bc_char(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_LONG;
     expr->v.l = (unsigned char)s->buffer[0];
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     lgx_str_delete(s);
 
@@ -181,8 +186,8 @@ static int bc_string(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_STRING;
     expr->v.str = lgx_str_new_with_esc(((lgx_ast_node_token_t *)node)->tk_start+1, ((lgx_ast_node_token_t *)node)->tk_length-2);
 
-    expr->u.c.type = 0;
-    expr->u.c.reg = 0;
+    expr->u.symbol.reg_type = 0;
+    expr->u.symbol.reg_num = 0;
 
     return 0;
 }
@@ -206,15 +211,15 @@ static int bc_this(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *expr) {
     expr->type = T_OBJECT;
     expr->v.obj = v->v.obj;
 
-    expr->u.c.type = R_LOCAL;
-    expr->u.c.reg = 4;
+    expr->u.symbol.reg_type = R_LOCAL;
+    expr->u.symbol.reg_num = 4;
 
     return 0;
 }
 
 static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1) {
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
 
     switch (node->u.op) {
         case '!': bc_lnot(bc, e, e1); break;
@@ -231,8 +236,8 @@ static int bc_expr_unary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_v
 }
 
 static int bc_expr_binary(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, lgx_val_t *e1, lgx_val_t *e2) {
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
 
     switch (node->u.op) {
         case '+': bc_add(bc, e, e1, e2); break;
@@ -363,8 +368,8 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
 
     e->type = T_ARRAY;
 
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
 
     bc_array_new(bc, e);
 
@@ -393,8 +398,8 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
 
         e->type = T_ARRAY;
         e->v.arr = arr;
-        e->u.c.type = 0;
-        e->u.c.reg = 0;
+        e->u.symbol.reg_type = 0;
+        e->u.symbol.reg_num = 0;
     } else {
         lgx_hash_delete(arr);
     }
@@ -435,8 +440,8 @@ static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
             return 1;
         }
     } else if (check_variable(&e1, T_BOOL)) {
-        e->u.c.type = R_TEMP;
-        e->u.c.reg = reg_pop(bc);
+        e->u.symbol.reg_type = R_TEMP;
+        e->u.symbol.reg_num = reg_pop(bc);
 
         int pos1 = bc->bc_top;
         bc_test(bc, &e1, 0);
@@ -509,8 +514,8 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
             return 1;
         }
     } else if (check_variable(&e1, T_BOOL)) {
-        e->u.c.type = R_TEMP;
-        e->u.c.reg = reg_pop(bc);
+        e->u.symbol.reg_type = R_TEMP;
+        e->u.symbol.reg_num = reg_pop(bc);
 
         int pos1 = bc->bc_top;
         bc_test(bc, &e1, 0);
@@ -697,7 +702,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
             }
         }
 
-        if (e1.u.c.type == R_LOCAL) {
+        if (e1.u.symbol.reg_type == R_LOCAL) {
             bc_mov(bc, &e1, &e2);
         } else {
             bc_global_set(bc, &e1, &e2);
@@ -799,21 +804,21 @@ static int bc_expr_binary_call_method_without_params(lgx_bc_t *bc, lgx_ast_node_
 
     int i;
     for(i = 0; i < fun->args_num; i++) {
-        if (!fun->args[i].u.c.init) {
+        if (!fun->args[i].u.args.init) {
             bc_error(bc, node, "arguments length mismatch\n");
             return 1;
         }
     }
 
-    bc_call_new(bc, funval->u.c.reg);
+    bc_call_new(bc, funval->u.symbol.reg_num);
 
     // 把对象压入堆栈
     bc_call_set(bc, 4, objval);
 
     e->type = fun->ret.type;
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
-    bc_call(bc, e, funval->u.c.reg);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
+    bc_call(bc, e, funval->u.symbol.reg_num);
 
     return 0;
 }
@@ -834,7 +839,7 @@ static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_va
         bc_expr(bc, node->child[i], &expr[i]);
     }
 
-    bc_call_new(bc, funval->u.c.reg);
+    bc_call_new(bc, funval->u.symbol.reg_num);
 
     // 先把对象压入堆栈
     bc_call_set(bc, 4, objval);
@@ -852,7 +857,7 @@ static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_va
             bc_call_set(bc, i + base, &expr[i]);
             reg_free(bc, &expr[i]);
         } else {
-            if (!fun->args[i].u.c.init) {
+            if (!fun->args[i].u.args.init) {
                 bc_error(bc, node, "arguments length mismatch\n");
                 return 1;
             }
@@ -861,7 +866,7 @@ static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_va
 
     xfree(expr);
 
-    if (fun->modifier.is_async) {
+    if (fun->is_async) {
         lgx_str_t s;
         lgx_str_set(s, "Coroutine");
         lgx_val_t *v = lgx_scope_global_val_get(node, &s);
@@ -872,9 +877,9 @@ static int bc_expr_binary_call_method(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_va
         e->type = fun->ret.type;
         e->v = fun->ret.v;
     }
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
-    bc_call(bc, e, funval->u.c.reg);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
+    bc_call(bc, e, funval->u.symbol.reg_num);
 
     return 0;
 }
@@ -895,7 +900,7 @@ static int bc_expr_binary_call_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_
         bc_expr(bc, node->child[i], &expr[i]);
     }
 
-    bc_call_new(bc, funval->u.c.reg);
+    bc_call_new(bc, funval->u.symbol.reg_num);
 
     int base = 4;
     for(i = 0; i < fun->args_num; i++) {
@@ -910,7 +915,7 @@ static int bc_expr_binary_call_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_
             bc_call_set(bc, i + base, &expr[i]);
             reg_free(bc, &expr[i]);
         } else {
-            if (!fun->args[i].u.c.init) {
+            if (!fun->args[i].u.args.init) {
                 bc_error(bc, node, "arguments length mismatch\n");
                 return 1;
             }
@@ -919,7 +924,7 @@ static int bc_expr_binary_call_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_
 
     xfree(expr);
 
-    if (fun->modifier.is_async) {
+    if (fun->is_async) {
         lgx_str_t s;
         s.buffer = "Coroutine";
         s.length = sizeof("Coroutine") - 1;
@@ -931,9 +936,9 @@ static int bc_expr_binary_call_function(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_
         e->type = fun->ret.type;
         e->v = fun->ret.v;
     }
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
-    bc_call(bc, e, funval->u.c.reg);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
+    bc_call(bc, e, funval->u.symbol.reg_num);
 
     return 0;
 }
@@ -984,9 +989,9 @@ static int bc_expr_binary_tail_call(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_
         return 1;
     }
 
-    if (!funval.v.fun->buildin && !funval.v.fun->modifier.is_async) {
+    if (!funval.v.fun->buildin && !funval.v.fun->is_async) {
         bc->bc_top --;
-        bc_tail_call(bc, funval.u.c.reg);
+        bc_tail_call(bc, funval.u.symbol.reg_num);
         *is_tail = 1;
     }
 
@@ -1058,8 +1063,8 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, 
         ((lgx_ast_node_token_t *)(node->child[1]))->tk_length
     );
 
-    e2.u.c.type = 0;
-    e2.u.c.reg = 0;
+    e2.u.symbol.reg_type = 0;
+    e2.u.symbol.reg_num = 0;
 
     // 判断类型
     lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
@@ -1069,8 +1074,8 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, 
     }
 
     *e = *v;
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
     bc_object_get(bc, e, &e1, &e2);
 
     if (obj) {
@@ -1113,8 +1118,8 @@ static int bc_expr_unary_await(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e)
         return 1;
     }
 
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
 
     if (bc_expr_unary(bc, node, e, &e1)) {
         return 1;
@@ -1168,11 +1173,13 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
         return 1;
     }
 
+    v->u.symbol.is_used = 1;
+
     e->type = T_OBJECT;
     e->v.obj = v->v.obj;
 
-    e->u.c.type = R_TEMP;
-    e->u.c.reg = reg_pop(bc);
+    e->u.symbol.reg_type = R_TEMP;
+    e->u.symbol.reg_num = reg_pop(bc);
 
     bc_object_new(bc, e, const_get(bc, v));
 
@@ -1193,12 +1200,12 @@ static int bc_expr_unary_new(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     lgx_val_init(&e3);
 
     e1 = *constructor;
-    e1.u.c.type = R_TEMP;
-    e1.u.c.reg = reg_pop(bc);
+    e1.u.symbol.reg_type = R_TEMP;
+    e1.u.symbol.reg_num = reg_pop(bc);
     e2.type = T_STRING;
     e2.v.str = lgx_str_new_ref("constructor", sizeof("constructor") - 1);
-    e3.u.c.type = R_TEMP;
-    e3.u.c.reg = reg_pop(bc);
+    e3.u.symbol.reg_type = R_TEMP;
+    e3.u.symbol.reg_num = reg_pop(bc);
 
     bc_object_get(bc, &e1, e, &e2);
 
@@ -1460,10 +1467,8 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             lgx_hash_node_t* next = node->u.symbols->head;
             // 为当前作用域的变量分配寄存器
             while (next) {
-                if (next->v.u.c.modifier.is_const) {
-                    // 不需要为常量分配寄存器
-                } else {
-                    next->v.u.c.reg = reg_pop(bc);
+                if (next->v.u.symbol.type == S_VARIABLE) {
+                    next->v.u.symbol.reg_num = reg_pop(bc);
                 }
                 next = next->order;
             }
@@ -1499,10 +1504,10 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                         // 如果参数值为 undefined，则赋值为初始值
                         lgx_val_t undef, ret, *v;
                         undef.type = T_UNDEFINED;
-                        undef.u.c.type = R_TEMP;
-                        undef.u.c.reg = reg_pop(bc);
-                        ret.u.c.type = R_TEMP;
-                        ret.u.c.reg = reg_pop(bc);
+                        undef.u.symbol.reg_type = R_TEMP;
+                        undef.u.symbol.reg_num = reg_pop(bc);
+                        ret.u.symbol.reg_type = R_TEMP;
+                        ret.u.symbol.reg_num = reg_pop(bc);
 
                         lgx_str_t s;
                         s.buffer = ((lgx_ast_node_token_t *)n->child[0])->tk_start;
@@ -1531,13 +1536,26 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // TODO 寄存器释放顺序？
             next = node->u.symbols->head;
             while (next) {
-                // 检查未使用的变量
-                if (!next->v.u.c.used) {
-                    bc_error(bc, node, "unused variable `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
-                    return 1;
+                // 检查未使用的标识符
+                if (node->parent == NULL || (node->parent->type != CLASS_DECLARATION)) { // 不检查类属性
+                    if (!next->v.u.symbol.is_used) {
+                        if (next->v.u.symbol.type == S_VARIABLE) {
+                            bc_error(bc, node, "unused variable `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
+                        } else if (next->v.u.symbol.type == S_CONSTANT) {
+                            bc_error(bc, node, "unused constant `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
+                        } else if (next->v.u.symbol.type == S_FUNCTION) {
+                            bc_error(bc, node, "unused function `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
+                        } else if (next->v.u.symbol.type == S_CLASS) {
+                            bc_error(bc, node, "unused class `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
+                        } else {
+                            bc_error(bc, node, "unused identifier `%.*s`\n", next->k.v.str->length, next->k.v.str->buffer);
+                        }
+
+                        return 1;
+                    }
                 }
-                if (next->v.type != T_FUNCTION) { // TODO CLASS 不需要分配寄存器
-                    reg_push(bc, next->v.u.c.reg);
+                if (next->v.u.symbol.type == S_VARIABLE) {
+                    reg_push(bc, next->v.u.symbol.reg_num);
                 }
                 next = next->order;
             }
@@ -1820,14 +1838,14 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
 
                 lgx_val_t undef;
                 undef.type = T_UNDEFINED;
-                undef.u.c.type = R_TEMP;
-                undef.u.c.reg = reg_pop(bc);
+                undef.u.symbol.reg_type = R_TEMP;
+                undef.u.symbol.reg_num = reg_pop(bc);
 
                 lgx_val_t tmp, result;
-                tmp.u.c.type = R_TEMP;
-                tmp.u.c.reg = reg_pop(bc);
-                result.u.c.type = R_TEMP;
-                result.u.c.reg = reg_pop(bc);
+                tmp.u.symbol.reg_type = R_TEMP;
+                tmp.u.symbol.reg_num = reg_pop(bc);
+                result.u.symbol.reg_type = R_TEMP;
+                result.u.symbol.reg_num = reg_pop(bc);
 
                 bc_load(bc, &tmp, &condition);
                 bc_array_get(bc, &tmp, &tmp, &e);
@@ -2026,7 +2044,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
                 }
             } else {
                 if (ret.type == T_UNDEFINED) {
-                    r.u.c.type = R_LOCAL;
+                    r.u.symbol.reg_type = R_LOCAL;
                 } else {
                     bc_error(bc, node, "makes %s from undefined without a cast\n", lgx_val_typeof(&ret));
                     return 1;
@@ -2106,7 +2124,7 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             // 始终写入一条返回语句，确保函数调用正常返回
             lgx_val_t r;
             lgx_val_init(&r);
-            r.u.c.type = R_LOCAL;
+            r.u.symbol.reg_type = R_LOCAL;
             bc_ret(bc, &r);
 
             bc_set_pe(bc, start, bc->bc_top);
@@ -2213,7 +2231,7 @@ int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc) {
     lgx_val_t ret;
     lgx_val_init(&ret);
     ret.type = T_UNDEFINED;
-    ret.u.c.type = R_LOCAL;
+    ret.u.symbol.reg_type = R_LOCAL;
     bc_ret(bc, &ret);
     return 0;
 }
