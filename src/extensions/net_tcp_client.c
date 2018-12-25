@@ -423,6 +423,6 @@ static int net_tcp_client_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_net_tcp_client_ctx = {
-    "net.tcp.client",
+    "x.net.tcp.client",
     net_tcp_client_load_symbols
 };

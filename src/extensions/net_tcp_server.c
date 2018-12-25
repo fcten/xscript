@@ -684,6 +684,6 @@ static int net_tcp_server_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_net_tcp_server_ctx = {
-    "net.tcp.server",
+    "x.net.tcp.server",
     net_tcp_server_load_symbols
 };

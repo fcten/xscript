@@ -416,6 +416,6 @@ int redis_load_symbols(lgx_hash_t *hash) {
 }
 
 lgx_buildin_ext_t ext_redis_ctx = {
-    "redis",
+    "x.redis",
     redis_load_symbols
 };

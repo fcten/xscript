@@ -740,9 +740,21 @@ xscript 默认使用引用计数为主，标记清除为辅的垃圾回收策略
 
 ## import & export
 
-# 标准库 (std)
+import 会根据如下顺序寻找符合条件的包：
+
+- 工作目录的源代码包
+- 工作目录的二进制包
+- 系统目录的源代码包
+- 系统目录的二进制包
+- 内建包
+
+# 标准库
 
 xscript 运行时依赖于标准库所提供的功能，因此标准库会在 xscript 启动时自动加载。你不需要手动 import 就可以使用标准库。
+
+因为标准库加载的时机在执行用户代码之前，所以在用户代码中 import 与标准库同名的包会被认为是重复加载而被忽略。**你无法在用户代码中覆盖标准库。**
+
+以下是标准库所包含的包：
 
 - std.io
 - std.time
@@ -756,15 +768,17 @@ xscript 运行时依赖于标准库所提供的功能，因此标准库会在 xs
 
 扩展库和标准库一样是 xscript 内置的。扩展库提供了一些常用的功能，但是需要手动 import 之后才能使用它们。
 
-- os.thread
-- os.process
-- redis
-- mysql
-- net.socket
-- net.ssl
-- net.http
-- encoding.json
-- compress
-- crypto
-- image
-- regexp
+因为内建包位于 import 加载序列的末尾，所以可以使用用户代码覆盖扩展库。但是除非有足够的理由，否则**不推荐覆盖扩展库**。
+
+- x.os.thread
+- x.os.process
+- x.redis
+- x.mysql
+- x.net.socket
+- x.net.ssl
+- x.net.http
+- x.encoding.json
+- x.compress
+- x.crypto
+- x.image
+- x.regexp
