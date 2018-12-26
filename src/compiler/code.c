@@ -61,7 +61,8 @@ void bc_mov(lgx_bc_t *bc, lgx_val_t *a, lgx_val_t *b) {
         if ( (OP(i) >= OP_ADD && OP(i) <= OP_DIVI) ||
             (OP(i) >= OP_SHL && OP(i) <= OP_XOR) ||
             (OP(i) >= OP_EQ && OP(i) <= OP_LTI) ||
-            (OP(i) == OP_ARRAY_NEW) ) {
+            (OP(i) == OP_ARRAY_NEW) ||
+            (OP(i) == OP_OBJECT_NEW) ) {
             reg_free(bc, b);
             bc_set_pa(bc, bc->bc_top-1, a->u.symbol.reg_num);
             return;

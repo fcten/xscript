@@ -791,7 +791,7 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_ATTR) {
         // TODO 对象属性赋值
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_PTR) {
-        // TODO 对象属性赋值
+        // 对象属性赋值
         lgx_val_t e1, e2, e3;
         lgx_val_init(&e1);
         lgx_val_init(&e2);
@@ -816,6 +816,11 @@ static int bc_expr_binary_assignment(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val
         lgx_val_t *v = lgx_obj_get(e1.v.obj, &e2);
         if (!v || v->type == T_FUNCTION) {
             bc_error(bc, node, "property `%.*s` not exists\n", e2.v.str->length, e2.v.str->buffer);
+            return 1;
+        }
+
+        if (v->u.property.is_const) {
+            bc_error(bc, node, "assignment of a constant variable `%.*s`\n", e2.v.str->length, e2.v.str->buffer);
             return 1;
         }
 
@@ -1106,10 +1111,18 @@ static int bc_expr_binary_ptr(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e, 
         return 1;
     }
 
-    *e = *v;
-    e->u.symbol.reg_type = R_TEMP;
-    e->u.symbol.reg_num = reg_pop(bc);
-    bc_object_get(bc, e, &e1, &e2);
+    // TODO 这里的 属性||方法 判断有点问题，可能需要拆分 lgx_obj_get
+    if (v->type != T_FUNCTION && v->u.property.is_const) {
+        // 常量
+        *e = *v;
+        e->u.symbol.type = S_CONSTANT;
+        e->u.symbol.reg_type = R_NOT;
+    } else {
+        *e = *v;
+        e->u.symbol.reg_type = R_TEMP;
+        e->u.symbol.reg_num = reg_pop(bc);
+        bc_object_get(bc, e, &e1, &e2);
+    }
 
     if (obj) {
         *obj = e1;

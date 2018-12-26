@@ -1582,7 +1582,14 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
             lgx_ast_node_token_t *method_name = (lgx_ast_node_token_t *)method_declaration->child[0]->child[0];
             n.k.type = T_STRING;
             n.k.v.str = lgx_str_new_ref(method_name->tk_start, method_name->tk_length);
-            n.v = *lgx_scope_local_val_get(block_statement, n.k.v.str);
+
+            lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
+            assert(v);
+
+            n.v = *v;
+            n.v.u.method.access = modifier.access;
+            n.v.u.method.is_abstract = modifier.is_abstract;
+            n.v.u.method.is_static = modifier.is_static;
 
             // TODO 检查继承关系
             lgx_obj_add_method(f->v.obj, &n);
@@ -1618,8 +1625,12 @@ void ast_parse_class_declaration(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_nod
                     n.k.v.str = lgx_str_new_ref(property_name->tk_start, property_name->tk_length);
 
                     lgx_val_t *v = lgx_scope_local_val_get(block_statement, n.k.v.str);
-                    n.v.type = v->type;
-                    n.v.v = v->v;
+                    assert(v);
+
+                    n.v = *v;
+                    n.v.u.property.access = modifier.access;
+                    n.v.u.property.is_const = modifier.is_const;
+                    n.v.u.property.is_static = modifier.is_static;
                     ast_init_value(&n.v);
 
                     // TODO 检查继承关系

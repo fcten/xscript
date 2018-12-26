@@ -62,7 +62,10 @@ int lgx_obj_set(lgx_obj_t *obj, lgx_val_t *k, lgx_val_t *v) {
 
     lgx_hash_node_t node;
     node.k = *k;
-    node.v = *v;
+    // 保留原有的 u 字段值
+    node.v = *val;
+    node.v.type = v->type;
+    node.v.v = v->v;
 
     return lgx_hash_set(obj->properties, &node);
 }
