@@ -2,7 +2,7 @@
 2
 */
 
-auto i = 0;
+int i = 0;
 
 do {
     i = i + 1;

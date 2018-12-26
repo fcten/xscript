@@ -5,16 +5,16 @@ function print() {
 
 print();
 
-auto a = 1, b = 2;
+int a = 1, b = 2;
 
-function add (auto c, auto d) {
+function add (int c, int d) {
     auto e = 3, f = 4;
     return c+d;
 }
 
 echo add(a, b + 1);*/
 
-function fib(auto n) {
+function fib(int n) {
     if (n < 2) {
         return n;
     }
@@ -23,12 +23,12 @@ function fib(auto n) {
 
 echo fib(20);
 /*
-function test(auto n) {
+function test(int n) {
     return n;
 }
 
-auto i = 1;
-auto count = 0;
+int i = 1;
+int count = 0;
 while (i <= 1000000) {
     count = count + test(i);
     i = i + 1;

@@ -1,5 +1,5 @@
 
-auto arr1 = [
+array arr1 = [
     "test",
     123,
 ];
@@ -10,15 +10,15 @@ auto arr2 = (["test", 123, arr1])[2][0];
 
 echo arr2;
 
-auto arr4 = ["test", 123, arr1];
+array arr4 = ["test", 123, arr1];
 
 echo arr4;
 
-auto arr5 = ["test", 123, arr1, [], [1, 2, 3]];
+array arr5 = ["test", 123, arr1, [], [1, 2, 3]];
 
 echo arr5[4][0];
 
-auto arr6 = [];
+array arr6 = [];
 
 arr6[] = 3;
 
@@ -32,7 +32,7 @@ arr6[1][] = 7;
 
 echo arr6;
 
-auto arr7 = [];
+array arr7 = [];
 
 arr7["k-a"] = "v-a";
 arr7["k-b"] = "v-b";

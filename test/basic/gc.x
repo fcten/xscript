@@ -1,6 +1,6 @@
-auto i = 10000;
+int i = 10000;
 
 while (i > 0) {
-    auto arr = [i];
+    array arr = [i];
     i = i - 1;
 }

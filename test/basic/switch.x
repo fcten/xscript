@@ -1,4 +1,4 @@
-auto x = 1;
+int x = 1;
 
 do {
     echo x;
@@ -17,14 +17,14 @@ do {
     x = x + 1;
 } while (x <= 4);
 
-auto y = [
+array y = [
     "test case 1",
     "test case 2",
     "test case 3",
     "test case 4",
 ];
 
-auto i;
+int i;
 for (i = 0; i < 4; i = i + 1) {
     echo y[i];
     switch (y[i]) {

@@ -1,4 +1,4 @@
-auto left, right;
+float left, right;
 
 echo 1 + 2;
 echo 1 + 2.1;

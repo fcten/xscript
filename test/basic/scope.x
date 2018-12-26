@@ -2,11 +2,11 @@
 3
 */
 
-auto a = 1;
-auto b, c;
+int a = 1;
+int b, c;
 
 do {
-    auto a = 2;
+    int a = 2;
     b = a;
 } while (false);
 

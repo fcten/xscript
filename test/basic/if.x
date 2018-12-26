@@ -2,8 +2,8 @@
 109
 */
 
-auto a = 100;
-auto b = 10;
+int a = 100;
+int b = 10;
 if (a > 0) {
     a = a - 1;
 }
