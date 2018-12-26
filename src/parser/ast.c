@@ -356,17 +356,35 @@ void ast_parse_array_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node
     // pkg->cur_token == '['
     ast_step(pkg);
 
-    int children = array->children;
     while (1) {
-        ast_parse_expression(ast, pkg, array);
-        if (array->children == children && pkg->cur_token != ']') {
+        if (pkg->cur_token == ']') {
+            break;
+        }
+
+        lgx_ast_node_t* array_element = ast_node_new(ast, pkg, 2);
+        array_element->type = ARRAY_ELEMENT;
+        ast_node_append_child(array, array_element);
+
+        ast_parse_expression(ast, pkg, array_element);
+        if (array_element->children != 1) {
             ast_error(ast, pkg, "expression expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
             return;
+        }
+
+        if (pkg->cur_token == ':') {
+            ast_step(pkg);
+
+            ast_parse_expression(ast, pkg, array_element);
+            if (array_element->children != 2) {
+                ast_error(ast, pkg, "expression expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
+                return;
+            }
         }
 
         if (pkg->cur_token != ',') {
             break;
         }
+        // pkg->cur_token == ','
         ast_step(pkg);
     }
 
@@ -2037,6 +2055,16 @@ void lgx_ast_print(lgx_ast_node_t* node, int indent) {
                 lgx_ast_print(node->child[i], indent+2);
             }
             printf("%*s%s\n", indent, "", "]");
+            break;
+        case ARRAY_ELEMENT:
+            if (node->children == 1) {
+                lgx_ast_print(node->child[0], indent+4);
+            } else {
+                lgx_ast_print(node->child[0], indent+4);
+                printf("%*s%s\n", indent+2, "", ":");
+                lgx_ast_print(node->child[1], indent+4);
+            }
+            printf("%*s%s\n", indent+2, "", ",");
             break;
         case FUNCTION_CALL_PARAMETER:
         case FUNCTION_DECL_PARAMETER:

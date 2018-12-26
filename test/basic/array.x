@@ -39,3 +39,20 @@ arr7["k-b"] = "v-b";
 arr7[] = "v-c";
 
 echo arr7;
+
+array arr8 = [
+    "#": arr1,
+    123: arr2,
+    arr2: arr7["k-a"],
+];
+
+echo arr8;
+
+array arr9 = [
+        "name": "Colin",
+         "age": 20,
+         "sex": "male",
+    "verified": true,
+];
+
+echo arr9;

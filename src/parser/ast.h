@@ -50,7 +50,8 @@ typedef enum {
     TRUE_TOKEN,
     FALSE_TOKEN,
     THIS_TOKEN,
-    CHAR_TOKEN
+    CHAR_TOKEN,
+    ARRAY_ELEMENT,
 } lgx_ast_type_t;
 
 typedef struct lgx_ast_node_list_s {

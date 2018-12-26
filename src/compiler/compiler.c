@@ -386,16 +386,35 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
 
     int i;
     for(i = 0; i < node->children; i++) {
-        lgx_val_t expr;
-        lgx_val_init(&expr);
-        bc_expr(bc, node->child[i], &expr);
-        if (is_const && is_constant(&expr)) {
-            lgx_hash_add(arr, &expr);
+        assert(node->child[i]->type == ARRAY_ELEMENT);
+        if (node->child[i]->children == 1) {
+            lgx_val_t expr;
+            lgx_val_init(&expr);
+            bc_expr(bc, node->child[i]->child[0], &expr);
+            if (is_const && is_constant(&expr)) {
+                lgx_hash_add(arr, &expr);
+            } else {
+                is_const = 0;
+            }
+            bc_array_add(bc, e, &expr);
+            reg_free(bc, &expr);
+        } else if (node->child[i]->children == 2) {
+            lgx_hash_node_t element;
+            lgx_val_init(&element.k);
+            lgx_val_init(&element.v);
+            bc_expr(bc, node->child[i]->child[0], &element.k);
+            bc_expr(bc, node->child[i]->child[1], &element.v);
+            if (is_const && is_constant(&element.k) && is_constant(&element.v)) {
+                lgx_hash_set(arr, &element);
+            } else {
+                is_const = 0;
+            }
+            bc_array_set(bc, e, &element.k, &element.v);
+            reg_free(bc, &element.k);
+            reg_free(bc, &element.v);
         } else {
-            is_const = 0;
+            assert(0);
         }
-        bc_array_add(bc, e, &expr);
-        reg_free(bc, &expr);
     }
 
     // 如果是常量数组，则无需创建临时数组
