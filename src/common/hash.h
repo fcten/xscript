@@ -38,6 +38,6 @@ int lgx_hash_copy(lgx_hash_t *src, lgx_hash_t *dst);
 
 int lgx_hash_cmp(lgx_hash_t *hash1, lgx_hash_t *hash2);
 
-int lgx_hash_print(lgx_hash_t *hash, int deep);
+void lgx_hash_print(lgx_hash_t *hash, int deep);
 
 #endif	/* LGX_HASH_H */

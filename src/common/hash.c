@@ -277,30 +277,37 @@ int lgx_hash_cmp(lgx_hash_t *hash1, lgx_hash_t *hash2) {
     return 0;
 }
 
-int lgx_hash_print(lgx_hash_t *hash, int deep) {
-    printf("[");
-
-    if (deep < 10) {
-        lgx_hash_node_t *next = hash->head;
-        int count = 0;
-        while (next) {
-            if (hash->flag_non_compact_elements) {
-                lgx_val_print(&next->k, deep + 1);
-                printf(":");
-            }
-            lgx_val_print(&next->v, deep + 1);
-            if (++count < hash->length) {
-                printf(",");
-            }
-            next = next->order;
-        }
-    } else {
-        printf(" ** excessive nesting ** ");
+void lgx_hash_print(lgx_hash_t *hash, int deep) {
+    if (deep > 9) {
+        printf("[\" ** excessive nesting ** \"]");
+        return;
     }
 
-    printf("]");
+    if (hash->flag_non_compact_elements) {
+        printf("{");
+    } else {
+        printf("[");
+    }
 
-    return 0;
+    lgx_hash_node_t *next = hash->head;
+    int count = 0;
+    while (next) {
+        if (hash->flag_non_compact_elements) {
+            lgx_val_print(&next->k, deep + 1);
+            printf(":");
+        }
+        lgx_val_print(&next->v, deep + 1);
+        if (++count < hash->length) {
+            printf(",");
+        }
+        next = next->order;
+    }
+
+    if (hash->flag_non_compact_elements) {
+        printf("}");
+    } else {
+        printf("]");
+    }
 }
 
 lgx_val_t* lgx_hash_get_s(lgx_hash_t *hash, char *k) {

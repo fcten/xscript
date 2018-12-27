@@ -181,5 +181,5 @@ int lgx_str_concat(lgx_str_t *str1, lgx_str_t *str2) {
 }
 
 void lgx_str_print(lgx_str_t *str) {
-    printf("%.*s", str->length, str->buffer);
+    printf("\"%.*s\"", str->length, str->buffer);
 }

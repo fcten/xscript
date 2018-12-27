@@ -156,19 +156,26 @@ int lgx_obj_is_instanceof(lgx_obj_t *obj1, lgx_obj_t *obj2) {
     }
 }
 
-int lgx_obj_print(lgx_obj_t *obj, int deep) {
-    printf("\n{\n\t\"name\":");
+void lgx_obj_print(lgx_obj_t *obj, int deep) {
+    if (deep > 9) {
+        printf("[\" ** excessive nesting ** \"]");
+        return;
+    }
+
+    printf("{");
+
+    printf("\"name\":");
     lgx_str_print(obj->name);
-    printf(",\n\t\"properties\":");
+    printf(",\"properties\":");
     lgx_hash_print(obj->properties, deep + 1);
-    printf(",\n\t\"methods\":");
+    printf(",\"methods\":");
     lgx_hash_print(obj->methods, deep + 1);
-    printf(",\n\t\"parent\":");
+    printf(",\"parent\":");
     if (obj->parent) {
         lgx_obj_print(obj->parent, deep + 1);
     } else {
         printf("null");
     }
-    printf(",\n}\n");
-    return 0;
+
+    printf("}");
 }

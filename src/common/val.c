@@ -64,10 +64,10 @@ void lgx_val_print(lgx_val_t *v, int deep) {
             break;
         case T_ARRAY:
             //printf("<%s>\n", lgx_val_typeof(v));
-            lgx_hash_print(v->v.arr, deep + 1);
+            lgx_hash_print(v->v.arr, deep);
             break;
         case T_OBJECT:
-            lgx_obj_print(v->v.obj, deep + 1);
+            lgx_obj_print(v->v.obj, deep);
             break;
         case T_RESOURCE:
             printf("<%s>", lgx_val_typeof(v));
