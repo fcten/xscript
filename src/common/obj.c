@@ -165,7 +165,11 @@ void lgx_obj_print(lgx_obj_t *obj, int deep) {
     printf("{");
 
     printf("\"name\":");
-    lgx_str_print(obj->name);
+    if (obj->name) {
+        lgx_str_print(obj->name);
+    } else {
+        printf("null");
+    }
     printf(",\"properties\":");
     lgx_hash_print(obj->properties, deep + 1);
     printf(",\"methods\":");
