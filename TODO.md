@@ -35,3 +35,7 @@ GC 算法结合自行实现的内存管理算法
 array 的成员默认是 auto 的，增加 array<type> 语法支持？
 array<string> -> array<int, string>
 array<string, string>
+
+支持 for 循环条件中声明变量
+
+支持 struct

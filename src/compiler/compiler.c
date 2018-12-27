@@ -404,6 +404,10 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
             lgx_val_init(&element.v);
             bc_expr(bc, node->child[i]->child[0], &element.k);
             bc_expr(bc, node->child[i]->child[1], &element.v);
+            if (!check_type(&element.k, T_LONG) && !check_type(&element.k, T_STRING)) {
+                bc_error(bc, node, "attempt to index a %s key, integer or string expected\n", lgx_val_typeof(&element.k));
+                return 1;
+            }
             if (is_const && is_constant(&element.k) && is_constant(&element.v)) {
                 lgx_hash_set(arr, &element);
             } else {
