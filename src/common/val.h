@@ -5,7 +5,7 @@
 
 const char *lgx_val_typeof(lgx_val_t *v);
 
-void lgx_val_print(lgx_val_t *v);
+void lgx_val_print(lgx_val_t *v, int deep);
 
 void lgx_val_copy(lgx_val_t *src, lgx_val_t *dest);
 

@@ -846,7 +846,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (EXPECTED(R(pb).type == T_OBJECT)) {
                     if (EXPECTED(R(pc).type == T_STRING)) {
                         lgx_gc_ref_del(&R(pa));
-                        //lgx_obj_print(R(pb).v.obj);
+                        //lgx_obj_print(R(pb).v.obj, 0);
                         lgx_val_t *v = lgx_obj_get(R(pb).v.obj, &R(pc));
                         if (v) {
                             R(pa) = *v;
@@ -936,7 +936,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 return 0;
             }
             case OP_ECHO:{
-                lgx_val_print(&R(pa));
+                lgx_val_print(&R(pa), 0);
                 printf("\n");
                 break;
             }

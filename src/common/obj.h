@@ -23,6 +23,6 @@ int lgx_obj_add_method(lgx_obj_t *obj, lgx_hash_node_t *node);
 
 lgx_str_t * lgx_obj_get_name(lgx_obj_t *obj);
 
-int lgx_obj_print(lgx_obj_t *obj);
+int lgx_obj_print(lgx_obj_t *obj, int deep);
 
 #endif // LGX_OBJ_H

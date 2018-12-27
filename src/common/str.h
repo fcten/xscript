@@ -15,4 +15,6 @@ int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
 lgx_str_t* lgx_str_copy(lgx_str_t *str);
 int lgx_str_concat(lgx_str_t *str1, lgx_str_t *str2);
 
+void lgx_str_print(lgx_str_t *str);
+
 #endif // LGX_STR_H

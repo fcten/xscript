@@ -156,14 +156,16 @@ int lgx_obj_is_instanceof(lgx_obj_t *obj1, lgx_obj_t *obj2) {
     }
 }
 
-int lgx_obj_print(lgx_obj_t *obj) {
-    printf("\n{\n\t\"properties\":");
-    lgx_hash_print(obj->properties);
+int lgx_obj_print(lgx_obj_t *obj, int deep) {
+    printf("\n{\n\t\"name\":");
+    lgx_str_print(obj->name);
+    printf(",\n\t\"properties\":");
+    lgx_hash_print(obj->properties, deep + 1);
     printf(",\n\t\"methods\":");
-    lgx_hash_print(obj->methods);
+    lgx_hash_print(obj->methods, deep + 1);
     printf(",\n\t\"parent\":");
     if (obj->parent) {
-        lgx_obj_print(obj->parent);
+        lgx_obj_print(obj->parent, deep + 1);
     } else {
         printf("null");
     }

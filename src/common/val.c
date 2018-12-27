@@ -36,7 +36,7 @@ const char *lgx_val_typeof(lgx_val_t *v) {
 }
 
 
-void lgx_val_print(lgx_val_t *v) {
+void lgx_val_print(lgx_val_t *v, int deep) {
     switch (v->type) {
         case T_UNDEFINED:
             printf("<%s>", lgx_val_typeof(v));
@@ -60,14 +60,14 @@ void lgx_val_print(lgx_val_t *v) {
             break;
         case T_STRING:
             //printf("<%s(%u)> \"%.*s\"\n", lgx_val_typeof(v), v->v.str->length, v->v.str->length, v->v.str->buffer);
-            printf("%.*s", v->v.str->length, v->v.str->buffer);
+            lgx_str_print(v->v.str);
             break;
         case T_ARRAY:
             //printf("<%s>\n", lgx_val_typeof(v));
-            lgx_hash_print(v->v.arr);
+            lgx_hash_print(v->v.arr, deep + 1);
             break;
         case T_OBJECT:
-            printf("<%s>", lgx_val_typeof(v));
+            lgx_obj_print(v->v.obj, deep + 1);
             break;
         case T_RESOURCE:
             printf("<%s>", lgx_val_typeof(v));

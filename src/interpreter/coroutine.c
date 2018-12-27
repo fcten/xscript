@@ -521,7 +521,7 @@ void lgx_co_throw(lgx_co_t *co, lgx_val_t *e) {
         } else {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
             printf("[uncaught exception] [%llu] ", co->id);
-            lgx_val_print(e);
+            lgx_val_print(e, 0);
             printf("\n");
 
             lgx_gc_ref_del(e);

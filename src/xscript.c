@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 
     lgx_bc_print(bc.bc, bc.bc_top);
 
-    lgx_hash_print(bc.constant);
+    lgx_hash_print(bc.constant, 0);
     printf("\n\n");
 
     lgx_vm_t vm;
@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
     lgx_vm_start(&vm);
     //printf("\nprogram exit with return value: ");
-    //lgx_val_print(&vm.regs[1]);
+    //lgx_val_print(&vm.regs[1], 0);
     //printf("\n");
 
     lgx_vm_cleanup(&vm);

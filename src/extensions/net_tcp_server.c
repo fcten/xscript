@@ -591,7 +591,7 @@ LGX_METHOD(Server, start) {
         return 1;
     }
 
-    //lgx_obj_print(obj->v.obj);
+    //lgx_obj_print(obj->v.obj, 0);
 
     lgx_str_t name;
     name.buffer = "fd";
