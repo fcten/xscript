@@ -23,7 +23,7 @@ GC 算法结合自行实现的内存管理算法
 禁止使用未初始化的变量
 禁止存在未使用的局部变量和全局变量
 
-死循环防护
+控制线程 -> 消息队列 -> 死循环防护
 
 重新设计 import & export & require
 命名空间？
@@ -33,9 +33,10 @@ GC 算法结合自行实现的内存管理算法
 重新设计类
 
 array 的成员默认是 auto 的，增加 array<type> 语法支持？
+array -> array<undefined, undefined>
 array<string> -> array<int, string>
 array<string, string>
 
 支持 for 循环条件中声明变量
 
-支持 struct
+支持 struct, typedef

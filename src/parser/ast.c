@@ -79,11 +79,7 @@ int ast_is_class(lgx_ast_t* ast, lgx_package_t *pkg) {
         return 0;
     }
 
-    if (v->type != T_OBJECT) {
-        return 0;
-    }
-
-    if (lgx_str_cmp(&s, v->v.obj->name) != 0) {
+    if (v->u.symbol.type != S_CLASS) {
         return 0;
     }
 
