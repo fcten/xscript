@@ -84,6 +84,29 @@
         } \
     } while (0)
 
+#define LGX_CLASS_EXTEND(class, classparent) \
+    do { \
+        lgx_val_t *parent = lgx_ext_get_symbol(hash, #classparent); \
+        if (!parent || parent->u.symbol.type != S_CLASS) { \
+            return 1; \
+        } \
+        lgx_str_t name; \
+        name.buffer = #class; \
+        name.length = sizeof(#class) - 1; \
+        lgx_val_t symbol; \
+        symbol.type = T_OBJECT; \
+        symbol.v.obj = lgx_obj_create(&name); \
+        symbol.v.obj->parent = parent->v.obj; \
+        symbol.u.symbol.type = S_CLASS; \
+        symbol.u.symbol.is_used = 1; \
+        if (lgx_ext_add_symbol(hash, #class, &symbol)) { \
+            return 1; \
+        } \
+        if (lgx_internal_class_##class(hash, symbol.v.obj)) { \
+            return 1; \
+        } \
+    } while (0)
+
 #define LGX_METHOD(class, method) \
     static int lgx_internal_method_##class##method(lgx_vm_t *vm)
 
