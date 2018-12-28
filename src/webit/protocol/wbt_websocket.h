@@ -29,7 +29,40 @@ extern "C" {
  +---------------------------------------------------------------+
  */
 
+typedef enum {
+    STATE_PARSE_OPCODE = 0,
+    STATE_PARSE_PAYLOAD_LENGTH,
+    STATE_PARSE_EXTENDED_PAYLOAD_LENGTH,
+    STATE_PARSE_MASK,
+    STATE_PARSE_PAYLOAD
+} wbt_websocket_parse_state_t;
 
+typedef struct wbt_websocket_s {
+    // 状态机状态
+    wbt_websocket_parse_state_t state;
+
+    // 缓冲区
+    struct {
+        unsigned char *buf;
+        unsigned length;
+        unsigned offset;
+    } data;
+
+    // 结构化的数据
+    unsigned int fin:1;
+    unsigned int mask:1;
+    unsigned int opcode:4;
+    
+    unsigned int count:4;
+
+    unsigned char mask_key[4];
+    
+    unsigned long long int payload_length;
+    unsigned char *payload;
+} wbt_websocket_t;
+
+wbt_status wbt_websocket_parse(wbt_websocket_t *ws);
+wbt_status wbt_websocket_generate(wbt_websocket_t *ws);
 
 #ifdef	__cplusplus
 }
