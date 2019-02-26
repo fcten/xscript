@@ -34,7 +34,7 @@ LGX_FUNCTION(to_float) {
         break;
     }
     default:
-        lgx_vm_throw_s(vm, "invalid param type for to_int");
+        lgx_vm_throw_s(vm, "invalid param type for to_float");
         return 1;
     }
 
