@@ -12,8 +12,7 @@ class MyClass {
     async public function print(int from, int to) {
         int i;
         for (i = from; i <= to; i = i + 1) {
-            echo this->name;
-            echo i;
+            echo this->name + to_string(i);
             co_sleep(10);
         }
     }
