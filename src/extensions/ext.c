@@ -3,6 +3,7 @@
 #include "ext.h"
 
 #include "std_time.h"
+#include "std_type.h"
 #include "std_math.h"
 #include "std_string.h"
 #include "std_array.h"
@@ -17,6 +18,7 @@
 
 lgx_buildin_ext_t *buildin_exts[] = {
     &ext_std_time_ctx,
+    &ext_std_type_ctx,
     &ext_std_math_ctx,
     &ext_std_string_ctx,
     &ext_std_array_ctx,

@@ -12,6 +12,9 @@
 #define LGX_RETURN_LONG(v) \
     lgx_co_return_long(vm->co_running, v)
 
+#define LGX_RETURN_DOUBLE(v) \
+    lgx_co_return_double(vm->co_running, v)
+
 #define LGX_RETURN_UNDEFINED() \
     lgx_co_return_undefined(vm->co_running)
 
