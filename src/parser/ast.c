@@ -226,7 +226,7 @@ void ast_error(lgx_ast_t* ast, lgx_package_t* pkg, const char *fmt, ...) {
     }
 
     if (file) {
-        ast->err_len = snprintf(ast->err_info, 256, "[ERROR] [%s:%d] ", file, pkg->cur_line + 1);
+        ast->err_len = snprintf(ast->err_info, 256, "[ERROR] [%s:%d:%d] ", file, pkg->cur_line + 1, pkg->cur_line_offset);
     } else {
         ast->err_len = snprintf(ast->err_info, 256, "[ERROR] ");
     }
@@ -258,6 +258,7 @@ void ast_step(lgx_package_t* pkg) {
     pkg->cur_start = pkg->lex.source + pkg->lex.milestone;
     pkg->cur_length = pkg->lex.offset - pkg->lex.milestone;
     pkg->cur_line = pkg->lex.line;
+    pkg->cur_line_offset = pkg->lex.offset - pkg->lex.line_start;
 }
 
 void ast_parse_id_token(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
@@ -692,6 +693,7 @@ void ast_parse_sub_expression(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t
     }
 }
 
+// 解析 if、while、do-while、switch 语句的条件表达式
 void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent) {
     if (pkg->cur_token != '(') {
         ast_error(ast, pkg, "'(' expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
@@ -699,7 +701,33 @@ void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_package_t *pkg, l
     }
     ast_step(pkg);
 
+    // 如果有双层括号，则允许在此处使用赋值表达式
+    int assign_expr = 0;
+    if (pkg->cur_token == '(') {
+        assign_expr = 1;
+        ast_step(pkg);
+    }
+
+    int children = parent->children;
     ast_parse_sub_expression(ast, pkg, parent, 15);
+    if (parent->children == children) {
+        ast_error(ast, pkg, "expression expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
+        return;
+    }
+
+    if (assign_expr) {
+        if (pkg->cur_token != ')') {
+            ast_error(ast, pkg, "')' expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
+            return;
+        }
+        ast_step(pkg);
+    } else {
+        lgx_ast_node_t *expr = parent->child[parent->children-1];
+        if (expr->type == BINARY_EXPRESSION && expr->u.op == '=') {
+            ast_error(ast, pkg, "assignment expression must be parentheses around when used as boolean value\n", pkg->cur_length, pkg->cur_start);
+            return;
+        }
+    }
 
     if (pkg->cur_token != ')') {
         ast_error(ast, pkg, "')' expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);

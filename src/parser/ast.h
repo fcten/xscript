@@ -118,6 +118,7 @@ typedef struct {
     char* cur_start;
     int cur_length;
     int cur_line;
+    int cur_line_offset;
 
     int finished;
 } lgx_package_t;

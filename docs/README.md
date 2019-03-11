@@ -789,6 +789,7 @@ xscript 运行时依赖于标准库所提供的功能，因此标准库会在 xs
 
 - std.io
 - std.time
+- std.type
 - std.math
 - std.string
 - std.array

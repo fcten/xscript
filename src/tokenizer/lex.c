@@ -258,12 +258,14 @@ int lgx_lex(lgx_lex_t* ctx) {
         case '\r':
             if (is_next(ctx, '\n')) {
                 ctx->line++;
+                ctx->line_start = ctx->offset;
                 return TK_EOL;
             } else {
                 return TK_UNKNOWN;
             }
         case '\n':  // 换行
             ctx->line++;
+            ctx->line_start = ctx->offset;
             return TK_EOL;
         case '\t':
         case ' ':  // 空格与制表符

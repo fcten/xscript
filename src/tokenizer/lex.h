@@ -10,6 +10,7 @@ typedef struct {
     int offset;
     int milestone;
     int line;
+    int line_start;
     int row;
 } lgx_lex_t;
 
