@@ -42,7 +42,7 @@ void bc_error(lgx_bc_t *bc, lgx_ast_node_t *node, const char *fmt, ...) {
     }
 
     if (file) {
-        bc->err_len = snprintf(bc->err_info, 256, "[ERROR] [%s:%d] ", file, node->line + 1);
+        bc->err_len = snprintf(bc->err_info, 256, "[ERROR] [%s:%d:%d] ", file, node->line + 1, node->offset);
     } else {
         bc->err_len = snprintf(bc->err_info, 256, "[ERROR] ");
     }
@@ -441,12 +441,23 @@ static int bc_expr_array(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     return 0;
 }
 
+// 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+static void bc_expr_block_assignment(lgx_bc_t *bc, lgx_ast_node_t *node) {
+    if (node->type == BINARY_EXPRESSION && node->u.op == '=') {
+        bc_error(bc, node, "assignment expression can't be used as boolean value\n");
+    }
+}
+
 static int bc_expr_binary_logic_and(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t *e) {
     // if (e1 == false) {
     //     e = false;
     // } else {
     //     e = e2;
     // }
+
+    // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+    bc_expr_block_assignment(bc, node->child[0]);
+    bc_expr_block_assignment(bc, node->child[1]);
 
     lgx_val_t e1, e2;
     lgx_val_init(&e1);
@@ -521,6 +532,10 @@ static int bc_expr_binary_logic_or(lgx_bc_t *bc, lgx_ast_node_t *node, lgx_val_t
     // } else {
     //     e = e2;
     // }
+
+    // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+    bc_expr_block_assignment(bc, node->child[0]);
+    bc_expr_block_assignment(bc, node->child[1]);
 
     lgx_val_t e1, e2;
     lgx_val_init(&e1);
@@ -1631,6 +1646,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case IF_STATEMENT:{
+            // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+            bc_expr_block_assignment(bc, node->child[0]);
+
             lgx_val_t e;
             lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
@@ -1662,6 +1680,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case IF_ELSE_STATEMENT:{
+            // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+            bc_expr_block_assignment(bc, node->child[0]);
+
             lgx_val_t e;
             lgx_val_init(&e);
             if (bc_expr(bc, node->child[0], &e)) {
@@ -1703,6 +1724,11 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case FOR_STATEMENT:{
+            // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+            if (node->child[1]) {
+                bc_expr_block_assignment(bc, node->child[1]);
+            }
+
             // exp1: 循环开始前执行一次
             if (node->child[0]) {
                 lgx_val_t e;
@@ -1764,6 +1790,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case WHILE_STATEMENT:{
+            // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+            bc_expr_block_assignment(bc, node->child[0]);
+
             unsigned start = bc->bc_top; // 循环起始位置
             lgx_val_t e;
             lgx_val_init(&e);
@@ -1802,6 +1831,9 @@ static int bc_stat(lgx_bc_t *bc, lgx_ast_node_t *node) {
             break;
         }
         case DO_WHILE_STATEMENT:{
+            // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+            bc_expr_block_assignment(bc, node->child[1]);
+
             unsigned start = bc->bc_top; // 循环起始位置
 
             if (bc_stat(bc, node->child[0])) {

@@ -66,6 +66,7 @@ typedef struct lgx_ast_node_s {
     // 当前节点对应的代码位置
     char *file;
     unsigned line;
+    unsigned offset;
 
     union {
         // 当节点类型为 BLOCK 时，用于保存符号表
@@ -104,6 +105,7 @@ typedef struct lgx_ast_node_token_s {
     // 当前节点对应的代码位置
     char *file;
     unsigned line;
+    unsigned offset;
 
     char* tk_start;
     int tk_length;

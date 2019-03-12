@@ -31,6 +31,7 @@ lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_package_t *pkg, int n) {
 
     node->file = pkg->lex.file;
     node->line = pkg->cur_line;
+    node->offset = pkg->cur_line_offset;
 
     return node;
 }
@@ -43,6 +44,7 @@ lgx_ast_node_token_t* ast_node_token_new(lgx_ast_t* ast, lgx_package_t *pkg) {
 
     node->file = pkg->lex.file;
     node->line = pkg->cur_line;
+    node->offset = pkg->cur_line_offset;
     
     return node;
 }
@@ -701,32 +703,11 @@ void ast_parse_expression_with_parentheses(lgx_ast_t* ast, lgx_package_t *pkg, l
     }
     ast_step(pkg);
 
-    // 如果有双层括号，则允许在此处使用赋值表达式
-    int assign_expr = 0;
-    if (pkg->cur_token == '(') {
-        assign_expr = 1;
-        ast_step(pkg);
-    }
-
     int children = parent->children;
     ast_parse_sub_expression(ast, pkg, parent, 15);
     if (parent->children == children) {
         ast_error(ast, pkg, "expression expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
         return;
-    }
-
-    if (assign_expr) {
-        if (pkg->cur_token != ')') {
-            ast_error(ast, pkg, "')' expected before `%.*s`\n", pkg->cur_length, pkg->cur_start);
-            return;
-        }
-        ast_step(pkg);
-    } else {
-        lgx_ast_node_t *expr = parent->child[parent->children-1];
-        if (expr->type == BINARY_EXPRESSION && expr->u.op == '=') {
-            ast_error(ast, pkg, "assignment expression must be parentheses around when used as boolean value\n", pkg->cur_length, pkg->cur_start);
-            return;
-        }
     }
 
     if (pkg->cur_token != ')') {
