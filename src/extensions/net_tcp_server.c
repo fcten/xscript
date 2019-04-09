@@ -664,7 +664,7 @@ LGX_CLASS(Server) {
 
     LGX_METHOD_BEGIN(Server, onRequest, 1)
         LGX_METHOD_RET(T_BOOL)
-        LGX_METHOD_ARG(0, T_STRING)
+        LGX_METHOD_ARG_OBJECT(0, Request)
         LGX_METHOD_ACCESS(P_PUBLIC)
     LGX_METHOD_END
 
@@ -677,9 +677,249 @@ LGX_CLASS(Server) {
     return 0;
 }
 
+#define RES_MESSAGE_REQUEST 0x12345678
+#define RES_MESSAGE_RESPONSE 0x87654321
+
+LGX_METHOD(Message, getProtocolVersion) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    lgx_str_t name;
+    lgx_str_set(name, "res");
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *res = lgx_obj_get(obj->v.obj, &k);
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `res`");
+        return 1;
+    }
+
+    if (res->v.res->type == RES_MESSAGE_REQUEST) {
+        wbt_http_request_t *req = res->v.res->buf;
+
+        lgx_str_t *s = lgx_str_new(req->recv.buf + req->version_str.start, req->version_str.len);
+        return LGX_RETURN_STRING(s);
+    }
+
+    lgx_vm_throw_s(vm, "invalid res type");
+    return 1;
+}
+
+LGX_METHOD(Message, withProtocolVersion) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    lgx_str_t name;
+    lgx_str_set(name, "res");
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *res = lgx_obj_get(obj->v.obj, &k);
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `res`");
+        return 1;
+    }
+
+    if (res->v.res->type == RES_MESSAGE_RESPONSE) {
+        // TODO
+        return LGX_RETURN_TRUE();
+    }
+
+    lgx_vm_throw_s(vm, "invalid res type");
+    return 1;
+}
+
+LGX_CLASS(Message) {
+    LGX_PROPERTY_BEGIN(Message, res, T_RESOURCE, 0)
+        LGX_PROPERTY_ACCESS(P_PROTECTED)
+    LGX_PROPERTY_END
+
+    LGX_METHOD_BEGIN(Message, getProtocolVersion, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, withProtocolVersion, 0)
+        LGX_METHOD_RET(T_BOOL)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+/*
+    LGX_METHOD_BEGIN(Message, getHeaders, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, hasHeader, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, getHeader, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, getHeaderLine, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, withHeader, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, withAddedHeader, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, withoutHeader, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, getBody, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Message, withBody, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+*/
+    return 0;
+}
+
+LGX_METHOD(Request, getRequestTarget) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    lgx_str_t name;
+    lgx_str_set(name, "res");
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *res = lgx_obj_get(obj->v.obj, &k);
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `res`");
+        return 1;
+    }
+
+    if (res->v.res->type == RES_MESSAGE_REQUEST) {
+        wbt_http_request_t *req = res->v.res->buf;
+
+        lgx_str_t *s = lgx_str_new(req->recv.buf + req->uri.start, req->uri.len + req->params.len);
+        return LGX_RETURN_STRING(s);
+    }
+
+    lgx_vm_throw_s(vm, "invalid res type");
+    return 1;
+}
+
+LGX_METHOD(Request, getMethod) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    lgx_str_t name;
+    lgx_str_set(name, "res");
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *res = lgx_obj_get(obj->v.obj, &k);
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `res`");
+        return 1;
+    }
+
+    if (res->v.res->type == RES_MESSAGE_REQUEST) {
+        wbt_http_request_t *req = res->v.res->buf;
+
+        lgx_str_t *s = lgx_str_new(req->recv.buf + req->method_str.start, req->method_str.len);
+        return LGX_RETURN_STRING(s);
+    }
+
+    lgx_vm_throw_s(vm, "invalid res type");
+    return 1;
+}
+
+LGX_METHOD(Request, getUri) {
+    LGX_METHOD_ARGS_INIT();
+    LGX_METHOD_ARGS_THIS(obj);
+
+    lgx_str_t name;
+    lgx_str_set(name, "res");
+    lgx_val_t k;
+    k.type = T_STRING;
+    k.v.str = &name;
+    lgx_val_t *res = lgx_obj_get(obj->v.obj, &k);
+    if (!res || res->type != T_RESOURCE) {
+        lgx_vm_throw_s(vm, "invalid property `res`");
+        return 1;
+    }
+
+    if (res->v.res->type == RES_MESSAGE_REQUEST) {
+        wbt_http_request_t *req = res->v.res->buf;
+
+        lgx_str_t *s = lgx_str_new(req->recv.buf + req->uri.start, req->uri.len);
+        return LGX_RETURN_STRING(s);
+    }
+
+    lgx_vm_throw_s(vm, "invalid res type");
+    return 1;
+}
+
+LGX_CLASS(Request) {
+    LGX_METHOD_BEGIN(Request, getRequestTarget, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Request, getMethod, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Request, getUri, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    return 0;
+}
+
+LGX_CLASS(Response) {
+/*
+    LGX_METHOD_BEGIN(Response, getStatusCode, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Response, withStatus, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+
+    LGX_METHOD_BEGIN(Response, getReasonPhrase, 0)
+        LGX_METHOD_RET(T_STRING)
+        LGX_METHOD_ACCESS(P_PUBLIC)
+    LGX_METHOD_END
+*/
+    return 0;
+}
+
 static int net_tcp_server_load_symbols(lgx_hash_t *hash) {
+    /*
     LGX_CLASS_INIT(Server);
 
+    LGX_CLASS_INIT(Message);
+
+    LGX_CLASS_EXTEND(Request, Message);
+
+    LGX_CLASS_EXTEND(Response, Message);
+*/
     return 0;
 }
 

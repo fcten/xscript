@@ -19,6 +19,7 @@ class
 // 关键字 && 保留字
 const lgx_token_t lgx_reserved_words[LGX_RESERVED_WORDS] = {
     // 变量
+    {TK_VAR, "var"},
     {TK_AUTO, "auto"},
     {TK_INT, "int"},
     {TK_FLOAT, "float"},

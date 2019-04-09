@@ -34,6 +34,7 @@ enum {
     TK_ASSIGN_SHR, // >>=
     TK_CHAR,    // 单个字符
     // 以下为关键字 & 保留字
+    TK_VAR,
     TK_AUTO,
     TK_INT,
     TK_FLOAT,
