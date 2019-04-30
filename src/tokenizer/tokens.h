@@ -110,6 +110,6 @@ typedef struct {
     char* s;
 } lgx_token_t;
 
-#define LGX_RESERVED_WORDS  (TK_AS - TK_AUTO + 1) 
+#define LGX_RESERVED_WORDS  (TK_AS - TK_VAR + 1) 
 
 #endif // LGX_TOKENS_H
