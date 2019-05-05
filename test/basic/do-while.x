@@ -2,10 +2,10 @@
 2
 */
 
-int i = 0;
+var i = 0
 
 do {
-    i = i + 1;
-} while (i <= 1);
+    i = i + 1
+} while (i <= 1)
 
-echo i;
+echo i

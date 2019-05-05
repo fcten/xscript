@@ -1,5 +1,5 @@
-import "basic/import_test.x";
+import "basic/import_test.x"
 
-import_test();
+import_test()
 
-echo "import end";
+echo "import end"

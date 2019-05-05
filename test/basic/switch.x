@@ -1,41 +1,41 @@
-int x = 1;
+var x = 1
 
 do {
-    echo x;
+    echo x
 
     switch (x) {
         case 1:
-            echo "x = 1";
-            break;
+            echo "x = 1"
+            break
         case 2: case 3:
-            echo "x = 2 or 3";
-            break;
+            echo "x = 2 or 3"
+            break
         default:
-            echo "x = default";
+            echo "x = default"
     }
 
-    x = x + 1;
-} while (x <= 4);
+    x = x + 1
+} while (x <= 4)
 
 array y = [
     "test case 1",
     "test case 2",
     "test case 3",
     "test case 4",
-];
+]
 
-int i;
+var i int
 for (i = 0; i < 4; i = i + 1) {
-    echo y[i];
+    echo y[i]
     switch (y[i]) {
         case "test case 1":
-            echo "test case 1";
-            break;
+            echo "test case 1"
+            break
         case "test case 2":
         case "test case 3":
-            echo "test case 2 or 3";
-            break;
+            echo "test case 2 or 3"
+            break
         default:
-            echo "test case default";
+            echo "test case default"
     }
 }

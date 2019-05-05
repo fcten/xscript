@@ -2,9 +2,9 @@
 3
 */
 
-int a = 1;
+var a = 1;
 
-function add(int b) {
+function add(b int) {
     return a + b;
 }
 

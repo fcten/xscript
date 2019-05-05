@@ -2,52 +2,52 @@
 109
 */
 
-int a = 100;
-int b = 10;
+var a = 100
+var b = 10
 if (a > 0) {
-    a = a - 1;
+    a = a - 1
 }
 if (b < 0) {
-    b = b + 1;
+    b = b + 1
 }
-echo a + b;
+echo a + b
 
 /* EXPECT
 111
 */
 
-a = 100;
-b = 10;
-if (a > 0) {
-    a = a - 1;
+var c = 100
+var d = 10
+if (c > 0) {
+    c = c - 1
 } else {
-    a = a + 1;
+    c = c + 1
 }
-if (b < 0) {
-    b = b - 2;
+if (d < 0) {
+    d = d - 2
 } else {
-    b = b + 2;
+    d = d + 2
 }
-echo a + b;
+echo c + d
 
 /* EXPECT
 1
-"a <= 1"
+"e <= 1"
 2
-"a > 1"
+"e > 1"
 3
-"a > 2"
+"e > 2"
 */
 
-a = 1;
-while (a < 4) {
-    echo a;
-    if (a > 2) {
-        echo "a > 2";
-    } else if (a > 1) {
-        echo "a > 1";
+var e = 1
+while (e < 4) {
+    echo e
+    if (e > 2) {
+        echo "e > 2"
+    } else if (e > 1) {
+        echo "e > 1"
     } else {
-        echo "a <= 1";
+        echo "e <= 1"
     }
-    a = a + 1;
+    e = e + 1
 }

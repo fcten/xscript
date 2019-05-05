@@ -1,6 +1,6 @@
-int i = 10000;
+var i = 10000;
 
 while (i > 0) {
-    array arr = [i];
+    var arr = [i];
     i = i - 1;
 }

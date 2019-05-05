@@ -2,15 +2,15 @@
 3
 */
 
-int a = 1;
-int b, c;
+var a = 1
+var b, c
 
 do {
-    int a = 2;
-    b = a;
-} while (false);
+    var a = 2
+    b = a
+} while (false)
 
-c = a;
+c = a
 
-echo b + c;
+echo b + c
 

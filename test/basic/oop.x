@@ -1,41 +1,30 @@
-interface A {
-    public function m1();
+type A interface {
+    function m1()
 }
 
-interface B {
-    public function m2();
+type B interface {
+    function m2()
 }
 
-class C1 implements A, B {
-    public string msg = "C1:print";
+type C int
 
-    public function constructor(string msg) {
-        this->msg = msg;
-    }
-
-    public function print() {
-        echo this->msg;
-    }
-
-    public function t() {
-        this->test();
-    }
-
-    public function test() {
-        echo "test";
-    }
+function (c C) m1() {
+    echo "m1"
 }
 
-class C2 {
-    protected function print() {
-        echo "C2:print";
-    }
+function (c C) m2() {
+    echo "m2"
 }
 
-C1 obj1 = new C1("hello");
-C2 obj2 = new C2();
-// TODO 方法调用可以在编译时确定？
-obj1->print();
-obj2->print();
+var obj C
 
-(new C1("world"))->print();
+function testA(obj A) {
+    obj.m1()
+}
+
+function testB(obj B) {
+    obj.m2()
+}
+
+testA(obj)
+testB(obj)

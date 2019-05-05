@@ -1,27 +1,27 @@
 try {
-    throw 1;
+    throw 1
 } catch (auto e) {
-    echo "catch exception 1";
+    echo "catch exception 1"
 }
 
 function test() {
-    throw new Exception("exception object");
+    throw Exception{1, "exception"}
 }
 
 try {
-    test();
+    test()
 } catch (auto e) {
-    echo "catch exception 2";
+    echo "catch exception 2"
 }
 
 try {
-    test();
+    test()
 } catch (string e) {
-    echo "catch exception 3";
+    echo "catch exception 3"
 } catch (int e) {
-    echo "catch exception 4";
+    echo "catch exception 4"
 } catch (Exception e) {
-    echo "catch exception 5";
+    echo "catch exception 5"
 }
 
-throw new Exception("uncaught exception");
+throw Exception{2, "uncaught exception"}
