@@ -2,7 +2,10 @@
 #define LGX_AST_H
 
 #include "../common/list.h"
+#include "../common/ht.h"
 #include "../tokenizer/lex.h"
+#include "type.h"
+#include "symbol.h"
 
 typedef enum {
     // Statement
@@ -80,10 +83,7 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 VARIABLE_DECLARATION 时，保存变量类型
         // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
-        struct {
-            unsigned type;
-            lgx_str_t *obj_name;
-        } type;
+        lgx_type_t *type;
     } u;
 
     int children;          // 子节点数量
@@ -119,11 +119,13 @@ typedef struct lgx_ast {
 } lgx_ast_t;
 
 int lgx_ast_init(lgx_ast_t* ast);
+int lgx_ast_cleanup(lgx_ast_t* ast);
+
 int lgx_ast_parser(lgx_ast_t* ast, char *file);
 int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, char *file);
 
 int lgx_ast_optimizer(lgx_ast_t* ast);
-int lgx_ast_cleanup(lgx_ast_t* ast);
+
 void lgx_ast_print(lgx_ast_node_t* node, int indent);
 
 #endif // LGX_AST_H

@@ -1,8 +1,4 @@
-#include <string.h>
-
 #include "lex.h"
-
-extern const lgx_token_str_t reserved_words[LGX_RESERVED_WORDS];
 
 static int is_next(lgx_lex_t* ctx, char n) {
     if (ctx->offset >= ctx->length) {
@@ -134,9 +130,9 @@ static int step_to_eond(lgx_lex_t* ctx) {
         }
     }
     if (f) {
-        return TK_DOUBLE;
+        return TK_LITERAL_DOUBLE;
     } else {
-        return TK_LONG;
+        return TK_LITERAL_LONG;
     }
 }
 
@@ -147,10 +143,10 @@ static int step_to_eon(lgx_lex_t* ctx) {
         n = ctx->source[ctx->offset++];
         if (n == 'b' || n == 'B') {
             step_to_eonb(ctx);
-            return TK_LONG;
+            return TK_LITERAL_LONG;
         } else if (n == 'x' || n == 'X') {
             step_to_eonh(ctx);
-            return TK_LONG;
+            return TK_LITERAL_LONG;
         } else {
             ctx->offset--;
             return step_to_eond(ctx);
@@ -172,78 +168,6 @@ static void step_to_eoi(lgx_lex_t* ctx) {
             break;
         }
     }
-}
-
-// 字典树
-struct dict_tree {
-    int count;
-    int token;
-    struct dict_tree* next[26];
-};
-
-struct dict_tree root;
-
-void dict_tree_add(int token, char* s) {
-    struct dict_tree* node = &root;
-    size_t l = strlen(s), i;
-    for (i = 0; i < l; ++i) {
-        if (node->next[s[i] - 'a'] == NULL) {
-            node->next[s[i] - 'a'] = xcalloc(1, sizeof(struct dict_tree));
-        }
-        node = node->next[s[i] - 'a'];
-    }
-    node->count++;
-    node->token = token;
-}
-
-void dict_tree_delete(struct dict_tree* p) {
-    int i;
-    for (i = 0; i < 26; i++) {
-        if (p->next[i]) {
-            dict_tree_delete(p->next[i]);
-            xfree(p->next[i]);
-        }
-    }
-}
-
-static int is_token(lgx_lex_t* ctx) {
-    struct dict_tree* node = &root;
-    char n;
-    int i;
-
-    for (i = ctx->milestone; i < ctx->offset; i++) {
-        n = ctx->source[i];
-
-        if (n < 'a' || n > 'z') {
-            return TK_IDENTIFIER;
-        }
-
-        if (node->next[n - 'a']) {
-            node = node->next[n - 'a'];
-        } else {
-            return TK_IDENTIFIER;
-        }
-    }
-
-    if (node->count > 0) {
-        return node->token;
-    } else {
-        return TK_IDENTIFIER;
-    }
-}
-
-int lgx_lex_init() {
-    int i;
-    for (i = 0; i < LGX_RESERVED_WORDS; i++) {
-        dict_tree_add(reserved_words[i].token, reserved_words[i].s);
-    }
-    //printf("[Info] %d reserved words\n", LGX_RESERVED_WORDS);
-    return 0;
-}
-
-int lgx_lex_cleanup() {
-    dict_tree_delete(&root);
-    return 0;
 }
 
 int lgx_lex(lgx_lex_t* ctx) {
@@ -390,10 +314,10 @@ int lgx_lex(lgx_lex_t* ctx) {
         case ',': return TK_COMMA;
         case '"':
             step_to_eos(ctx, '"');
-            return TK_STRING;
+            return TK_LITERAL_STRING;
         case '\'':
             step_to_eos(ctx, '\'');
-            return TK_CHAR;
+            return TK_LITERAL_CHAR;
         default:
             if (n >= '0' && n <= '9') {
                 ctx->offset--;
@@ -401,7 +325,7 @@ int lgx_lex(lgx_lex_t* ctx) {
             } else if (n == '_' || (n >= 'a' && n <= 'z') ||
                        (n >= 'A' && n <= 'Z')) {
                 step_to_eoi(ctx);
-                return is_token(ctx);
+                return lgx_token_detect_reserved_word(ctx->source + ctx->milestone, ctx->offset - ctx->milestone);
             } else {
                 // 非法字符
                 return TK_UNKNOWN;

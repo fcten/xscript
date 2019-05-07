@@ -1,7 +1,7 @@
 #ifndef LGX_LEX_H
 #define LGX_LEX_H
 
-#include "tokens.h"
+#include "token.h"
 
 typedef struct {
     // 文件名
@@ -21,9 +21,6 @@ typedef struct {
     // 当前列
     int row;
 } lgx_lex_t;
-
-int lgx_lex_init();
-int lgx_lex_cleanup();
 
 int lgx_lex(lgx_lex_t *ctx);
 

@@ -1,5 +1,5 @@
-#ifndef LGX_TOKENS_H
-#define LGX_TOKENS_H
+#ifndef LGX_TOKEN_H
+#define LGX_TOKEN_H
 
 typedef enum lgx_token_e {
     TK_UNKNOWN = 0, // 非法
@@ -12,10 +12,10 @@ typedef enum lgx_token_e {
 
     TK_IDENTIFIER, // 标识符
 
-    TK_LONG,   // 整数
-    TK_DOUBLE, // 浮点数
-    TK_CHAR,   // 单个字符
-    TK_STRING, // 字符串常量
+    TK_LITERAL_LONG,   // 整数
+    TK_LITERAL_DOUBLE, // 浮点数
+    TK_LITERAL_CHAR,   // 字符
+    TK_LITERAL_STRING, // 字符串
 
     // 算术运算符
 	TK_ADD, // +
@@ -83,24 +83,22 @@ typedef enum lgx_token_e {
     TK_VAR,
     TK_CONST,
 
-    TK_AUTO,
     TK_INT,
     TK_FLOAT,
     TK_BOOL,
     TK_STRING,
     TK_ARRAY,
+    TK_STRUCT,
+    TK_INTERFACE,
+    TK_FUNCTION,
 
-    TK_TYPEOF,
+    TK_TYPE,
 
     TK_TRUE,
     TK_FALSE,
     TK_NULL,
 
-    TK_FUNCTION,
     TK_RETURN,
-
-    TK_STRUCT,
-    TK_INTERFACE,
 
     TK_IF,
     TK_ELSE,
@@ -128,11 +126,9 @@ typedef enum lgx_token_e {
     TK_LENGTH
 } lgx_token_t;
 
-typedef struct {
-    lgx_token_t token;
-    char* s;
-} lgx_token_str_t;
+int lgx_token_init();
+int lgx_token_cleanup();
 
-#define LGX_RESERVED_WORDS  (TK_LENGTH - TK_VAR)
+lgx_token_t lgx_token_detect_reserved_word(char *str, int len);
 
-#endif // LGX_TOKENS_H
+#endif // LGX_TOKEN_H
