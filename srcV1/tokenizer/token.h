@@ -78,6 +78,7 @@ typedef enum lgx_token_e {
     TK_COLON,     // :
 	TK_SEMICOLON, // ;
     TK_ARROW,     // ->
+    TK_ELLIPSIS,  // ...
     
     // 关键字 & 保留字
     TK_VAR,

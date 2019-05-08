@@ -302,13 +302,22 @@ int lgx_lex(lgx_lex_t* ctx) {
             } else {
                 return TK_XOR;
             }
+        case '.': 
+            if (is_next(ctx, '.')) {
+                if (is_next(ctx, '.')) {
+                    return TK_ELLIPSIS;
+                } else {
+                    return TK_UNKNOWN;
+                }
+            } else {
+                return TK_DOT;
+            }
         case '(': return TK_LEFT_PAREN;
         case ')': return TK_RIGHT_PAREN;
         case '[': return TK_LEFT_BRACK;
         case ']': return TK_RIGHT_BRACK;
         case '{': return TK_LEFT_BRACE;
         case '}': return TK_RIGHT_BRACE;
-        case '.': return TK_DOT;
         case ':': return TK_COLON;
         case ';': return TK_SEMICOLON;
         case ',': return TK_COMMA;
