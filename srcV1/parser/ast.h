@@ -83,7 +83,7 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 VARIABLE_DECLARATION 时，保存变量类型
         // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
-        lgx_type_t *type;
+        lgx_value_t *type;
     } u;
 
     int children;          // 子节点数量

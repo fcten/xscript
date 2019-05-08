@@ -28,7 +28,4 @@ typedef struct lgx_ht_s {
     lgx_ht_node_t* table;
 } lgx_ht_t;
 
-lgx_ht_t* lgx_ht_new(unsigned size);
-int lgx_ht_delete(lgx_ht_t *hash);
-
 #endif	/* LGX_HT_H */
