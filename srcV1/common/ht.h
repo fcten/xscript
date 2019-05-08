@@ -28,4 +28,7 @@ typedef struct lgx_ht_s {
     lgx_ht_node_t* table;
 } lgx_ht_t;
 
+int lgx_ht_init(lgx_ht_t* ht);
+int lgx_ht_cleanup(lgx_ht_t* ht);
+
 #endif	/* LGX_HT_H */

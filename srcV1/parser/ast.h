@@ -56,16 +56,19 @@ typedef struct lgx_ast_node_list_s {
 } lgx_ast_node_list_t;
 
 typedef struct lgx_ast_node_s {
+    // 节点类型
     lgx_ast_type_t type:8;
+
+    // 父节点
     struct lgx_ast_node_s* parent;
 
-    // 当前节点对应的代码位置
-    char* file;
-    unsigned line;
-    unsigned offset;
+    // 子节点
+    lgx_list_t children; // lgx_ast_node_list_t
 
-    char* start;
-    unsigned length;
+    // 当前节点对应的代码位置
+    unsigned offset;
+    unsigned line;
+    unsigned row;
 
     union {
         // 当节点类型为 BLOCK 时，用于保存符号表
@@ -85,47 +88,38 @@ typedef struct lgx_ast_node_s {
         // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
         lgx_value_t *type;
     } u;
-
-    int children;          // 子节点数量
-    int size;              // 已分配空间的长度
-    struct lgx_ast_node_s* child[];
 } lgx_ast_node_t;
 
-typedef struct {
+typedef struct lgx_ast_error_list_s {
     lgx_list_t head;
-
-    lgx_lex_t lex;
-
-    int cur_token;
-    char* cur_start;
-    int cur_length;
-    int cur_line;
-    int cur_line_offset;
-
-    int finished;
-} lgx_package_t;
-
-typedef struct lgx_ast {
-    // package
-    lgx_package_t imported;
-
-    // ast
-    lgx_ast_node_t* root;
 
     // 错误信息
     int err_no;
-    char *err_info;
-    int err_len;
+    lgx_str_t err_msg;
+
+    // 发生错误的 AST 节点
+    lgx_ast_node_t *node;
+} lgx_ast_error_list_t;
+
+typedef struct lgx_ast {
+    // 源文件
+    lgx_lex_t lex;
+
+    // 词法分析相关数据
+    lgx_token_t prev_token;
+    lgx_token_t cur_token;
+    char* cur_start;
+    int cur_length;
+
+    // 抽象语法树
+    lgx_ast_node_t *root;
+
+    // 错误信息
+    lgx_list_t errors; // lgx_ast_error_list_t
 } lgx_ast_t;
 
-int lgx_ast_init(lgx_ast_t* ast);
-int lgx_ast_cleanup(lgx_ast_t* ast);
+int lgx_ast_init(lgx_ast_t* ast, char* file);
 
-int lgx_ast_parser(lgx_ast_t* ast, char *file);
-int lgx_ast_import(lgx_ast_t* ast, lgx_package_t *pkg, lgx_ast_node_t* parent, char *file);
-
-int lgx_ast_optimizer(lgx_ast_t* ast);
-
-void lgx_ast_print(lgx_ast_node_t* node, int indent);
+void lgx_ast_print(lgx_ast_t* ast);
 
 #endif // LGX_AST_H

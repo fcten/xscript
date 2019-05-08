@@ -1,11 +1,12 @@
+#include <memory.h>
 #include "lex.h"
 
 static int is_next(lgx_lex_t* ctx, char n) {
-    if (ctx->offset >= ctx->length) {
+    if (ctx->offset >= ctx->source.length) {
         return 0;
     }
 
-    if (ctx->source[ctx->offset] == n) {
+    if (ctx->source.content[ctx->offset] == n) {
         ctx->offset++;
         return 1;
     } else {
@@ -16,8 +17,8 @@ static int is_next(lgx_lex_t* ctx, char n) {
 // 行
 static void step_to_eol(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset++];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset++];
         if (n == '\r') {
             if (is_next(ctx, '\n')) {
                 ctx->offset -= 2;
@@ -34,7 +35,7 @@ static void step_to_eol(lgx_lex_t* ctx) {
 
 // 字符串
 static void step_to_eos(lgx_lex_t* ctx, char end) {
-    while (ctx->offset < ctx->length) {
+    while (ctx->offset < ctx->source.length) {
         // 处理转义字符 \r \n \t \\ \" \' \0 \xFF
         if (is_next(ctx, '\\')) {
             // 这里只要确保读到正确的字符串结尾，不需要判断转义字符是否合法
@@ -50,8 +51,8 @@ static void step_to_eos(lgx_lex_t* ctx, char end) {
 // 注释
 static void step_to_eoc(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset++];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset++];
         if (n == '*') {
             if (is_next(ctx, '/')) {
                 break;
@@ -71,8 +72,8 @@ static void step_to_eoc(lgx_lex_t* ctx) {
 // 空格与制表符
 static void step_to_eot(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset];
         if (n != ' ' && n != '\t') {
             break;
         } else {
@@ -84,8 +85,8 @@ static void step_to_eot(lgx_lex_t* ctx) {
 // 二进制
 static void step_to_eonb(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset];
         if ( n >= '0' && n <= '1' ) {
             ctx->offset++;
         } else {
@@ -97,8 +98,8 @@ static void step_to_eonb(lgx_lex_t* ctx) {
 // 十六进制
 static void step_to_eonh(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset];
         if ( (n >= '0' && n <= '9') ||
              (n >= 'a' && n <= 'f') ||
              (n >= 'A' && n <= 'F') ) {
@@ -114,8 +115,8 @@ static void step_to_eonh(lgx_lex_t* ctx) {
 static int step_to_eond(lgx_lex_t* ctx) {
     char n;
     int f = 0;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset];
         if ( n >= '0' && n <= '9' ) {
             ctx->offset++;
         } else if (n == '.') {
@@ -138,9 +139,9 @@ static int step_to_eond(lgx_lex_t* ctx) {
 
 // 数字
 static int step_to_eon(lgx_lex_t* ctx) {
-    char n = ctx->source[ctx->offset++];
+    char n = ctx->source.content[ctx->offset++];
     if (n == '0') {
-        n = ctx->source[ctx->offset++];
+        n = ctx->source.content[ctx->offset++];
         if (n == 'b' || n == 'B') {
             step_to_eonb(ctx);
             return TK_LITERAL_LONG;
@@ -159,8 +160,8 @@ static int step_to_eon(lgx_lex_t* ctx) {
 // 标识符
 static void step_to_eoi(lgx_lex_t* ctx) {
     char n;
-    while (ctx->offset < ctx->length) {
-        n = ctx->source[ctx->offset];
+    while (ctx->offset < ctx->source.length) {
+        n = ctx->source.content[ctx->offset];
         if ((n >= '0' && n <= '9') || (n >= 'a' && n <= 'z') ||
             (n >= 'A' && n <= 'Z') || n == '_') {
             ctx->offset++;
@@ -170,14 +171,20 @@ static void step_to_eoi(lgx_lex_t* ctx) {
     }
 }
 
-int lgx_lex(lgx_lex_t* ctx) {
-    if (ctx->offset >= ctx->length) {
+int lgx_lex_init(lgx_lex_t* ctx, char* path) {
+    memset(ctx, 0 ,sizeof(lgx_lex_t));
+
+    return lgx_source_init(&ctx->source, path);
+}
+
+lgx_token_t lgx_lex_next(lgx_lex_t* ctx) {
+    if (ctx->offset >= ctx->source.length) {
         return TK_EOF;
     }
 
     ctx->milestone = ctx->offset;
 
-    char n = ctx->source[ctx->offset++];
+    char n = ctx->source.content[ctx->offset++];
 
     switch (n) {
         case '\r':
@@ -334,7 +341,7 @@ int lgx_lex(lgx_lex_t* ctx) {
             } else if (n == '_' || (n >= 'a' && n <= 'z') ||
                        (n >= 'A' && n <= 'Z')) {
                 step_to_eoi(ctx);
-                return lgx_token_detect_reserved_word(ctx->source + ctx->milestone, ctx->offset - ctx->milestone);
+                return lgx_token_detect_reserved_word(ctx->source.content + ctx->milestone, ctx->offset - ctx->milestone);
             } else {
                 // 非法字符
                 return TK_UNKNOWN;
