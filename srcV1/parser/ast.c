@@ -52,26 +52,30 @@ error:
 // 解析下一个 token
 void ast_step(lgx_ast_t* ast) {
     lgx_token_t token;
-    int loop = 1;
-    while (loop) {
+    while (1) {
         token = lgx_lex_next(&ast->lex);
         switch (token) {
             case TK_SPACE:
             case TK_COMMENT:
                 // 忽略空格与注释
                 break;
+            case TK_EOL:
+                // TODO 完善自动插入分号的规则
+                if (ast->prev_token != TK_RIGHT_BRACE) {
+                    // 不符合规则的换行被忽略
+                    break;
+                }
+                // 符合规则的换行自动转换为分号
+                token = TK_SEMICOLON;
             default:
-                loop = 0;
+                ast->prev_token = ast->cur_token;
+
+                ast->cur_token = token;
+                ast->cur_start = ast->lex.source.content + ast->lex.milestone;
+                ast->cur_length = ast->lex.offset - ast->lex.milestone;
+                return;
         }
     }
-
-    // TODO 遇到 TK_EOL 时，自动决定是忽略还是转换为分号
-
-    ast->prev_token = ast->cur_token;
-
-    ast->cur_token = token;
-    ast->cur_start = ast->lex.source.content + ast->lex.milestone;
-    ast->cur_length = ast->lex.offset - ast->lex.milestone;
 }
 
 // 追加一条错误信息
