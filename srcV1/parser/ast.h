@@ -104,9 +104,6 @@ typedef struct lgx_ast_error_list_s {
     // 错误信息
     int err_no;
     lgx_str_t err_msg;
-
-    // 发生错误的 AST 节点
-    lgx_ast_node_t *node;
 } lgx_ast_error_list_t;
 
 typedef struct lgx_ast {

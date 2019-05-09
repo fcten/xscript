@@ -6,6 +6,7 @@ int main(int argc, char* argv[]) {
 
     lgx_ast_t ast;
     if (lgx_ast_init(&ast, argv[1])) {
+        lgx_ast_print(&ast);
         lgx_ast_print_error(&ast);
         return 1;
     }
