@@ -50,7 +50,8 @@ const lgx_token_str_t reserved_words[LGX_RESERVED_WORDS] = {
     {TK_CO, "co"},
 
     {TK_IMPORT, "import"},
-    {TK_EXPORT, "export"}
+    {TK_EXPORT, "export"},
+    {TK_PACKAGE, "package"}
 };
 
 // 字典树

@@ -25,6 +25,8 @@ typedef struct lgx_lex_s {
 } lgx_lex_t;
 
 int lgx_lex_init(lgx_lex_t *ctx, char* path);
+int lgx_lex_cleanup(lgx_lex_t *ctx);
+
 lgx_token_t lgx_lex_next(lgx_lex_t *ctx);
 
 #endif // LGX_LEX_H

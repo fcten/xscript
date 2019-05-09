@@ -127,7 +127,9 @@ typedef struct lgx_ast {
 } lgx_ast_t;
 
 int lgx_ast_init(lgx_ast_t* ast, char* file);
+int lgx_ast_cleanup(lgx_ast_t* ast);
 
 void lgx_ast_print(lgx_ast_t* ast);
+void lgx_ast_print_error(lgx_ast_t* ast);
 
 #endif // LGX_AST_H

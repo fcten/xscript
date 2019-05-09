@@ -177,6 +177,10 @@ int lgx_lex_init(lgx_lex_t* ctx, char* path) {
     return lgx_source_init(&ctx->source, path);
 }
 
+int lgx_lex_cleanup(lgx_lex_t *ctx) {
+    return lgx_source_cleanup(&ctx->source);
+}
+
 lgx_token_t lgx_lex_next(lgx_lex_t* ctx) {
     if (ctx->offset >= ctx->source.length) {
         return TK_EOF;

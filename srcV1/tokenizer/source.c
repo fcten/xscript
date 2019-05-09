@@ -60,6 +60,12 @@ error:
         fclose(fp);
     }
 
+    lgx_source_cleanup(source);
+
+    return err_no;
+}
+
+int lgx_source_cleanup(lgx_source_t* source) {
     if (source->path) {
         xfree(source->path);
     }
@@ -70,5 +76,5 @@ error:
 
     memset(source, 0, sizeof(lgx_source_t));
 
-    return err_no;
+    return 0;
 }
