@@ -14,7 +14,7 @@ typedef enum {
     IF_ELSE_STATEMENT,
     FOR_STATEMENT,
     WHILE_STATEMENT,
-    DO_WHILE_STATEMENT,
+    DO_STATEMENT,
     CONTINUE_STATEMENT,
     BREAK_STATEMENT,
     SWITCH_STATEMENT,
@@ -26,11 +26,13 @@ typedef enum {
     CATCH_STATEMENT,
     THROW_STATEMENT,
     // Declaration
-    FUNCTION_DECLARATION,
+    PACKAGE_DECLARATION,
+    IMPORT_DECLARATION,
+    EXPORT_DECLARATION,
     VARIABLE_DECLARATION,
     CONSTANT_DECLARATION,
-    STRUCT_DECLARATION,
-    INTERFACE_DECLARATION,
+    FUNCTION_DECLARATION,
+    TYPE_DECLARATION,
     // Parameter
     FUNCTION_CALL_PARAMETER,
     FUNCTION_DECL_PARAMETER,
@@ -38,8 +40,8 @@ typedef enum {
     BINARY_EXPRESSION,
     UNARY_EXPRESSION,
     ARRAY_EXPRESSION,
-    FUNCTION_EXPRESSION,
     STRUCT_EXPRESSION,
+    TYPE_EXPRESSION,
     // Other
     IDENTIFIER_TOKEN,
     LONG_TOKEN,
@@ -48,6 +50,8 @@ typedef enum {
     STRING_TOKEN,
     TRUE_TOKEN,
     FALSE_TOKEN,
+    NULL_TOKEN,
+    FOR_CONDITION
 } lgx_ast_type_t;
 
 typedef struct lgx_ast_node_list_s {
@@ -63,7 +67,11 @@ typedef struct lgx_ast_node_s {
     struct lgx_ast_node_s* parent;
 
     // 子节点
-    lgx_list_t children; // lgx_ast_node_list_t
+    unsigned children;
+    struct lgx_ast_node_s* child;
+
+    // 平行节点
+    lgx_list_t list; // lgx_ast_node_t
 
     // 当前节点对应的代码位置
     unsigned offset;
@@ -74,8 +82,8 @@ typedef struct lgx_ast_node_s {
         // 当节点类型为 BLOCK 时，用于保存符号表
         lgx_ht_t *symbols;
 
-        // 当节点类型为 EXPRESSION 时，用于保存 EXPRESSION 的类型
-        unsigned short op;
+        // 当节点类型为 BINARY_EXPRESSION、UNARY_EXPRESSION 时，用于保存 EXPRESSION 的操作符
+        lgx_token_t op;
 
         // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
         // 当节点类型为 SWITCH_CASE_STATEMENT 时，保存 break 语句出现的位置
