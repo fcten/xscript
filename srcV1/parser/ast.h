@@ -5,7 +5,6 @@
 #include "../common/ht.h"
 #include "../tokenizer/lex.h"
 #include "type.h"
-#include "symbol.h"
 
 typedef enum {
     // Statement
@@ -73,6 +72,7 @@ typedef struct lgx_ast_node_s {
 
     // 当前节点对应的代码位置
     unsigned offset;
+    unsigned length;
     unsigned line;
     unsigned row;
 

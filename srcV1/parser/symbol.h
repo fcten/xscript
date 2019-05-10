@@ -10,6 +10,6 @@ typedef enum {
     S_TYPE,
 } lgx_symbol_type_t;
 
-int lgx_symbol_add(lgx_ht_t *symbols, lgx_symbol_type_t type, lgx_str_t s_name, lgx_value_t s_type);
+int lgx_symbol_init(lgx_ast_t* ast);
 
 #endif // LGX_SYMBOL_H

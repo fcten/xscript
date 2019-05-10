@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "symbol.h"
 
 static void ast_node_cleanup(lgx_ast_node_t* node) {
     switch (node->type) {
@@ -19,7 +20,8 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
         return NULL;
     }
 
-    node->offset = ast->lex.offset;
+    node->offset = ast->lex.milestone;
+    node->length = ast->lex.offset - ast->lex.milestone;
     node->line = ast->lex.line;
     node->row = ast->lex.row;
 
@@ -394,6 +396,7 @@ static int ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         lgx_ast_node_t* last_child = ast_node_last_child(parent);
         binary_expression->parent = last_child->parent;
         binary_expression->offset = last_child->offset;
+        binary_expression->length = last_child->length;
         binary_expression->line = last_child->line;
         binary_expression->row = last_child->row;
 
@@ -634,6 +637,7 @@ static int ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int 
         lgx_ast_node_t* last_child = ast_node_last_child(parent);
         binary_expression->parent = last_child->parent;
         binary_expression->offset = last_child->offset;
+        binary_expression->length = last_child->length;
         binary_expression->line = last_child->line;
         binary_expression->row = last_child->row;
 
@@ -1394,7 +1398,11 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
     // 读取一个 token
     ast_step(ast);
 
-    return ast_parse(ast, ast->root);
+    if (ast_parse(ast, ast->root)) {
+        return 3;
+    }
+
+    return lgx_symbol_init(ast);
 }
 
 int lgx_ast_cleanup(lgx_ast_t* ast) {
