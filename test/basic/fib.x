@@ -1,8 +1,10 @@
 function fib(n int) {
     if (n < 2) {
-        return n
+        return n;
     }
-    return fib(n-1) + fib(n-2)
+    return fib(n-1) + fib(n-2);
 }
 
-echo fib(20)
+function main() {
+    print(fib(20));
+}

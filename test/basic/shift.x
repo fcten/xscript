@@ -1,7 +1,9 @@
-var a = 1 << 2  // 4
-var b = 37 >> 2 // 9
+function main() {
+    var a = 1 << 2;  // 4
+    var b = 37 >> 2; // 9
 
-echo a << 2 // 16
-echo b >> 2 // 2
-echo a << b // 2048
-echo a >> b // 0
+    print(a << 2); // 16
+    print(b >> 2); // 2
+    print(a << b); // 2048
+    print(a >> b); // 0
+}

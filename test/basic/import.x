@@ -1,5 +1,7 @@
-import "basic/import_test.x"
+import "basic/export_test.x"
 
-import_test()
+function main() {
+    export_test();
 
-echo "import end"
+    print("import end");
+}

@@ -1,14 +1,15 @@
-function print() {
-    echo "hello world"
+function test() {
+    print("hello world");
 }
 
-print()
-
-var a = 1, b = 2
-
-function add (c int, d int) {
+function add(c int, d int) {
     var e = 3, f = 4;
     return c + d;
 }
 
-echo add(a, b + 1)
+function main() {
+    test();
+
+    var a = 1, b = 2;
+    print(add(a, b + 1));
+}

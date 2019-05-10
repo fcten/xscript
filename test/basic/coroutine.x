@@ -1,14 +1,16 @@
-function print(from int, to int) {
-    var i int
+function test(from int, to int) {
+    var i int;
     for (i = from; i <= to; i = i + 1) {
-        echo i
-        co_sleep(10)
+        print(i);
+        co_sleep(10);
     }
 }
 
-echo "main start"
+function main() {
+    print("main start");
 
-co print(100, 110)
-print(200, 210)
+    co test(100, 110);
+    test(200, 210);
 
-echo "main end"
+    print("main end");
+}

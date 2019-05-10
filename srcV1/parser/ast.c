@@ -19,8 +19,6 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
         return NULL;
     }
 
-    lgx_list_init(&node->list);
-
     node->offset = ast->lex.offset;
     node->line = ast->lex.line;
     node->row = ast->lex.row;
@@ -54,25 +52,43 @@ error:
 static int ast_node_append_child(lgx_ast_node_t* parent, lgx_ast_node_t* child) {
     child->parent = parent;
 
-    if (!parent->child) {
-        parent->child = child;
-    } else {
-        lgx_list_add_tail(&child->list, &parent->child->list);
+    // 如果空间不足，则扩展空间
+    if (parent->size <= parent->children) {
+        if (parent->size == 0) {
+            parent->child = (lgx_ast_node_t**)xmalloc(sizeof(lgx_ast_node_t*));
+            if (!parent->child) {
+                return 1;
+            }
+            parent->size = 1;
+        } else {
+            lgx_ast_node_t** p = (lgx_ast_node_t**)xrealloc(parent->child, 2 * parent->size * sizeof(lgx_ast_node_t*));
+            if (!p) {
+                return 1;
+            }
+            parent->child = p;
+            parent->size *= 2;
+        }
     }
 
+    parent->child[parent->children] = child;
     parent->children ++;
     
     return 0;
 }
 
 static int ast_node_remove_child(lgx_ast_node_t* parent, lgx_ast_node_t* child) {
-    lgx_list_del(&child->list);
+    assert(parent->children);
 
-    if (parent->child == child) {
-        parent->child = NULL;
-    }
+    parent->children --;
+    parent->child[parent->children] = NULL;
 
     return 0;
+}
+
+static lgx_ast_node_t* ast_node_last_child(lgx_ast_node_t* parent) {
+    assert(parent->children);
+
+    return parent->child[parent->children - 1];
 }
 
 // 解析下一个 token
@@ -125,8 +141,13 @@ static void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
         return;
     }
 
-    err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-        "[ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line, ast->lex.row);
+    if (ast->lex.source.path) {
+        err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
+            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line, ast->lex.row);
+    } else {
+        err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
+            "[ERROR] ");
+    }
 
     va_start(args, fmt);
     err->err_msg.length += vsnprintf(err->err_msg.buffer + err->err_msg.length,
@@ -203,7 +224,7 @@ static int ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             }
         }
 
-        if (ast->cur_token != ',') {
+        if (ast->cur_token != TK_COMMA) {
             return 0;
         }
         ast_step(ast);
@@ -224,7 +245,7 @@ static int ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return 1;
         }
 
-        if (ast->cur_token != ',') {
+        if (ast->cur_token != TK_COMMA) {
             return 0;
         }
         ast_step(ast);
@@ -232,7 +253,28 @@ static int ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 }
 
 static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    // TODO
+    lgx_ast_node_t* type_expression = ast_node_new(ast, TYPE_EXPRESSION);
+    ast_node_append_child(parent, type_expression);
+
+    switch (ast->cur_token) {
+        case TK_INT:
+        case TK_FLOAT:
+        case TK_BOOL:
+        case TK_STRING:
+        case TK_IDENTIFIER:
+            ast_step(ast);
+            break;
+        case TK_ARRAY:
+        case TK_STRUCT:
+        case TK_INTERFACE:
+        case TK_FUNCTION:
+        // TODO
+            ast_step(ast);
+            break;
+        default:
+            break;
+    }
+
     return 0;
 }
 
@@ -303,7 +345,7 @@ static int ast_parse_struct_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return 1;
         }
 
-        if (ast->cur_token != TK_DOT) {
+        if (ast->cur_token != TK_COMMA) {
             break;
         }
         ast_step(ast);
@@ -349,7 +391,7 @@ static int ast_parse_suf_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
         lgx_ast_node_t* binary_expression = ast_node_new(ast, BINARY_EXPRESSION);
 
-        lgx_ast_node_t* last_child = lgx_list_last_entry(&parent->child->list, lgx_ast_node_t, list);
+        lgx_ast_node_t* last_child = ast_node_last_child(parent);
         binary_expression->parent = last_child->parent;
         binary_expression->offset = last_child->offset;
         binary_expression->line = last_child->line;
@@ -589,7 +631,7 @@ static int ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int 
         lgx_ast_node_t* binary_expression = ast_node_new(ast, BINARY_EXPRESSION);
         binary_expression->u.op = ast->cur_token;
 
-        lgx_ast_node_t* last_child = lgx_list_last_entry(&parent->child->list, lgx_ast_node_t, list);
+        lgx_ast_node_t* last_child = ast_node_last_child(parent);
         binary_expression->parent = last_child->parent;
         binary_expression->offset = last_child->offset;
         binary_expression->line = last_child->line;
@@ -819,7 +861,7 @@ static int ast_parse_case_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         return 0;
     }
 
-    if (ast->cur_token != TK_SEMICOLON) {
+    if (ast->cur_token != TK_COLON) {
         ast_error(ast, "':' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
     }
@@ -1051,7 +1093,7 @@ static int ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
         variable_declaration = NULL;
 
         switch (ast->cur_token) {
-            case ',':
+            case TK_COMMA:
                 ast_step(ast);
                 break;
             default:
@@ -1080,14 +1122,12 @@ static int ast_parse_constant_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
             ast_node_append_child(parent, constant_declaration);
         }
 
-        if (ast_parse_type_expression(ast, constant_declaration)) {
+        if (ast_parse_identifier_token(ast, constant_declaration)) {
             return 1;
         }
 
-        if (ast->cur_token == TK_IDENTIFIER) {
-            if (ast_parse_identifier_token(ast, constant_declaration)) {
-                return 1;
-            }
+        if (ast_parse_type_expression(ast, constant_declaration)) {
+            return 1;
         }
 
         if (ast->cur_token != TK_ASSIGN) {
@@ -1103,7 +1143,7 @@ static int ast_parse_constant_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
         constant_declaration = NULL;
 
         switch (ast->cur_token) {
-            case ',':
+            case TK_COMMA:
                 ast_step(ast);
                 break;
             default:
@@ -1157,7 +1197,9 @@ static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
 
     // 函数体
     if (ast->cur_token == TK_LEFT_BRACE) {
-        ast_parse_block_statement_with_braces(ast, function_declaration);
+        if (ast_parse_block_statement_with_braces(ast, function_declaration)) {
+            return 1;
+        }
     }
 
     return 0;
@@ -1339,6 +1381,7 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
     lgx_list_init(&ast->errors);
 
     if (lgx_lex_init(&ast->lex, file) != 0) {
+        ast_error(ast, "can't open input file: %s\n", file);
         return 1;
     }
 
@@ -1366,15 +1409,13 @@ int lgx_ast_cleanup(lgx_ast_t* ast) {
 static void ast_print(lgx_ast_node_t* node, int indent);
 
 static void ast_print_child(lgx_ast_node_t* node, int indent) {
-    if (!node) {
+    if (!node->children) {
         return;
     }
 
-    ast_print(node, indent+2);
-
-    lgx_ast_node_t* child;
-    lgx_list_for_each_entry(child, lgx_ast_node_t, &node->list, list) {
-        ast_print(child, indent+2);
+    int i;
+    for (i = 0; i < node->children; ++i) {
+        ast_print(node->child[i], indent + 2);
     }
 }
 
@@ -1387,28 +1428,28 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
         // Statement
         case BLOCK_STATEMENT:
             printf("%*s%s\n", indent, "", "{");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", "}");
             break;
         case IF_STATEMENT:
             printf("%*s%s\n", indent, "", "IF_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case IF_ELSE_STATEMENT:
             printf("%*s%s\n", indent, "", "IF_ELSE_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case FOR_STATEMENT:
             printf("%*s%s\n", indent, "", "FOR_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case WHILE_STATEMENT:
             printf("%*s%s\n", indent, "", "WHILE_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case DO_STATEMENT:
             printf("%*s%s\n", indent, "", "DO_WHILE_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case CONTINUE_STATEMENT:
             printf("%*s%s\n", indent, "", "CONTINUE_STATEMENT");
@@ -1418,98 +1459,98 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case SWITCH_STATEMENT:
             printf("%*s%s\n", indent, "", "SWITCH_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case CASE_STATEMENT:
             printf("%*s%s\n", indent, "", "CASE_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case DEFAULT_STATEMENT:
             printf("%*s%s\n", indent, "", "DEFAULT_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case RETURN_STATEMENT:
             printf("%*s%s\n", indent, "", "RETURN_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case EXPRESSION_STATEMENT:
             printf("%*s%s\n", indent, "", "EXPRESSION_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case TRY_STATEMENT:
             printf("%*s%s\n", indent, "", "TRY_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case CATCH_STATEMENT:
             printf("%*s%s\n", indent, "", "CATCH_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case THROW_STATEMENT:
             printf("%*s%s\n", indent, "", "THROW_STATEMENT");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         // Declaration
         case PACKAGE_DECLARATION:
             printf("%*s%s\n", indent, "", "PACKAGE_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case IMPORT_DECLARATION:
             printf("%*s%s\n", indent, "", "IMPORT_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case EXPORT_DECLARATION:
             printf("%*s%s\n", indent, "", "EXPORT_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case VARIABLE_DECLARATION:
             printf("%*s%s\n", indent, "", "VARIABLE_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case CONSTANT_DECLARATION:
             printf("%*s%s\n", indent, "", "CONSTANT_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case FUNCTION_DECLARATION:
             printf("%*s%s\n", indent, "", "FUNCTION_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         case TYPE_DECLARATION:
             printf("%*s%s\n", indent, "", "TYPE_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         // Parameter
         case FUNCTION_CALL_PARAMETER:
         case FUNCTION_DECL_PARAMETER:
             printf("%*s%s\n", indent, "", "(");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", ")");
             break;
         // Expression
         case BINARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
             printf("%*s%d\n", indent, "", node->u.op);
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", ")");
             break;
         case UNARY_EXPRESSION:
             printf("%*s%s\n", indent, "", "(");
             printf("%*s%c\n", indent, "", node->u.op);
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", ")");
             break;
         case ARRAY_EXPRESSION:
             printf("%*s%s\n", indent, "", "[");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", "]");
             break;
         case STRUCT_EXPRESSION:
             printf("%*s%s\n", indent, "", "{");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             printf("%*s%s\n", indent, "", "}");
             break;
         case TYPE_EXPRESSION:
             printf("%*s%s\n", indent, "", "TYPE_DECLARATION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         // Other
         case IDENTIFIER_TOKEN:
@@ -1538,7 +1579,7 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case FOR_CONDITION:
             printf("%*s%s\n", indent, "", "FOR_CONDITION");
-            ast_print_child(node->child, indent+2);
+            ast_print_child(node, indent);
             break;
         default:
             printf("%*s%s %d\n", indent, "", "ERROR!", node->type);

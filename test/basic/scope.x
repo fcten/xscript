@@ -2,15 +2,16 @@
 3
 */
 
-var a = 1
-var b, c
+function main() {
+    var a = 1;
+    var b, c;
 
-do {
-    var a = 2
-    b = a
-} while (false)
+    do {
+        var a = 2;
+        b = a;
+    } while (false);
 
-c = a
+    c = a;
 
-echo b + c
-
+    print(b + c);
+}

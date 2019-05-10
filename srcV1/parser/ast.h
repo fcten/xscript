@@ -67,11 +67,9 @@ typedef struct lgx_ast_node_s {
     struct lgx_ast_node_s* parent;
 
     // 子节点
+    unsigned size;
     unsigned children;
-    struct lgx_ast_node_s* child;
-
-    // 平行节点
-    lgx_list_t list; // lgx_ast_node_t
+    struct lgx_ast_node_s** child;
 
     // 当前节点对应的代码位置
     unsigned offset;
@@ -91,10 +89,6 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 BREAK_STATEMENT、CONTINUE_STATEMENT、RETURN_STATEMENT 时，用于保存语句在字节码中对于的位置
         unsigned pos;
-
-        // 当节点类型为 VARIABLE_DECLARATION 时，保存变量类型
-        // 当节点类型为 FUNCTION_DECLARATION 时，保存返回值类型
-        lgx_value_t *type;
     } u;
 } lgx_ast_node_t;
 

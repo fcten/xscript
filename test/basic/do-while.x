@@ -2,10 +2,12 @@
 2
 */
 
-var i = 0
+function main() {
+    var i = 0;
 
-do {
-    i = i + 1
-} while (i <= 1)
+    do {
+        i = i + 1;
+    } while (i <= 1);
 
-echo i
+    print(i);
+}

@@ -1,27 +1,29 @@
-try {
-    throw 1
-} catch (auto e) {
-    echo "catch exception 1"
-}
+function main() {
+    try {
+        throw 1;
+    } catch (auto e) {
+        print("catch exception 1");
+    }
 
-function test() {
-    throw Exception{1, "exception"}
-}
+    function test() {
+        throw {errno: 1, errmsg: "exception"};
+    }
 
-try {
-    test()
-} catch (auto e) {
-    echo "catch exception 2"
-}
+    try {
+        test();
+    } catch (e interface{}) {
+        print("catch exception 2");
+    }
 
-try {
-    test()
-} catch (string e) {
-    echo "catch exception 3"
-} catch (int e) {
-    echo "catch exception 4"
-} catch (Exception e) {
-    echo "catch exception 5"
-}
+    try {
+        test();
+    } catch (e string) {
+        print("catch exception 3");
+    } catch (e int) {
+        print("catch exception 4");
+    } catch (e interface{}) {
+        print("catch exception 5");
+    }
 
-throw Exception{2, "uncaught exception"}
+    throw {errno: 2, errmsg: "uncaught exception"};
+}

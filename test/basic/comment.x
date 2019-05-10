@@ -4,12 +4,14 @@
 
 // 测试用例
 
-var a = 1
+var a = 1;
 
 /*
 12345
  */
 
-a = a + 1
+function main() {
+    a = a + 1;
 
-echo a
+    print(a);
+}

@@ -2,11 +2,13 @@
 5050
 */
 
-var a = 100000, b = 0
+function main() {
+    var a = 100000, b = 0;
 
-while (a > 0) {
-    b = b + a
-    a = a - 1
+    while (a > 0) {
+        b = b + a;
+        a = a - 1;
+    }
+
+    print(b);
 }
-
-echo b

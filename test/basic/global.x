@@ -8,4 +8,6 @@ function add(b int) {
     return a + b;
 }
 
-echo add(2);
+function main() {
+    print(add(2));
+}

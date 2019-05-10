@@ -1,15 +1,15 @@
-const WELCOME = "Hello" + " " + "World"
+const WELCOME = "Hello" + " " + "World";
 
-echo WELCOME
-
-const MAX_NUMBER = 100 * 100
-
-echo MAX_NUMBER
+const MAX_NUMBER = 100 * 100;
 
 function test() float {
-    const MAX_PRICE = 10.1
-    echo MAX_PRICE
-    return MAX_PRICE
+    const MAX_PRICE = 10.1;
+    print(MAX_PRICE);
+    return MAX_PRICE;
 }
 
-echo test()
+function main() {
+    print(WELCOME);
+    print(MAX_NUMBER);
+    print(test());
+}
