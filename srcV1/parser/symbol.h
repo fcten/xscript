@@ -10,6 +10,20 @@ typedef enum {
     S_TYPE,
 } lgx_symbol_type_t;
 
+typedef struct {
+    // 符号名
+    lgx_str_t name;
+
+    // 符号类型
+    lgx_symbol_type_t type;
+
+    // 值类型
+    lgx_value_t value;
+
+    // 符号被声明的位置
+    unsigned offset;
+} lgx_symbol_t;
+
 int lgx_symbol_init(lgx_ast_t* ast);
 
 #endif // LGX_SYMBOL_H

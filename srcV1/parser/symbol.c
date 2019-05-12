@@ -40,6 +40,18 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
     name.buffer = ast->lex.source.content + node->offset;
     name.length = node->length;
 
+    lgx_ht_node_t* ht_node = lgx_ht_get(symbols, &name);
+    if (ht_node) {
+        lgx_ast_node_t* n = (lgx_ast_node_t*)ht_node->v;
+        symbol_error(ast, node, "symbol `%.*s` alreay declared at line %d row %d\n", name.length, name.buffer, n->line, n->row);
+        return 1;
+    }
+
+    if (lgx_ht_set(symbols, &name, node)) {
+        symbol_error(ast, node, "symbol `%.*s` unkonwn error\n", name.length, name.buffer);
+        return 1;
+    }
+
     switch (type) {
     case S_VARIABLE:
         symbol_error(ast, node, "[variable] %.*s\n", name.length, name.buffer);
@@ -127,6 +139,10 @@ static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
 
 // 检查标识符是否被定义
 static int symbol_check_identifier(lgx_ast_t* ast, lgx_ast_node_t* node) {
+    // TODO 如果是函数，不受先声明后定义的限制
+
+    // TODO 如果是变量，必须先声明后定义
+
     return 0;
 }
 

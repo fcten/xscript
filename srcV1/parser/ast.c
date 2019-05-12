@@ -6,6 +6,7 @@ static void ast_node_cleanup(lgx_ast_node_t* node) {
         case BLOCK_STATEMENT:
             if (node->u.symbols) {
                 lgx_ht_cleanup(node->u.symbols);
+                xfree(node->u.symbols);
                 node->u.symbols = NULL;
             }
             break;
@@ -32,7 +33,7 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
             if (!node->u.symbols) {
                 goto error;
             }
-            if (lgx_ht_init(node->u.symbols) != 0) {
+            if (lgx_ht_init(node->u.symbols, 8) != 0) {
                 goto error;
             }
             break;

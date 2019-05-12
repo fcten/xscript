@@ -14,6 +14,9 @@ typedef struct lgx_str_s {
 #define lgx_str_set_null(stri)   (stri).length = 0; (stri).buffer = NULL
 
 int lgx_str_init(lgx_str_t* str, unsigned size);
-int lgx_str_cleanup(lgx_str_t* str);
+void lgx_str_cleanup(lgx_str_t* str);
+
+int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
+int lgx_str_dup(lgx_str_t *src, lgx_str_t *dst);
 
 #endif // LGX_STR_H

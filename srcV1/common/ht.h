@@ -25,10 +25,14 @@ typedef struct lgx_ht_s {
     unsigned length;
 
     // 存储数据的结构
-    lgx_ht_node_t* table;
+    lgx_ht_node_t** table;
 } lgx_ht_t;
 
-int lgx_ht_init(lgx_ht_t* ht);
+int lgx_ht_init(lgx_ht_t* ht, unsigned size);
 int lgx_ht_cleanup(lgx_ht_t* ht);
+
+int lgx_ht_set(lgx_ht_t *ht, lgx_str_t* k, void* v);
+lgx_ht_node_t* lgx_ht_get(lgx_ht_t *ht, lgx_str_t* k);
+int lgx_ht_del(lgx_ht_t *ht, lgx_str_t* k);
 
 #endif	/* LGX_HT_H */
