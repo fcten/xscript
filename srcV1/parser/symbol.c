@@ -46,8 +46,8 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
 
     lgx_ht_node_t* ht_node = lgx_ht_get(symbols, &name);
     if (ht_node) {
-        lgx_ast_node_t* n = (lgx_ast_node_t*)ht_node->v;
-        symbol_error(ast, node, "symbol `%.*s` alreay declared at line %d row %d\n", name.length, name.buffer, n->line, n->row);
+        lgx_symbol_t* symbol = (lgx_symbol_t*)ht_node->v;
+        symbol_error(ast, node, "symbol `%.*s` alreay declared at line %d row %d\n", name.length, name.buffer, symbol->node->line, symbol->node->row);
         return 1;
     }
 
