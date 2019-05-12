@@ -33,6 +33,10 @@ static void symbol_error(lgx_ast_t* ast, lgx_ast_node_t* node, const char *fmt, 
     lgx_list_add_tail(&err->head, &ast->errors);
 }
 
+static lgx_symbol_t* symbol_new() {
+    return (lgx_symbol_t*)xcalloc(1, sizeof(lgx_symbol_t));
+}
+
 static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, lgx_symbol_type_t type) {
     assert(node->type == IDENTIFIER_TOKEN);
 
@@ -47,7 +51,14 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
         return 1;
     }
 
-    if (lgx_ht_set(symbols, &name, node)) {
+    lgx_symbol_t* symbol = symbol_new();
+    if (!symbol) {
+        return 1;
+    }
+    symbol->type = type;
+    symbol->node = node;
+
+    if (lgx_ht_set(symbols, &name, symbol)) {
         symbol_error(ast, node, "symbol `%.*s` unkonwn error\n", name.length, name.buffer);
         return 1;
     }
@@ -137,15 +148,6 @@ static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
     return 0;
 }
 
-// 检查标识符是否被定义
-static int symbol_check_identifier(lgx_ast_t* ast, lgx_ast_node_t* node) {
-    // TODO 如果是函数，不受先声明后定义的限制
-
-    // TODO 如果是变量，必须先声明后定义
-
-    return 0;
-}
-
 static int symbol_generate(lgx_ast_t* ast, lgx_ast_node_t* node) {
     int i, ret = 0;
 
@@ -185,29 +187,27 @@ static int symbol_generate(lgx_ast_t* ast, lgx_ast_node_t* node) {
     return ret;
 }
 
-static int symbol_check(lgx_ast_t* ast, lgx_ast_node_t* node) {
-    int i, ret = 0;
-
-    if (node->type == IDENTIFIER_TOKEN) {
-        if (symbol_check_identifier(ast, node)) {
-            ret = 1;
-        }
-    }
-
-    for (i = 0; i < node->children; ++i) {
-        if (symbol_check(ast, node->child[i])) {
-            ret = 1;
-        }
-    }
-    
-    return ret;
-}
-
 // 遍历语法树生成符号信息
 int lgx_symbol_init(lgx_ast_t* ast) {
-    if (symbol_generate(ast, ast->root)) {
-        return 1;
+    return symbol_generate(ast, ast->root);
+}
+
+// 根据名称和位置查找符号表
+// 如果不限制声明必须在使用之前，则传入 offset = 0
+lgx_symbol_t* lgx_symbol_get(lgx_ast_node_t* node, lgx_str_t* name, unsigned offset) {
+    if (node->type == BLOCK_STATEMENT) {
+        lgx_ht_node_t* ht_node = lgx_ht_get(node->u.symbols, name);
+        if (ht_node) {
+            lgx_symbol_t* n = (lgx_symbol_t*)ht_node->v;
+            if (offset == 0 || n->node->offset < offset) {
+                return n;
+            }
+        }
     }
 
-    return symbol_check(ast, ast->root);
+    if (!node->parent) {
+        return NULL;
+    }
+
+    return lgx_symbol_get(node->parent, name, offset);
 }

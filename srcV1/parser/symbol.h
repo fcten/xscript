@@ -11,19 +11,19 @@ typedef enum {
 } lgx_symbol_type_t;
 
 typedef struct {
-    // 符号名
-    lgx_str_t name;
-
     // 符号类型
     lgx_symbol_type_t type;
 
     // 值类型
     lgx_value_t value;
 
-    // 符号被声明的位置
-    unsigned offset;
+    // 符号声明对应的 AST 节点
+    lgx_ast_node_t* node;
 } lgx_symbol_t;
 
 int lgx_symbol_init(lgx_ast_t* ast);
+int lgx_symbol_cleanup(lgx_ast_t* ast);
+
+lgx_symbol_t* lgx_symbol_get(lgx_ast_node_t* node, lgx_str_t* name, unsigned offset);
 
 #endif // LGX_SYMBOL_H
