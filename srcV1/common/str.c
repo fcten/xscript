@@ -22,20 +22,27 @@ void lgx_str_cleanup(lgx_str_t* str) {
     memset(str, 0, sizeof(lgx_str_t));
 }
 
-// 相等返回 0，不相等返回 1。
+// 相等返回 0
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2) {
-    if (str1->length != str2->length) {
-        return 1;
+    int len = str1->length;
+    if (str1->length > str2->length) {
+        len = str2->length;
     }
     
     int i;
-    for (i = 0; i < str1->length; i++) {
+    for (i = 0; i < len; i++) {
         if (str1->buffer[i] != str2->buffer[i]) {
-            return 1;
+            return str1->buffer[i] - str2->buffer[i];
         }
     }
     
-    return 0;
+    if (str1->length == str2->length) {
+        return 0;
+    } else if (str1->length == len) {
+        return -str2->buffer[i];
+    } else {
+        return str1->buffer[i];
+    }
 }
 
 static int str_resize(lgx_str_t *str, unsigned size) {
