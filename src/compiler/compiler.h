@@ -1,21 +1,15 @@
 #ifndef LGX_COMPILER_H
 #define LGX_COMPILER_H
 
-#include "../common/hash.h"
-#include "../common/bytecode.h"
+#include "../common/ht.h"
 #include "../parser/ast.h"
-#include "../webit/common/wbt_rbtree.h"
+#include "../common/rb.h"
+#include "register.h"
 
 typedef struct {
-    unsigned char top;
-    unsigned char max;
-    unsigned char regs[256];
-} lgx_reg_alloc_t;
+    lgx_ast_t ast;
 
-typedef struct {
-    lgx_ast_t *ast;
-
-    lgx_reg_alloc_t *reg;
+    lgx_reg_t reg;
     
     // 字节码
     unsigned *bc;
@@ -23,20 +17,16 @@ typedef struct {
     unsigned bc_top;
 
     // 常量表
-    lgx_hash_t* constant;
+    lgx_ht_t constant;
 
     // 全局变量
-    lgx_hash_t* global;
+    lgx_ht_t global;
 
     // 异常处理
-    wbt_rb_t *exception;
+    wbt_rb_t exception;
+} lgx_compiler_t;
 
-    int err_no;
-    char *err_info;
-    int err_len;
-} lgx_bc_t;
-
-int lgx_bc_compile(lgx_ast_t *ast, lgx_bc_t *bc);
-int lgx_bc_cleanup(lgx_bc_t *bc);
+int lgx_compiler_init(lgx_compiler_t* c);
+int lgx_compiler_cleanup(lgx_compiler_t* c);
 
 #endif // LGX_COMPILER_H

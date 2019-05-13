@@ -1,20 +1,22 @@
 #ifndef LGX_STR_H
 #define LGX_STR_H
 
-#include "typedef.h"
+typedef struct lgx_str_s {
+    // 缓冲区长度
+    unsigned size;
+    // 已使用的缓冲区长度（字符串长度）
+    unsigned length;
+    // 指针
+    char *buffer;
+} lgx_str_t;
 
 #define lgx_str_set(stri, text)  (stri).length = sizeof(text) - 1; (stri).buffer = (char *) text
 #define lgx_str_set_null(stri)   (stri).length = 0; (stri).buffer = NULL
 
-lgx_str_t* lgx_str_new(char *str, unsigned len);
-lgx_str_t* lgx_str_new_ref(char *str, unsigned len);
-lgx_str_t* lgx_str_new_with_esc(char *str, unsigned len);
-void lgx_str_delete(lgx_str_t *str);
+int lgx_str_init(lgx_str_t* str, unsigned size);
+void lgx_str_cleanup(lgx_str_t* str);
 
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
-lgx_str_t* lgx_str_copy(lgx_str_t *str);
-int lgx_str_concat(lgx_str_t *str1, lgx_str_t *str2);
-
-void lgx_str_print(lgx_str_t *str);
+int lgx_str_dup(lgx_str_t *src, lgx_str_t *dst);
 
 #endif // LGX_STR_H
