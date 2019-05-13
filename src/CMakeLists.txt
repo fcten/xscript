@@ -5,7 +5,7 @@ aux_source_directory(common XSCRIPT_SRCS)
 aux_source_directory(tokenizer XSCRIPT_SRCS)
 aux_source_directory(parser XSCRIPT_SRCS)
 #aux_source_directory(optimizer XSCRIPT_SRCS)
-#aux_source_directory(compiler XSCRIPT_SRCS)
+aux_source_directory(compiler XSCRIPT_SRCS)
 #aux_source_directory(interpreter XSCRIPT_SRCS)
 #aux_source_directory(extensions XSCRIPT_SRCS)
 

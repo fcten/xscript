@@ -12,7 +12,7 @@ lgx_exception_t* lgx_exception_new() {
     return exception;
 }
 
-void lgx_exception_delete(lgx_exception_t *exception) {
+void lgx_exception_del(lgx_exception_t *exception) {
     while (!wbt_list_empty(&exception->catch_blocks)) {
         lgx_exception_block_t *block = lgx_list_first_entry(&exception->catch_blocks, lgx_exception_block_t, head);
         lgx_list_del(&block->head);

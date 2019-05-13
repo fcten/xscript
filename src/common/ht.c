@@ -129,6 +129,14 @@ int lgx_ht_set(lgx_ht_t *ht, lgx_str_t* k, void* v) {
 
     ++ ht->length;
 
+    if (!ht->tail) {
+        ht->head = node;
+        ht->tail = node;
+    } else {
+        ht->tail->order = node;
+        ht->tail = node;
+    }
+
     if (UNEXPECTED(ht->size < ht->length * 2)) {
         ht_resize(ht);
     }
@@ -190,4 +198,12 @@ int lgx_ht_del(lgx_ht_t *ht, lgx_str_t* k) {
     }
 
     return 0;
+}
+
+lgx_ht_node_t* lgx_ht_first(const lgx_ht_t* ht) {
+    return ht->head;
+}
+
+lgx_ht_node_t* lgx_ht_next(const lgx_ht_node_t* node) {
+    return node->order;
 }

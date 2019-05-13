@@ -10,6 +10,12 @@ static void ast_node_cleanup(lgx_ast_node_t* node) {
                 node->u.symbols = NULL;
             }
             break;
+        case FUNCTION_DECLARATION:
+            if (node->u.regs) {
+                lgx_reg_cleanup(node->u.regs);
+                xfree(node->u.regs);
+                node->u.regs = NULL;
+            }
         default:
             break;
     }
@@ -34,6 +40,15 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
                 goto error;
             }
             if (lgx_ht_init(node->u.symbols, 8) != 0) {
+                goto error;
+            }
+            break;
+        case FUNCTION_DECLARATION:
+            node->u.regs = (lgx_reg_t*)xmalloc(sizeof(lgx_reg_t));
+            if (!node->u.regs) {
+                goto error;
+            }
+            if (lgx_reg_init(node->u.regs) != 0) {
                 goto error;
             }
             break;

@@ -1,8 +1,5 @@
-#include "common.h"
-#include "val.h"
+#include <stdio.h>
 #include "bytecode.h"
-#include "../tokenizer/lex.h"
-#include "../webit/common/wbt_list.h"
 
 const char* op_name[] = {
     "NOP",

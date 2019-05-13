@@ -39,5 +39,4 @@ endif (WIN32)
 # ========================================
 # Include projects
 # ========================================
-add_subdirectory(3rd/hiredis)
 add_subdirectory(src)

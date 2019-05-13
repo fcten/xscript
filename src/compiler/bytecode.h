@@ -52,9 +52,9 @@ enum {
 
     // 跳转
     // TEST 指令限制了单次控制转移距离上限为 64K
-    // TODO 超过限制时应当使用 TEST JMPI 组合指令
+    // 超过限制时应当使用 TEST JMPI 组合指令
     OP_TEST,  // TEST R I
-    // TODO JMP 范围为 0 - 16M，超过范围时可以使用常量表
+    // JMPI 范围为 0 - 16M，超过范围时可以使用常量表
     OP_JMP,   // JMP  R
     OP_JMPI,  // JMPI L
 
@@ -72,6 +72,7 @@ enum {
     OP_ARRAY_SET, // ARRAY_SET R R R    R1[R2] = R3
 
     // 全局变量
+    // 全局变量数量上限为 64K 个
     OP_GLOBAL_GET,// GLOBAL_GET R G     R = G
     OP_GLOBAL_SET,// GLOBAL_SET R G     G = R
 

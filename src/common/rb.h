@@ -28,7 +28,7 @@ typedef struct lgx_rb_s {
     lgx_rb_key_type_t key_type;
 } lgx_rb_t;
 
-void lgx_rb_init(lgx_rb_t* rbt, lgx_rb_key_type_t type);
+int lgx_rb_init(lgx_rb_t* rbt, lgx_rb_key_type_t type);
 void lgx_rb_cleanup(lgx_rb_t *rbt);
 
 lgx_rb_node_t* lgx_rb_set(lgx_rb_t* rbt, lgx_str_t* key);

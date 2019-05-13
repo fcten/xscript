@@ -118,4 +118,6 @@ struct lgx_function_s {
     int (*buildin)(struct lgx_vm_s *vm);
 };
 
+char* lgx_type_to_string(lgx_value_t* v);
+
 #endif // LGX_TYPE_H

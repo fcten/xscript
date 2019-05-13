@@ -147,10 +147,12 @@ void rb_insert_fixup(lgx_rb_t *rbt, lgx_rb_node_t *node) {
     rb_set_black(rbt->root);  
 }
 
-void lgx_rb_init(lgx_rb_t *rbt, lgx_rb_key_type_t type) {
+int lgx_rb_init(lgx_rb_t *rbt, lgx_rb_key_type_t type) {
     rbt->size = 0;
     rbt->root = NULL;
     rbt->key_type = type;
+
+    return 0;
 }
 
 lgx_rb_node_t * lgx_rb_set(lgx_rb_t *rbt, lgx_str_t *key) {

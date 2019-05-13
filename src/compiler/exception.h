@@ -21,7 +21,7 @@ typedef struct {
 } lgx_exception_t;
 
 lgx_exception_t* lgx_exception_new();
-void lgx_exception_delete(lgx_exception_t *exception);
+void lgx_exception_del(lgx_exception_t *exception);
 
 lgx_exception_block_t* lgx_exception_block_new();
 void lgx_exception_block_del(lgx_exception_block_t *block);

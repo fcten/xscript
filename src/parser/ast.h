@@ -4,6 +4,7 @@
 #include "../common/list.h"
 #include "../common/ht.h"
 #include "../tokenizer/lex.h"
+#include "../compiler/register.h"
 #include "type.h"
 
 typedef enum {
@@ -77,8 +78,11 @@ typedef struct lgx_ast_node_s {
     unsigned row;
 
     union {
-        // 当节点类型为 BLOCK 时，用于保存符号表
+        // 当节点类型为 BLOCK_STATEMENT 时，用于保存符号表
         lgx_ht_t *symbols;
+
+        // 当节点类型为 FUNCTION_DECLARATION 时，用于保存寄存器分配器
+        lgx_reg_t *regs;
 
         // 当节点类型为 BINARY_EXPRESSION、UNARY_EXPRESSION 时，用于保存 EXPRESSION 的操作符
         lgx_token_t op;
