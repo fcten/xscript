@@ -477,16 +477,20 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == TRY_STATEMENT);
     assert(node->children >= 1);
 
+    int ret = 0;
+
     lgx_exception_t *exception = lgx_exception_new();
 
     exception->try_block.start = c->bc.length;
-    bc_stat(bc, node->child[0]);
+    if (compiler_block_statement(c, node->child[0])) {
+        ret = 1;
+    }
     exception->try_block.end = c->bc.length;
 
     if (exception->try_block.start == exception->try_block.end) {
         // try block 没有编译产生任何代码
         lgx_exception_delete(exception);
-        break;
+        return ret;
     } else {
         exception->try_block.end --;
     }
@@ -494,59 +498,51 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     int i;
     for (i = 1; i < node->children; i ++) {
         lgx_ast_node_t *n = node->child[i];
+        assert(n->type == CATCH_STATEMENT);
 
-        if (n->type == CATCH_STATEMENT) {
-            lgx_exception_block_t *block = lgx_exception_block_new();
+        lgx_exception_block_t *block = lgx_exception_block_new();
 
-            unsigned pos = c->bc.length;
-            bc_jmpi(bc, 0);
+        unsigned pos = c->bc.length;
+        bc_jmpi(c, 0);
 
-            block->start = c->bc.length;
-            // TODO 处理参数
-            // 编译 catch block
-            bc_stat(bc, n->child[1]);
-            block->end = c->bc.length;
+        // TODO 处理参数
 
-            if (block->start == block->end) {
-                // catch block 没有编译产生任何代码
-                bc_nop(bc);
-            } else {
-                block->end --;
-            }
-
-            bc_set_pe(bc, pos, c->bc.length);
-
-            wbt_list_add_tail(&block->head, &exception->catch_blocks);
-
-            // 保存该 catch block 的参数
-            lgx_str_t s;
-            s.buffer = ((lgx_ast_node_token_t *)n->child[0]->child[0]->child[0])->tk_start;
-            s.length = ((lgx_ast_node_token_t *)n->child[0]->child[0]->child[0])->tk_length;
-            block->e = lgx_scope_local_val_get(n->child[1], &s);
-            assert(block->e);
-        } else {
-            compiler_error(c, n, "finally block is not supported\n");
-            return 1;
+        // 编译 catch block
+        block->start = c->bc.length;
+        if (compiler_block_statement(c, n->child[1])) {
+            ret = 1;
         }
+        block->end = c->bc.length;
+
+        if (block->start == block->end) {
+            // catch block 没有编译产生任何代码
+            bc_nop(c);
+        }
+        block->end --;
+
+        bc_set_param_e(c, pos, c->bc.length);
+
+        lgx_list_add_tail(&block->head, &exception->catch_blocks);
+
+        // TODO 保存该 catch block 的参数
     }
 
-    if (wbt_list_empty(&exception->catch_blocks)) {
+    if (lgx_list_empty(&exception->catch_blocks)) {
         // 如果没有任何 catch block
         lgx_exception_delete(exception);
-        break;
+        return ret;
     }
 
     // 添加 exception
-    unsigned long long int key = ((unsigned long long int)exception->try_block.start << 32) | (0XFFFFFFFF - exception->try_block.end);
+    unsigned long long key = ((unsigned long long)exception->try_block.start << 32) | (0XFFFFFFFF - exception->try_block.end);
 
-    wbt_str_t k;
-    k.str = (char *)&key;
-    k.len = sizeof(key);
+    lgx_str_t k;
+    k.buffer = (char *)&key;
+    k.length = sizeof(key);
 
-    wbt_rb_node_t *n = wbt_rb_insert(bc->exception, &k);
+    lgx_rb_node_t *n = lgx_rb_insert(&c->exception, &k);
     assert(n);
-    n->value.str = (char *)exception;
-    n->value.len = sizeof(lgx_exception_t);
+    n->value = exception;
 
     return 0;
 }
@@ -555,15 +551,15 @@ static int compiler_throw_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == THROW_STATEMENT);
     assert(node->children == 1);
 
-    lgx_val_t r;
-    lgx_val_init(&r);
+    lgx_expr_result_t e;
+    lgx_expr_result_init(&e);
 
-    if (bc_expr(bc, node->child[0], &r)) {
+    if (compiler_expression(c, node->child[0], &e)) {
         return 1;
     }
+    bc_throw(c, &e);
 
-    bc_throw(bc, &r);
-    reg_free(bc, &r);
+    lgx_expr_result_cleanup(&e);
 
     return 0;
 }
@@ -572,8 +568,8 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == RETURN_STATEMENT);
     assert(node->children == 1);
 
-    lgx_val_t r;
-    lgx_val_init(&r);
+    lgx_expr_result_t r;
+    lgx_expr_result_init(&r);
 
     // 获取返回值类型
     lgx_ast_node_t *n = node->parent;
@@ -650,12 +646,12 @@ static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node
     assert(node->type == EXPRESSION_STATEMENT);
     assert(node->children == 1);
 
-    lgx_val_t e;
-    lgx_val_init(&e);
-    if (bc_expr(bc, node->child[0], &e)) {
+    lgx_expr_result_t e;
+    lgx_expr_result_init(&e);
+    if (compiler_expression(c, node->child[0], &e)) {
         return 1;
     }
-    reg_free(bc, &e);
+    lgx_expr_result_cleanup(&e);
 
     return 0;
 }
