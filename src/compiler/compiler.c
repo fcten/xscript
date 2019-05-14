@@ -70,6 +70,22 @@ static void reg_push(lgx_compiler_t* c, lgx_ast_node_t *node, unsigned char reg)
     lgx_reg_push(node->u.regs, reg);
 }
 
+static int load_to_reg(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    int r = reg_pop(c, node);
+
+    if (r >= 0) {
+        if (is_literal(e)) {
+            // TODO
+        } else if (is_const(e)) {
+            bc_load(c, r, e->u.constant);
+        } else if (is_global(e)) {
+            bc_global_get(c, r, e->u.global);
+        }
+    }
+
+    return r;
+}
+
 static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
     while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_STATEMENT) {
         node = node->parent;
@@ -163,8 +179,212 @@ static int compiler_check_assignment(lgx_compiler_t* c, lgx_ast_node_t *node) {
     return 0;
 }
 
-static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+static int compiler_string_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == STRING_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_STRING;
+    //e->v.v.str = 
+
     return 0;
+}
+
+static int compiler_char_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == CHAR_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_LONG;
+    //e->v.v.l = 
+
+    return 0;
+}
+
+static int compiler_long_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == LONG_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_LONG;
+    //e->v.v.l = 
+
+    return 0;
+}
+
+static int compiler_double_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == DOUBLE_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_DOUBLE;
+    //e->v.v.d = 
+
+    return 0;
+}
+
+static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == IDENTIFIER_TOKEN);
+
+    // TODO
+
+    return 0;
+}
+
+static int compiler_true_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == TRUE_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_BOOL;
+    e->v.v.l = 1;
+
+    return 0;
+}
+
+static int compiler_false_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == FALSE_TOKEN);
+
+    e->type = EXPR_LITERAL;
+    e->v.type = T_BOOL;
+    e->v.v.l = 0;
+
+    return 0;
+}
+
+static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_bitwise(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_binary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+
+    int ret = 0;
+
+    switch (node->u.op) {
+        case TK_LOGIC_AND:
+            ret = compiler_binary_expression_logic_and(c, node, e);
+            break;
+        case TK_LOGIC_OR:
+            ret = compiler_binary_expression_logic_or(c, node, e);
+            break;
+        case TK_ADD: case TK_SUB: case TK_MUL: case TK_DIV: case TK_MOD:
+            ret = compiler_binary_expression_math(c, node, e);
+            break;
+        case TK_EQUAL: case TK_NOT_EQUAL:
+        case TK_GREATER: case TK_LESS:
+        case TK_GREATER_EQUAL: case TK_LESS_EQUAL:
+            ret = compiler_binary_expression_relation(c, node, e);
+            break;
+        case TK_SHL: case TK_SHR:
+        case TK_AND: case TK_OR: case TK_XOR:
+            ret = compiler_binary_expression_bitwise(c, node, e);
+            break;
+        case TK_ASSIGN:
+	    case TK_ADD_ASSIGN: case TK_SUB_ASSIGN:
+	    case TK_MUL_ASSIGN: case TK_DIV_ASSIGN:
+	    case TK_MOD_ASSIGN:
+	    case TK_AND_ASSIGN: case TK_OR_ASSIGN:
+	    case TK_XOR_ASSIGN: case TK_NOT_ASSIGN:
+	    case TK_SHL_ASSIGN: case TK_SHR_ASSIGN:
+            ret = compiler_binary_expression_assignment(c, node, e);
+            break;
+        case TK_LEFT_PAREN:
+            ret = compiler_binary_expression_call(c, node, e);
+            break;
+        case TK_LEFT_BRACK:
+            ret = compiler_binary_expression_index(c, node, e);
+            break;
+        default:
+            compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
+            return 1;
+    }
+
+    return ret;
+}
+
+static int compiler_unary_expression_logic_not(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_unary_expression_bitwise_not(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_unary_expression_math_negative(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
+static int compiler_unary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == UNARY_EXPRESSION);
+
+    int ret = 0;
+
+    switch (node->u.op) {
+        case TK_LOGIC_NOT:
+            ret = compiler_unary_expression_logic_not(c, node, e);
+            break;
+        case TK_NOT:
+            ret = compiler_unary_expression_bitwise_not(c, node, e);
+            break;
+        case TK_SUB:
+            ret = compiler_unary_expression_math_negative(c, node, e);
+            break;
+        default:
+            compiler_error(c, node, "unknown unary operator %d\n", node->u.op);
+            return 1;
+    }
+
+    return ret;
+}
+
+static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    switch (node->type) {
+        case STRING_TOKEN:
+            return compiler_string_token(c, node, e);
+        case CHAR_TOKEN:
+            return compiler_char_token(c, node, e);
+        case LONG_TOKEN:
+            return compiler_long_token(c, node, e);
+        case DOUBLE_TOKEN:
+            return compiler_double_token(c, node, e);
+        case IDENTIFIER_TOKEN:
+            return compiler_identifier_token(c, node, e);
+        case TRUE_TOKEN:
+            return compiler_true_token(c, node, e);
+        case FALSE_TOKEN:
+            return compiler_false_token(c, node, e);
+        case BINARY_EXPRESSION:
+            return compiler_binary_expression(c, node, e);
+        case UNARY_EXPRESSION:
+            return compiler_unary_expression(c, node, e);
+        default:
+            compiler_error(c, node, "expression expected, ast-node type: %d\n", node->type);
+            return 1;
+    }
 }
 
 static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node);
@@ -192,10 +412,22 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             return compiler_block_statement(c, node->child[1]);
         }
     }
-    
+
     if (check_variable(&e, T_BOOL)) {
+        int ret = 0;
+
         unsigned pos = c->bc.length; // 跳出指令位置
-        bc_test(c, e.u.local, 0);
+        if (is_global(&e)) {
+            int r = load_to_reg(c, node, &e);
+            if (r >= 0) {
+                bc_test(c, r, 0);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        } else {
+            bc_test(c, e.u.local, 0);
+        }
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -203,7 +435,8 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
 
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
-        return 0;
+
+        return ret;
     }
 
     lgx_expr_result_cleanup(&e);
@@ -236,8 +469,20 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     if (check_variable(&e, T_BOOL)) {
+        int ret = 0;
+
         unsigned pos1 = c->bc.length; // 跳转指令位置
-        bc_test(c, e.u.local, 0);
+        if (is_global(&e)) {
+            int r = load_to_reg(c, node, &e);
+            if (r >= 0) {
+                bc_test(c, r, 0);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        } else {
+            bc_test(c, e.u.local, 0);
+        }
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -253,7 +498,8 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
 
         bc_set_param_e(c, pos2, c->bc.length);
-        return 0;
+
+        return ret;
     }
 
     lgx_expr_result_cleanup(&e);
@@ -286,6 +532,8 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         lgx_expr_result_cleanup(&e);
     }
 
+    int ret = 0;
+
     unsigned pos1 = c->bc.length; // 跳转指令位置
     unsigned pos2 = 0; // 跳出指令位置
 
@@ -304,7 +552,17 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             }
         } else if (check_variable(&e, T_BOOL)) {
             pos2 = c->bc.length; 
-            bc_test(c, e.u.local, 0);
+            if (is_global(&e)) {
+                int r = load_to_reg(c, node, &e);
+                if (r >= 0) {
+                    bc_test(c, r, 0);
+                    reg_push(c, node, r);
+                } else {
+                    ret = 1;
+                }
+            } else {
+                bc_test(c, e.u.local, 0);
+            }
             lgx_expr_result_cleanup(&e);
         } else {
             compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
@@ -336,7 +594,8 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     jmp_fix(c, node, pos3, c->bc.length);
-    return 0;
+
+    return ret;
 }
 
 static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -347,6 +606,8 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (compiler_check_assignment(c, node->child[0])) {
         return 1;
     }
+
+    int ret = 0;
 
     unsigned start = c->bc.length; // 循环起始位置
 
@@ -368,7 +629,17 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     } else if (check_variable(&e, T_BOOL)) {
         unsigned pos = c->bc.length; // 循环跳出指令位置
-        bc_test(c, e.u.local, 0);
+        if (is_global(&e)) {
+            int r = load_to_reg(c, node, &e);
+            if (r >= 0) {
+                bc_test(c, r, 0);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        } else {
+            bc_test(c, e.u.local, 0);
+        }
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -386,7 +657,8 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     jmp_fix(c, node, start, c->bc.length);
-    return 0;
+
+    return ret;
 }
 
 static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -397,6 +669,8 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (compiler_check_assignment(c, node->child[1])) {
         return 1;
     }
+
+    int ret = 0;
 
     unsigned start = c->bc.length; // 循环起始位置
 
@@ -419,7 +693,17 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     } else if (check_variable(&e, T_BOOL)) {
         unsigned pos = c->bc.length;
-        bc_test(c, e.u.local, 0);
+        if (is_global(&e)) {
+            int r = load_to_reg(c, node, &e);
+            if (r >= 0) {
+                bc_test(c, r, 0);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        } else {
+            bc_test(c, e.u.local, 0);
+        }
         bc_jmpi(c, start);
         lgx_expr_result_cleanup(&e);
 
@@ -430,7 +714,8 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     jmp_fix(c, node, start, c->bc.length);
-    return 0;
+
+    return ret;
 }
 
 static int compiler_continue_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -672,26 +957,16 @@ static int compiler_throw_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     int ret = 0;
 
-    if (is_literal(&e) || is_const(&e) || is_global(&e)) {
-        int r = reg_pop(c, node);
+    if (is_local(&e) || is_temp(&e)) {
+        bc_throw(c, e.u.local);
+    } else {
+        int r = load_to_reg(c, node, &e);
         if (r >= 0) {
-            if (is_literal(&e)) {
-                // TODO
-            } else if (is_const(&e)) {
-                bc_load(c, r, e.u.constant);
-            } else if (is_global(&e)) {
-                bc_global_get(c, r, e.u.global);
-            }
             bc_throw(c, r);
             reg_push(c, node, r);
         } else {
             ret = 1;
         }
-    } else if (is_local(&e) || is_temp(&e)) {
-        bc_throw(c, e.u.local);
-    } else {
-        compiler_error(c, node, "invalid expression for throw statement\n");
-        ret = 1;
     }
 
     lgx_expr_result_cleanup(&e);
@@ -703,8 +978,10 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == RETURN_STATEMENT);
     assert(node->children == 1);
 
-    lgx_expr_result_t r;
-    lgx_expr_result_init(&r);
+    lgx_expr_result_t e;
+    lgx_expr_result_init(&e);
+
+    int ret = 0;
 
     // 获取返回值类型
 /*
@@ -775,11 +1052,21 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     // 写入返回指令
     if (!is_tail) {
-        bc_ret(c, &r);
+        if (is_local(&e) || is_temp(&e)) {
+            bc_ret(c, e.u.local);
+        } else {
+            int r = load_to_reg(c, node, &e);
+            if (r >= 0) {
+                bc_ret(c, r);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        }
     }
-    lgx_expr_result_cleanup(&r);
+    lgx_expr_result_cleanup(&e);
 
-    return 0;
+    return ret;
 }
 
 static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -796,7 +1083,7 @@ static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node
     return 0;
 }
 
-static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
+static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     switch(node->type) {
         case IF_STATEMENT: return compiler_if_statement(c, node);
         case IF_ELSE_STATEMENT: return compiler_if_else_statement(c, node);
@@ -872,7 +1159,7 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
             compiler_error(c, symbol->node, "too many global variables\n");
             return 1;
         }
-        if (lgx_ht_set(&c->global, &n->k, c->global.length)) {
+        if (lgx_ht_set(&c->global, &n->k, (void*)(intptr_t)c->global.length)) {
             return 1;
         }
     }
@@ -893,7 +1180,9 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
 int lgx_compiler_init(lgx_compiler_t* c) {
     memset(c, 0, sizeof(lgx_compiler_t));
 
-    if (lgx_str_init(&c->bc, 1024)) {
+    c->bc.size = 1024;
+    c->bc.buffer = (uint32_t*)xmalloc(c->bc.size * sizeof(uint32_t));
+    if (!c->bc.buffer) {
         lgx_compiler_cleanup(c);
         return 1;
     }
@@ -926,17 +1215,19 @@ int lgx_compiler_generate(lgx_compiler_t* c, lgx_ast_t *ast) {
 
 void lgx_compiler_cleanup(lgx_compiler_t* c) {
     // 释放字节码缓存
-    lgx_str_cleanup(&c->bc);
+    if(c->bc.buffer) {
+        xfree(c->bc.buffer);
+    }
 
     // 是否常量表
-    lgx_heap_cleanup(&c->constant);
+    lgx_ht_cleanup(&c->constant);
 
     // 释放堆变量表
-    lgx_heap_cleanup(&c->global);
+    lgx_ht_cleanup(&c->global);
 
     // 释放异常信息
     lgx_rb_node_t *node;
-    for (node = wbt_rb_first(&c->exception); node; node = lgx_rb_next(node)) {
+    for (node = lgx_rb_first(&c->exception); node; node = lgx_rb_next(node)) {
         lgx_exception_del((lgx_exception_t *)node->value);
     }
     lgx_rb_cleanup(&c->exception);

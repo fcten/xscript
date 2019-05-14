@@ -1,6 +1,7 @@
 #ifndef LGX_COMPILER_H
 #define LGX_COMPILER_H
 
+#include <stdint.h>
 #include "../common/str.h"
 #include "../common/ht.h"
 #include "../parser/ast.h"
@@ -15,7 +16,7 @@ typedef struct {
     struct {
         unsigned length;
         unsigned size;
-        unsigned* buffer;
+        uint32_t* buffer;
     } bc;
 
     // 常量表

@@ -63,18 +63,7 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
         return 1;
     }
 
-    switch (type) {
-    case S_VARIABLE:
-        symbol_error(ast, node, "[variable] %.*s\n", name.length, name.buffer);
-        break;
-    case S_CONSTANT:
-        symbol_error(ast, node, "[constant] %.*s\n", name.length, name.buffer);
-        break;
-    default:
-        break;
-    }
-
-    return 1;
+    return 0;
 }
 
 static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {

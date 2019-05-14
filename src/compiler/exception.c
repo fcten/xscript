@@ -13,10 +13,10 @@ lgx_exception_t* lgx_exception_new() {
 }
 
 void lgx_exception_del(lgx_exception_t *exception) {
-    while (!wbt_list_empty(&exception->catch_blocks)) {
+    while (!lgx_list_empty(&exception->catch_blocks)) {
         lgx_exception_block_t *block = lgx_list_first_entry(&exception->catch_blocks, lgx_exception_block_t, head);
         lgx_list_del(&block->head);
-        lgx_exception_block_delete(block);
+        lgx_exception_block_del(block);
     }
 
     xfree(exception);
