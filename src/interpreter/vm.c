@@ -824,58 +824,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 G(pb) = R(pa);
                 break;
             }
-            case OP_OBJECT_NEW:{
-                unsigned pd = PD(i);
-                if (EXPECTED(C(pd).type == T_OBJECT)) {
-                    lgx_gc_ref_del(&R(pa));
-                    R(pa).type = T_OBJECT;
-                    R(pa).v.obj = lgx_obj_new(C(pd).v.obj);
-                    if (UNEXPECTED(!R(pa).v.obj)) {
-                        R(pa).type = T_UNDEFINED;
-                        lgx_vm_throw_s(vm, "out of memory");
-                        break;
-                    }
-                    lgx_gc_ref_add(&R(pa));
-                    lgx_gc_trace(vm, &R(pa));
-                } else {
-                    lgx_vm_throw_s(vm, "attempt to new a %s value, object expected", lgx_val_typeof(&C(pd)));
-                }
-                break;
-            }
-            case OP_OBJECT_GET:{
-                if (EXPECTED(R(pb).type == T_OBJECT)) {
-                    if (EXPECTED(R(pc).type == T_STRING)) {
-                        lgx_gc_ref_del(&R(pa));
-                        //lgx_obj_print(R(pb).v.obj, 0);
-                        lgx_val_t *v = lgx_obj_get(R(pb).v.obj, &R(pc));
-                        if (v) {
-                            R(pa) = *v;
-                        } else {
-                            lgx_vm_throw_s(vm, "property or method %.*s not exists", R(pc).v.str->length, R(pc).v.str->buffer);
-                        }
-                        lgx_gc_ref_add(&R(pa));
-                    } else {
-                        lgx_vm_throw_s(vm, "attempt to index a %s value, string expected", lgx_val_typeof(&R(pc)));
-                    }
-                } else {
-                    lgx_vm_throw_s(vm, "attempt to access a %s value, object expected", lgx_val_typeof(&R(pb)));
-                }
-                break;
-            }
-            case OP_OBJECT_SET:{
-                if (EXPECTED(R(pa).type == T_OBJECT)) {
-                    if (EXPECTED(R(pb).type == T_STRING)) {
-                        if (lgx_obj_set(R(pa).v.obj, &R(pb), &R(pc)) != 0) {
-                            lgx_vm_throw_s(vm, "property %.*s not exists", R(pb).v.str->length, R(pb).v.str->buffer);
-                        }
-                    } else {
-                        lgx_vm_throw_s(vm, "attempt to index a %s value, string expected", lgx_val_typeof(&R(pb)));
-                    }
-                } else {
-                    lgx_vm_throw_s(vm, "attempt to access a %s value, object expected", lgx_val_typeof(&R(pa)));
-                }
-                break;
-            }
             case OP_THROW: {
                 lgx_vm_throw_v(vm, &R(pa));
                 break;

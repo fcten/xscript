@@ -2,6 +2,8 @@
 #define LGX_BYTECODE_H
 
 // 字节码生成
+#include "expr_result.h"
+#include "compiler.h"
 
 enum {
     // 空指令
@@ -38,13 +40,13 @@ enum {
 
     // 逻辑运算
     OP_EQ,    // EQ   R R R
-    OP_LE,    // LE   R R R
-    OP_LT,    // LT   R R R
     OP_EQI,   // EQI  R R I
-    OP_GEI,   // GEI  R R I
-    OP_LEI,   // LE   R R I
-    OP_GTI,   // GTI  R R I
+    OP_LE,    // LE   R R R
+    OP_LEI,   // LEI  R R I
+    OP_LT,    // LT   R R R
     OP_LTI,   // LTI  R R I
+    OP_GEI,   // GEI  R R I
+    OP_GTI,   // GTI  R R I
     OP_LNOT,  // LNOT R R
 
     // 类型运算
@@ -61,7 +63,7 @@ enum {
     // 函数调用
     OP_CALL_NEW,  // CALL_NEW F         确保足够的栈空间
     OP_CALL_SET,  // CALL_SET R R       设置参数
-    OP_CALL,      // CALL     F R       执行调用，返回值写入到 R 中
+    OP_CALL,      // CALL     R F       执行调用，返回值写入到 R 中
     OP_RET,       // RET      R
 
     OP_TAIL_CALL, // TAIL_CALL F         复用当前的函数栈，执行调用
@@ -76,22 +78,11 @@ enum {
     OP_GLOBAL_GET,// GLOBAL_GET R G     R = G
     OP_GLOBAL_SET,// GLOBAL_SET R G     G = R
 
-    // 类与对象
-    OP_OBJECT_NEW,// OBJECT_NEW R C     R = new C
-    OP_OBJECT_GET,// OBJECT_GET R R R   R = R->R
-    OP_OBJECT_SET,// OBJECT_SET R R R   R->R = R
-
     // 异常处理
     OP_THROW,
 
-    // 异步
-    OP_AWAIT,     // AWAIT  R R         R = await R
-
     // 终止执行
-    OP_HLT,
-
-    // DEBUG
-    OP_ECHO   // ECHO R
+    OP_HLT
 };
 
 #define I0(op)          (op)
@@ -108,5 +99,73 @@ enum {
 
 int lgx_bc_print(unsigned *bc, unsigned bc_size);
 void lgx_bc_echo(unsigned n, unsigned i);
+
+void bc_set(lgx_compiler_t* c, unsigned pos, unsigned i);
+void bc_set_param_a(lgx_compiler_t* c, unsigned pos, unsigned pa);
+void bc_set_param_d(lgx_compiler_t* c, unsigned pos, unsigned pd);
+void bc_set_param_e(lgx_compiler_t* c, unsigned pos, unsigned pe);
+
+int bc_nop(lgx_compiler_t* c);
+
+int bc_load(lgx_compiler_t* c, unsigned char reg, unsigned constant);
+int bc_mov(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+
+int bc_add(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_addi(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_sub(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_subi(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_mul(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_muli(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_div(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_divi(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_neg(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+
+int bc_shl(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_shli(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_shr(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_shri(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_and(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_or(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_xor(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_not(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+
+int bc_eq(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_eqi(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_ne(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_nei(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_lt(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_lti(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_le(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_lei(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_gt(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_gti(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_ge(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_gei(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
+int bc_lnot(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+
+int bc_call_new(lgx_compiler_t* c, unsigned constant);
+int bc_call_set(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+int bc_call(lgx_compiler_t* c, unsigned constant, unsigned char reg);
+int bc_ret(lgx_compiler_t* c, unsigned char reg);
+
+int bc_tail_call(lgx_compiler_t* c, unsigned constant);
+
+int bc_test(lgx_compiler_t* c, unsigned char reg, unsigned distance);
+int bc_jmp(lgx_compiler_t* c, unsigned char reg);
+int bc_jmpi(lgx_compiler_t* c, unsigned pos);
+
+int bc_hlt(lgx_compiler_t* c);
+
+int bc_array_new(lgx_compiler_t* c, unsigned char reg);
+int bc_array_add(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+int bc_array_get(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+int bc_array_set(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+
+int bc_typeof(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+
+int bc_global_get(lgx_compiler_t* c, unsigned char reg, unsigned global);
+int bc_global_set(lgx_compiler_t* c, unsigned global, unsigned char reg);
+
+int bc_throw(lgx_compiler_t* c, unsigned char reg);
 
 #endif // LGX_BYTECODE_H
