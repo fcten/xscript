@@ -1,6 +1,10 @@
 #ifndef LGX_TYPE_H
 #define LGX_TYPE_H
 
+#include "../common/list.h"
+#include "../common/ht.h"
+#include "../common/str.h"
+
 typedef enum lgx_val_type_e {
     // 基本类型
     T_UNKNOWN = 0,  // 未知类型
@@ -118,6 +122,6 @@ struct lgx_function_s {
     int (*buildin)(struct lgx_vm_s *vm);
 };
 
-char* lgx_type_to_string(lgx_value_t* v);
+char* lgx_type_to_string(lgx_val_type_t type);
 
 #endif // LGX_TYPE_H

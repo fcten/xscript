@@ -109,6 +109,7 @@ int bc_nop(lgx_compiler_t* c);
 
 int bc_load(lgx_compiler_t* c, unsigned char reg, unsigned constant);
 int bc_mov(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
+int bc_movi(lgx_compiler_t* c, unsigned char reg, unsigned num);
 
 int bc_add(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
 int bc_addi(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);

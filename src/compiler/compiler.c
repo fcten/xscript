@@ -43,6 +43,116 @@ static void compiler_error(lgx_compiler_t* c, lgx_ast_node_t* node, const char *
     lgx_list_add_tail(&err->head, &ast->errors);
 }
 
+static lgx_ast_node_t *find_function(lgx_ast_node_t *node) {
+    while (node && node->type != FUNCTION_DECLARATION) {
+        node = node->parent;
+    }
+    return node;
+}
+
+static int reg_pop(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    node = find_function(node);
+    assert(node);
+
+    int r = lgx_reg_pop(node->u.regs);
+    if (r < 0) {
+        compiler_error(c, node, "too many local variables\n");
+        return -1;
+    }
+
+    return r;
+}
+
+static void reg_push(lgx_compiler_t* c, lgx_ast_node_t *node, unsigned char reg) {
+    node = find_function(node);
+    assert(node);
+
+    lgx_reg_push(node->u.regs, reg);
+}
+
+static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
+    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_STATEMENT) {
+        node = node->parent;
+    }
+    return node;
+}
+
+static lgx_ast_node_t *jmp_find_loop_or_switch(lgx_ast_node_t *node) {
+    while (node && node->type != FOR_STATEMENT && node->type != WHILE_STATEMENT && node->type != DO_STATEMENT && node->type != SWITCH_STATEMENT) {
+        node = node->parent;
+    }
+    return node;
+}
+
+static int jmp_add(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    lgx_ast_node_t *loop = NULL;
+    if (node->type == CONTINUE_STATEMENT) {
+        loop = jmp_find_loop(node);
+    } else if (node->type == BREAK_STATEMENT) {
+        loop = jmp_find_loop_or_switch(node);
+    } else {
+        compiler_error(c, node, "break or continue statement expected\n");
+        return 1;
+    }
+    if (!loop) {
+        compiler_error(c, node, "illegal break or continue statement\n");
+        return 1;
+    }
+
+    // 初始化
+    if (!loop->u.jmps) {
+        loop->u.jmps = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
+        if (loop->u.jmps) {
+            lgx_list_init(&loop->u.jmps->head);
+            loop->u.jmps->node = NULL;
+        } else {
+            compiler_error(c, node, "out of memory\n");
+            return 1;
+        }
+    }
+
+    lgx_ast_node_list_t *n = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
+    if (n) {
+        n->node = node;
+        lgx_list_init(&n->head);
+        lgx_list_add_tail(&n->head, &loop->u.jmps->head);
+
+        return 0;
+    } else {
+        compiler_error(c, node, "out of memory\n");
+        return 1;
+    }
+}
+
+static int jmp_fix(lgx_compiler_t* c, lgx_ast_node_t *node, unsigned start, unsigned end) {
+    if (node->type != FOR_STATEMENT &&
+        node->type != WHILE_STATEMENT && 
+        node->type != DO_STATEMENT &&
+        node->type != SWITCH_STATEMENT) {
+        compiler_error(c, node, "switch or loop statement expected\n");
+        return 1;
+    }
+
+    if (!node->u.jmps) {
+        return 0;
+    }
+
+    lgx_ast_node_list_t *n;
+    lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
+        if (n->node->type == BREAK_STATEMENT) {
+            bc_set_param_e(c, n->node->u.pos, end);
+        } else if (n->node->type == CONTINUE_STATEMENT) {
+            bc_set_param_e(c, n->node->u.pos, start);
+        } else {
+            // error
+            compiler_error(c, node, "break or continue statement expected\n");
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
 static int compiler_check_assignment(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (node->type == BINARY_EXPRESSION && node->u.op == TK_ASSIGN) {
@@ -85,7 +195,7 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     
     if (check_variable(&e, T_BOOL)) {
         unsigned pos = c->bc.length; // 跳出指令位置
-        bc_test(c, &e, 0);
+        bc_test(c, e.u.local, 0);
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -97,7 +207,7 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     lgx_expr_result_cleanup(&e);
-    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v));
+    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
     return 1;
 }
 
@@ -127,7 +237,7 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     if (check_variable(&e, T_BOOL)) {
         unsigned pos1 = c->bc.length; // 跳转指令位置
-        bc_test(c, &e, 0);
+        bc_test(c, e.u.local, 0);
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -147,7 +257,7 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     lgx_expr_result_cleanup(&e);
-    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v));
+    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
     return 1;
 }
 
@@ -194,10 +304,10 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             }
         } else if (check_variable(&e, T_BOOL)) {
             pos2 = c->bc.length; 
-            bc_test(c, &e, 0);
+            bc_test(c, e.u.local, 0);
             lgx_expr_result_cleanup(&e);
         } else {
-            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e));
+            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
             return 1;
         }
     }
@@ -258,7 +368,7 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     } else if (check_variable(&e, T_BOOL)) {
         unsigned pos = c->bc.length; // 循环跳出指令位置
-        bc_test(c, &e, 0);
+        bc_test(c, e.u.local, 0);
         lgx_expr_result_cleanup(&e);
 
         if (compiler_block_statement(c, node->child[1])) {
@@ -271,7 +381,7 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
         lgx_expr_result_cleanup(&e);
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e));
+        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
         return 1;
     }
 
@@ -309,13 +419,13 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     } else if (check_variable(&e, T_BOOL)) {
         unsigned pos = c->bc.length;
-        bc_test(c, &e, 0);
+        bc_test(c, e.u.local, 0);
         bc_jmpi(c, start);
         lgx_expr_result_cleanup(&e);
 
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e));
+        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
         return 1;
     }
 
@@ -367,7 +477,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     if (!check_type(&e, T_LONG) && check_type(&e, T_STRING)) {
-        compiler_error(c, node, "makes integer or string from %s without a cast\n", lgx_type_to_string(&e));
+        compiler_error(c, node, "makes integer or string from %s without a cast\n", lgx_type_to_string(e.v.type));
         return 1;
     }
 
@@ -375,6 +485,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         // 没有 case 和 default，什么都不用做
         lgx_expr_result_cleanup(&e);
     } else {
+/*
         lgx_val_t condition;
         condition.type = T_ARRAY;
         condition.v.arr = lgx_hash_new(node->children - 1);
@@ -467,6 +578,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         if (!has_default) {
             bc_set_pe(bc, pos, c->bc.length);
         }
+*/
     }
 
     jmp_fix(c, node, 0, c->bc.length);
@@ -489,7 +601,7 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     if (exception->try_block.start == exception->try_block.end) {
         // try block 没有编译产生任何代码
-        lgx_exception_delete(exception);
+        lgx_exception_del(exception);
         return ret;
     } else {
         exception->try_block.end --;
@@ -529,7 +641,7 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     if (lgx_list_empty(&exception->catch_blocks)) {
         // 如果没有任何 catch block
-        lgx_exception_delete(exception);
+        lgx_exception_del(exception);
         return ret;
     }
 
@@ -540,7 +652,7 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     k.buffer = (char *)&key;
     k.length = sizeof(key);
 
-    lgx_rb_node_t *n = lgx_rb_insert(&c->exception, &k);
+    lgx_rb_node_t *n = lgx_rb_set(&c->exception, &k);
     assert(n);
     n->value = exception;
 
@@ -557,11 +669,34 @@ static int compiler_throw_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (compiler_expression(c, node->child[0], &e)) {
         return 1;
     }
-    bc_throw(c, &e);
+
+    int ret = 0;
+
+    if (is_literal(&e) || is_const(&e) || is_global(&e)) {
+        int r = reg_pop(c, node);
+        if (r >= 0) {
+            if (is_literal(&e)) {
+                // TODO
+            } else if (is_const(&e)) {
+                bc_load(c, r, e.u.constant);
+            } else if (is_global(&e)) {
+                bc_global_get(c, r, e.u.global);
+            }
+            bc_throw(c, r);
+            reg_push(c, node, r);
+        } else {
+            ret = 1;
+        }
+    } else if (is_local(&e) || is_temp(&e)) {
+        bc_throw(c, e.u.local);
+    } else {
+        compiler_error(c, node, "invalid expression for throw statement\n");
+        ret = 1;
+    }
 
     lgx_expr_result_cleanup(&e);
 
-    return 0;
+    return ret;
 }
 
 static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -572,6 +707,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     lgx_expr_result_init(&r);
 
     // 获取返回值类型
+/*
     lgx_ast_node_t *n = node->parent;
     while (n && n->type != FUNCTION_DECLARATION) {
         if (n->parent) {
@@ -591,11 +727,12 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     } else {
         ret.type = T_UNDEFINED;
     }
-
+*/
     unsigned is_tail = 0;
 
     // 计算返回值
     if (node->child[0]) {
+/*
         if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
             // 尾调用
             // 内建函数以及 async 函数不能也不需要做尾调用优化，所以这里也可能生成一个普通调用
@@ -609,7 +746,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
 
         if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
-            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&ret), lgx_type_to_string(&r));
+            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(ret.v.type), lgx_type_to_string(r.v.type));
             return 1;
         }
 
@@ -617,27 +754,30 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             lgx_str_t *n1 = lgx_obj_get_name(r.v.obj);
             lgx_str_t *n2 = lgx_obj_get_name(ret.v.obj);
             compiler_error(c, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
-                lgx_type_to_string(&r),
+                lgx_type_to_string(r.v.type),
                 n1->length, n1->buffer,
-                lgx_type_to_string(&ret),
+                lgx_type_to_string(ret.v.type),
                 n2->length, n2->buffer
             );
             return 1;
         }
+*/
     } else {
+/*
         if (ret.type == T_UNDEFINED) {
             r.u.symbol.reg_type = R_LOCAL;
         } else {
-            compiler_error(c, node, "makes %s from undefined without a cast\n", lgx_type_to_string(&ret));
+            compiler_error(c, node, "makes %s from undefined without a cast\n", lgx_type_to_string(ret.v.type));
             return 1;
         }
+*/
     }
 
     // 写入返回指令
     if (!is_tail) {
-        bc_ret(bc, &r);
+        bc_ret(c, &r);
     }
-    reg_free(bc, &r);
+    lgx_expr_result_cleanup(&r);
 
     return 0;
 }

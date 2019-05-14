@@ -12,7 +12,11 @@ typedef struct {
     lgx_ast_t* ast;
 
     // 字节码
-    lgx_str_t bc;
+    struct {
+        unsigned length;
+        unsigned size;
+        unsigned* buffer;
+    } bc;
 
     // 常量表
     lgx_ht_t constant;
