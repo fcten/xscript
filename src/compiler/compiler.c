@@ -9,7 +9,7 @@
 #include "expr_result.h"
 
 // 追加一条错误信息
-static void compiler_error(lgx_compiler_t* c, lgx_ast_node_t* node, const char *fmt, ...) {
+void compiler_error(lgx_compiler_t* c, lgx_ast_node_t* node, const char *fmt, ...) {
     va_list   args;
 
     assert(c->ast);
@@ -85,6 +85,28 @@ static int load_to_reg(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_
     }
 
     return r;
+}
+
+int lgx_expr_result_init(lgx_expr_result_t* e) {
+    memset(e, 0, sizeof(lgx_expr_result_t));
+    return 0;
+}
+
+int lgx_expr_result_cleanup(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    // 释放寄存器
+    if (is_temp(e)) {
+        reg_push(c, node, e->u.local);
+    }
+
+    switch (e->v.type) {
+        case T_STRING:
+            lgx_str_cleanup(&e->v.v.str);
+            break;
+        default:
+            break;
+    }
+
+    return 0;
 }
 
 static lgx_ast_node_t *jmp_find_loop(lgx_ast_node_t *node) {
@@ -171,6 +193,7 @@ static int jmp_fix(lgx_compiler_t* c, lgx_ast_node_t *node, unsigned start, unsi
 }
 
 // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+// TODO 递归判断子节点
 static int compiler_check_assignment(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (node->type == BINARY_EXPRESSION && node->u.op == TK_ASSIGN) {
         compiler_error(c, node, "assignment expression can't be used as boolean value\n");
@@ -255,10 +278,23 @@ static int compiler_double_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
     return 0;
 }
 
+// 注意：这里必须是变量，如果是函数名，则遵循不同的规则
 static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
     assert(node->type == IDENTIFIER_TOKEN);
 
-    // TODO
+    lgx_str_t name;
+    name.buffer = c->ast->lex.source.content + node->offset;
+    name.length = name.size = node->length;
+    lgx_symbol_t* symbol = lgx_symbol_get(node, &name, node->offset);
+
+    if (!symbol) {
+        compiler_error(c, node, "use undeclared identifier `%.*s`\n", name.length, name.buffer);
+        return 1;
+    }
+
+    // TODO 判断是否为局部变量
+
+    // TODO 判断是否为全局变量
 
     return 0;
 }
@@ -284,18 +320,239 @@ static int compiler_false_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_exp
 }
 
 static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LOGIC_AND);
+
     return 0;
 }
 
 static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LOGIC_OR);
+
     return 0;
 }
 
-static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+static void cast_double(lgx_expr_result_t* e) {
+    if (check_type(e, T_LONG)) {
+        e->v.type = T_DOUBLE;
+        e->v.v.d = e->v.v.l;
+    }
+}
+
+static int op_add(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
+    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+
+    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+        e->type = EXPR_LITERAL;
+        e->v.type = T_LONG;
+        e->v.v.l = l->v.v.l + r->v.v.l;
+    } else {
+        cast_double(l);
+        cast_double(r);
+        e->type = EXPR_LITERAL;
+        e->v.type = T_DOUBLE;
+        e->v.v.d = l->v.v.d + r->v.v.d;
+    }
+
     return 0;
+}
+
+static int op_sub(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
+    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+
+    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+        e->type = EXPR_LITERAL;
+        e->v.type = T_LONG;
+        e->v.v.l = l->v.v.l - r->v.v.l;
+    } else {
+        cast_double(l);
+        cast_double(r);
+        e->type = EXPR_LITERAL;
+        e->v.type = T_DOUBLE;
+        e->v.v.d = l->v.v.d - r->v.v.d;
+    }
+
+    return 0;
+}
+
+static int op_mul(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
+    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+
+    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+        e->type = EXPR_LITERAL;
+        e->v.type = T_LONG;
+        e->v.v.l = l->v.v.l * r->v.v.l;
+    } else {
+        cast_double(l);
+        cast_double(r);
+        e->type = EXPR_LITERAL;
+        e->v.type = T_DOUBLE;
+        e->v.v.d = l->v.v.d * r->v.v.d;
+    }
+
+    return 0;
+}
+
+static int op_div(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
+    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+
+    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+        e->type = EXPR_LITERAL;
+        e->v.type = T_LONG;
+        if (r->v.v.l == 0) {
+            compiler_error(c, node, "divide by zero\n");
+            return 1;
+        }
+        e->v.v.l = l->v.v.l / r->v.v.l;
+    } else {
+        cast_double(l);
+        cast_double(r);
+        e->type = EXPR_LITERAL;
+        e->v.type = T_DOUBLE;
+        if (r->v.v.d == 0) {
+            compiler_error(c, node, "divide by zero\n");
+            return 1;
+        }
+        e->v.v.d = l->v.v.d / r->v.v.d;
+    }
+
+    return 0;
+}
+
+static int op_mod(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
+    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+
+    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+        e->type = EXPR_LITERAL;
+        e->v.type = T_LONG;
+        e->v.v.l = l->v.v.l % r->v.v.l;
+    } else {
+        compiler_error(c, node, "invalid operand type for operator %%\n");
+        return 1;
+    }
+
+    return 0;
+}
+
+static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    if (is_constant(l) && is_constant(r)) {
+        switch (node->u.op) {
+            case TK_ADD: return op_add(c, node, e, l, r);
+            case TK_SUB: return op_sub(c, node, e, l, r);
+            case TK_MUL: return op_mul(c, node, e, l, r);
+            case TK_DIV: return op_div(c, node, e, l, r);
+            case TK_MOD: return op_mod(c, node, e, l, r);
+            default:
+                compiler_error(c, node, "unknown operator %d\n", node->u.op);
+                return 1;
+        }
+    } else if (0) {
+        // TODO 如果一个操作数为立即数并且范围在 0 - 255 之内，使用立即数指令
+    } else {
+        int r1 = -1, r2 = -1, ret = 0;;
+
+        do {
+            if (is_local(l) || is_temp(l)) {
+                r1 = l->u.local;
+            } else {
+                r1 = load_to_reg(c, node, l);
+                if (r1 < 0) {
+                    ret = 1;
+                    break;
+                }
+            }
+
+            if (is_local(r) || is_temp(r)) {
+                r2 = r->u.local;
+            } else {
+                r2 = load_to_reg(c, node, r);
+                if (r2 < 0) {
+                    ret = 1;
+                    break;
+                }
+            }
+            
+            e->type = EXPR_TEMP;
+            e->u.local = reg_pop(c, node);
+            switch (node->u.op) {
+                case TK_ADD: ret = bc_add(c, e->u.local, r1, r2); break;
+                case TK_SUB: ret = bc_sub(c, e->u.local, r1, r2); break;
+                case TK_MUL: ret = bc_mul(c, e->u.local, r1, r2); break;
+                case TK_DIV: ret = bc_div(c, e->u.local, r1, r2); break;
+                //case TK_MOD: ret = bc_mod(c, e->u.local, r1, r2); break;
+                default:
+                    compiler_error(c, node, "unknown operator %d\n", node->u.op);
+                    return 1;
+            }
+        } while (0);
+
+        if (!is_local(l) && r1 >= 0) {
+            reg_push(c, node, r1);
+        }
+
+        if (!is_local(r) && r2 >= 0) {
+            reg_push(c, node, r2);
+        }
+
+        return ret;
+    }
+}
+
+static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e);
+
+static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    if (compiler_expression(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    if (compiler_expression(c, node->child[1], &e2)) {
+        ret = 1;
+    }
+
+    if (node->u.op == TK_ADD && check_type(&e1, T_STRING) && check_type(&e2, T_STRING)) {
+        // TODO 字符串拼接
+    } else if ((check_type(&e1, T_LONG) || check_type(&e1, T_DOUBLE)) && (check_type(&e2, T_LONG) || check_type(&e2, T_DOUBLE))) {
+        switch (node->u.op) {
+            case TK_ADD:
+            case TK_SUB:
+            case TK_MUL:
+            case TK_DIV:
+            case TK_MOD:
+                ret = binary_operator(c, node, e, &e1, &e2);
+                break;
+            default:
+                compiler_error(c, node, "unknown math operator %d\n", node->u.op);
+                ret = 1;
+        }
+    } else {
+        compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(e1.v.type), node->u.op, lgx_type_to_string(e2.v.type));
+        ret = 1;
+    }
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
 }
 
 static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+
+
     return 0;
 }
 
@@ -464,7 +721,7 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         } else {
             bc_test(c, e.u.local, 0);
         }
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
 
         if (compiler_block_statement(c, node->child[1])) {
             return 1;
@@ -475,7 +732,7 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         return ret;
     }
 
-    lgx_expr_result_cleanup(&e);
+    lgx_expr_result_cleanup(c, node, &e);
     compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
     return 1;
 }
@@ -519,7 +776,7 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         } else {
             bc_test(c, e.u.local, 0);
         }
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
 
         if (compiler_block_statement(c, node->child[1])) {
             return 1;
@@ -538,7 +795,7 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         return ret;
     }
 
-    lgx_expr_result_cleanup(&e);
+    lgx_expr_result_cleanup(c, node, &e);
     compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
     return 1;
 }
@@ -565,7 +822,7 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         if (compiler_expression(c, node->child[0]->child[0], &e)) {
             return 1;
         }
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
     }
 
     int ret = 0;
@@ -599,7 +856,7 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             } else {
                 bc_test(c, e.u.local, 0);
             }
-            lgx_expr_result_cleanup(&e);
+            lgx_expr_result_cleanup(c, node, &e);
         } else {
             compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
             return 1;
@@ -620,7 +877,7 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         if (compiler_expression(c, node->child[2]->child[0], &e)) {
             return 1;
         }
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
     }
 
     bc_jmpi(c, pos1);
@@ -676,7 +933,7 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         } else {
             bc_test(c, e.u.local, 0);
         }
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
 
         if (compiler_block_statement(c, node->child[1])) {
             return 1;
@@ -687,7 +944,7 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         // 更新条件跳转
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
         compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(e.v.type));
         return 1;
     }
@@ -741,7 +998,7 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             bc_test(c, e.u.local, 0);
         }
         bc_jmpi(c, start);
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
 
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
@@ -804,7 +1061,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     if (node->children == 1) {
         // 没有 case 和 default，什么都不用做
-        lgx_expr_result_cleanup(&e);
+        lgx_expr_result_cleanup(c, node, &e);
     } else {
 /*
         lgx_val_t condition;
@@ -1005,7 +1262,7 @@ static int compiler_throw_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     }
 
-    lgx_expr_result_cleanup(&e);
+    lgx_expr_result_cleanup(c, node, &e);
 
     return ret;
 }
@@ -1100,7 +1357,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             }
         }
     }
-    lgx_expr_result_cleanup(&e);
+    lgx_expr_result_cleanup(c, node, &e);
 
     return ret;
 }
@@ -1114,7 +1371,7 @@ static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node
     if (compiler_expression(c, node->child[0], &e)) {
         return 1;
     }
-    lgx_expr_result_cleanup(&e);
+    lgx_expr_result_cleanup(c, node, &e);
 
     return 0;
 }
@@ -1133,10 +1390,14 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         case THROW_STATEMENT: return compiler_throw_statement(c, node);
         case RETURN_STATEMENT: return compiler_return_statement(c, node);
         case EXPRESSION_STATEMENT: return compiler_expression_statement(c, node);
-        // 忽略声明
         case VARIABLE_DECLARATION:
+            // TODO 如果变量声明带初始化
+            break;
         case CONSTANT_DECLARATION:
+            // TODO 更新化常量表
+            break;
         case TYPE_DECLARATION:
+            // TODO 更新类型表
             break;
         default:
             compiler_error(c, node, "invalid ast-node type %d\n", node->type);

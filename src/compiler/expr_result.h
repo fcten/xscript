@@ -5,8 +5,9 @@
 #include "register.h"
 
 typedef enum {
+    EXPR_UNKNOWN = 0,
     // 字面量
-    EXPR_LITERAL = 0,
+    EXPR_LITERAL,
     // 局部变量
     EXPR_LOCAL,
     // 全局变量
@@ -40,9 +41,6 @@ typedef struct {
         // 如果结果为全局变量，存储全局变量编号
         int global;
     } u;
-
-    // 如果结果为局部变量，指向对应的寄存器分配器
-    lgx_reg_t* regs;
 } lgx_expr_result_t;
 
 #define is_literal(e)   ((e)->type == EXPR_LITERAL)
@@ -56,8 +54,5 @@ typedef struct {
 #define check_type(e, t)     ((e)->v.type == t)
 #define check_constant(e, t) (is_constant(e) && check_type(e, t))
 #define check_variable(e, t) (is_variable(e) && check_type(e, t))
-
-int lgx_expr_result_init(lgx_expr_result_t* e);
-int lgx_expr_result_cleanup(lgx_expr_result_t* e);
 
 #endif // LGX_EXPRESSION_H
