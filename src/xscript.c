@@ -17,6 +17,7 @@ int main(int argc, char* argv[]) {
         lgx_compiler_generate(&c, &ast);
 
         lgx_bc_print(c.bc.buffer, c.bc.length);
+        lgx_ast_print_error(&ast);
 
         lgx_compiler_cleanup(&c);
     }

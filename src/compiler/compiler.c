@@ -187,8 +187,8 @@ static int compiler_string_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
     e->v.type = T_STRING;
 
     lgx_str_t src, dst;
-    src.buffer = c->ast->lex.source.content + node->offset;
-    src.length = src.size = node->length;
+    src.buffer = c->ast->lex.source.content + node->offset + 1;
+    src.length = src.size = node->length - 2;
     if (lgx_str_init(&dst, src.length)) {
         return 1;
     }
@@ -207,8 +207,8 @@ static int compiler_char_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr
     //e->v.v.l = 
 
     lgx_str_t src, dst;
-    src.buffer = c->ast->lex.source.content + node->offset;
-    src.length = src.size = node->length;
+    src.buffer = c->ast->lex.source.content + node->offset + 1;
+    src.length = src.size = node->length - 2;
     if (lgx_str_init(&dst, src.length)) {
         return 1;
     }

@@ -645,10 +645,10 @@ static int ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int 
             }
         }
 
-        ast_step(ast);
-
         lgx_ast_node_t* binary_expression = ast_node_new(ast, BINARY_EXPRESSION);
         binary_expression->u.op = ast->cur_token;
+
+        ast_step(ast);
 
         lgx_ast_node_t* last_child = ast_node_last_child(parent);
         binary_expression->parent = last_child->parent;
