@@ -292,9 +292,22 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
         return 1;
     }
 
-    // TODO 判断是否为局部变量
-
-    // TODO 判断是否为全局变量
+    switch (symbol->type) {
+        case S_VARIABLE:
+            // TODO 判断是全局变量还是局部变量
+            e->type = EXPR_LOCAL;
+            e->type = EXPR_GLOBAL;
+            // TODO 读取变量编号
+            break;
+        case S_CONSTANT:
+            e->type = EXPR_CONSTANT;
+            // TODO 读取常量的值
+            // TODO 读取常量的编号
+            break;
+        default:
+            compiler_error(c, node, "use invalid identifier `%.*s`\n", name.length, name.buffer);
+            return 1;
+    }
 
     return 0;
 }
@@ -1432,11 +1445,13 @@ static int compiler_function(lgx_compiler_t* c, lgx_ast_node_t *node) {
     lgx_ht_node_t* n;
     for (n = lgx_ht_first(node->child[3]->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
-        // TODO 如果符号类型为变量
-        int reg = lgx_reg_pop(node->u.regs);
-        if (reg < 0) {
-            compiler_error(c, symbol->node, "too many local variables\n");
-            return 1;
+        // 如果符号类型为变量
+        if (symbol->type == S_VARIABLE) {
+            int reg = lgx_reg_pop(node->u.regs);
+            if (reg < 0) {
+                compiler_error(c, symbol->node, "too many local variables\n");
+                return 1;
+            }
         }
     }
 
@@ -1451,13 +1466,15 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
     lgx_ht_node_t* n;
     for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
-        // TODO 如果符号类型为变量
-        if (c->global.length >= 65535) {
-            compiler_error(c, symbol->node, "too many global variables\n");
-            return 1;
-        }
-        if (lgx_ht_set(&c->global, &n->k, (void*)(intptr_t)c->global.length)) {
-            return 1;
+        // 如果符号类型为变量
+        if (symbol->type == S_VARIABLE) {
+            if (c->global.length >= 65535) {
+                compiler_error(c, symbol->node, "too many global variables\n");
+                return 1;
+            }
+            if (lgx_ht_set(&c->global, &n->k, (void*)(intptr_t)c->global.length)) {
+                return 1;
+            }
         }
     }
 
