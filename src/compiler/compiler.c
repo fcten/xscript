@@ -1,4 +1,5 @@
 #include "../common/common.h"
+#include "../common/escape.h"
 #include "../parser/symbol.h"
 #include "register.h"
 #include "compiler.h"
@@ -184,7 +185,16 @@ static int compiler_string_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
 
     e->type = EXPR_LITERAL;
     e->v.type = T_STRING;
-    //e->v.v.str = 
+
+    lgx_str_t src, dst;
+    src.buffer = c->ast->lex.source.content + node->offset;
+    src.length = src.size = node->length;
+    if (lgx_str_init(&dst, src.length)) {
+        return 1;
+    }
+    lgx_escape_decode(&src, &dst);
+
+    e->v.v.str = dst;
 
     return 0;
 }
@@ -195,6 +205,18 @@ static int compiler_char_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr
     e->type = EXPR_LITERAL;
     e->v.type = T_LONG;
     //e->v.v.l = 
+
+    lgx_str_t src, dst;
+    src.buffer = c->ast->lex.source.content + node->offset;
+    src.length = src.size = node->length;
+    if (lgx_str_init(&dst, src.length)) {
+        return 1;
+    }
+    lgx_escape_decode(&src, &dst);
+
+    e->v.v.l = (unsigned char)dst.buffer[0];
+
+    lgx_str_cleanup(&dst);
 
     return 0;
 }

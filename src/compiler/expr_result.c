@@ -11,5 +11,13 @@ int lgx_expr_result_cleanup(lgx_expr_result_t* e) {
         lgx_reg_push(e->regs, e->u.local);
     }
 
+    switch (e->v.type) {
+        case T_STRING:
+            lgx_str_cleanup(&e->v.v.str);
+            break;
+        default:
+            break;
+    }
+
     return 0;
 }

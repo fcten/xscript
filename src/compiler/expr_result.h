@@ -22,7 +22,15 @@ typedef struct {
 
     // 如果结果为字面量，存储字面量具体的值
     // 否则，存储常量或变量的类型
-    lgx_value_t v;
+    struct {
+        lgx_val_type_t type;
+
+        union {
+            long long       l; // 64 位有符号整数
+            double          d; // 64 位有符号浮点数
+            lgx_str_t       str;
+        } v;
+    } v;
 
     union {
         // 如果结果为常量，存储常量编号
