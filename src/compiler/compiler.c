@@ -204,7 +204,19 @@ static int compiler_long_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr
 
     e->type = EXPR_LITERAL;
     e->v.type = T_LONG;
-    //e->v.v.l = 
+
+    char *s = c->ast->lex.source.content + node->offset;
+    if (s[0] == '0') {
+        if (s[1] == 'b' || s[1] == 'B') {
+            e->v.v.l = strtoll(s+2, NULL, 2);
+        } else if (s[1] == 'x' || s[1] == 'X') {
+            e->v.v.l = strtoll(s+2, NULL, 16);
+        } else {
+            e->v.v.l = strtoll(s, NULL, 10);
+        }
+    } else {
+        e->v.v.l = strtoll(s, NULL, 10);
+    }
 
     return 0;
 }
@@ -214,7 +226,9 @@ static int compiler_double_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
 
     e->type = EXPR_LITERAL;
     e->v.type = T_DOUBLE;
-    //e->v.v.d = 
+
+    char *s = c->ast->lex.source.content + node->offset;
+    e->v.v.d = strtod(s, NULL);
 
     return 0;
 }
