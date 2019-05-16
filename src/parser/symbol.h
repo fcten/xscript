@@ -2,20 +2,28 @@
 #define LGX_SYMBOL_H
 
 #include "ast.h"
+#include "type.h"
 
 // 符号类型
 typedef enum {
-    S_VARIABLE = 0,
+    S_UNKNOWN = 0,
+    S_VARIABLE,
     S_CONSTANT,
     S_TYPE,
 } lgx_symbol_type_t;
 
 typedef struct {
     // 符号类型
-    lgx_symbol_type_t type;
+    lgx_symbol_type_t s_type;
 
     // 值类型
+    lgx_type_t type;
+
+    // 如果符号类型为 S_CONSTANT，保存符号的值
     lgx_value_t value;
+
+    // 是否为全局符号
+    unsigned char is_global;
 
     // 符号声明对应的 AST 节点
     lgx_ast_node_t* node;

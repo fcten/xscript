@@ -14,33 +14,36 @@ typedef enum lgx_val_type_e {
     // 高级类型
     T_STRING,
     T_ARRAY,
+    T_MAP,
     T_STRUCT,
     T_INTERFACE,
     T_FUNCTION
 } lgx_val_type_t;
 
-typedef struct lgx_value_s     lgx_value_t;
+typedef struct lgx_type_s      lgx_type_t;
 typedef struct lgx_string_s    lgx_string_t;
 typedef struct lgx_array_s     lgx_array_t;
+typedef struct lgx_map_s       lgx_map_t;
 typedef struct lgx_struct_s    lgx_struct_t;
 typedef struct lgx_interface_s lgx_interface_t;
 typedef struct lgx_function_s  lgx_function_t;
 
-struct lgx_value_s {
+typedef struct lgx_value_s {
     // 8 字节
     union {
         long long       l; // 64 位有符号整数
         double          d; // 64 位有符号浮点数
         lgx_string_t    *str;
         lgx_array_t     *arr;
-        lgx_struct_t    *obj;
-        lgx_interface_t *res;
-        lgx_function_t  *ref;
+        lgx_map_t       *map;
+        lgx_struct_t    *sru;
+        lgx_interface_t *itf;
+        lgx_function_t  *fun;
     } v;
 
     // 以下控制在 4 字节以内
     lgx_val_type_t type:8;
-};
+} lgx_value_t;
 
 typedef struct lgx_val_list_s {
     lgx_list_t head;
@@ -57,6 +60,56 @@ typedef struct lgx_gc_s {
     unsigned char color;
 } lgx_gc_t;
 
+struct lgx_type_s {
+    union {
+        struct lgx_type_array_s     *arr;
+        struct lgx_type_map_s       *map;
+        struct lgx_type_struct_s    *sru;
+        struct lgx_type_interface_s *itf;
+        struct lgx_type_function_s  *fun;
+    } u;
+
+    // 基础类型
+    lgx_val_type_t type;
+
+    // 类型字面量
+    lgx_str_t literal;
+};
+
+typedef struct lgx_type_array_s {
+    // 值类型
+    lgx_type_t value;
+} lgx_type_array_t;
+
+typedef struct lgx_type_map_s {
+    // 键类型
+    lgx_type_t key;
+    // 值类型
+    lgx_type_t value;
+} lgx_type_map_t;
+
+typedef struct lgx_type_struct_s {
+    // 属性
+    lgx_ht_t properties;
+
+    // 方法
+    lgx_ht_t methods;
+} lgx_type_struct_t;
+
+typedef struct lgx_type_interface_s {
+    // 方法
+    lgx_ht_t methods;
+} lgx_type_interface_t;
+
+typedef struct lgx_type_function_s {
+    // 返回值类型
+    lgx_type_t ret;
+
+    // 参数列表
+    unsigned arg_len;
+    lgx_type_t** args;
+} lgx_type_function_t;
+
 struct lgx_string_s {
     // GC 信息
     lgx_gc_t gc;
@@ -70,8 +123,18 @@ struct lgx_array_s {
     lgx_gc_t gc;
 
     // 类型
-    lgx_value_t key;
-    lgx_value_t value;
+    lgx_type_array_t* type;
+
+    // 哈希表
+    lgx_ht_t table;
+};
+
+struct lgx_map_s {
+    // GC 信息
+    lgx_gc_t gc;
+
+    // 类型
+    lgx_type_map_t* type;
 
     // 哈希表
     lgx_ht_t table;
@@ -80,6 +143,9 @@ struct lgx_array_s {
 struct lgx_struct_s {
     // GC 信息
     lgx_gc_t gc;
+
+    // 类型
+    lgx_type_struct_t* type;
 
     // 属性
     lgx_ht_t properties;
@@ -92,6 +158,9 @@ struct lgx_interface_s {
     // GC 信息
     lgx_gc_t gc;
 
+    // 类型
+    lgx_type_interface_t* type;
+
     // 方法
     lgx_ht_t methods;
 };
@@ -102,12 +171,8 @@ struct lgx_function_s {
     // GC 信息
     lgx_gc_t gc;
 
-    // 参数列表
-    unsigned args_num;
-    lgx_list_t args; // lgx_val_list_t
-
-    // 返回值类型
-    lgx_value_t ret;
+    // 类型
+    lgx_type_function_t* type;
 
     // 需求的堆栈空间
     unsigned stack_size;

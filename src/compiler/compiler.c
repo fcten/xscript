@@ -292,11 +292,15 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
         return 1;
     }
 
-    switch (symbol->type) {
+    switch (symbol->s_type) {
         case S_VARIABLE:
-            // TODO 判断是全局变量还是局部变量
-            e->type = EXPR_LOCAL;
-            e->type = EXPR_GLOBAL;
+            // 判断是全局变量还是局部变量
+            if (symbol->is_global) {
+                e->type = EXPR_GLOBAL;
+            } else {
+                e->type = EXPR_LOCAL;
+            }
+
             // TODO 读取变量编号
             break;
         case S_CONSTANT:
@@ -1759,7 +1763,7 @@ static int compiler_function(lgx_compiler_t* c, lgx_ast_node_t *node) {
     for (n = lgx_ht_first(node->child[3]->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
         // 如果符号类型为变量
-        if (symbol->type == S_VARIABLE) {
+        if (symbol->s_type == S_VARIABLE) {
             int reg = lgx_reg_pop(node->u.regs);
             if (reg < 0) {
                 compiler_error(c, symbol->node, "too many local variables\n");
@@ -1780,7 +1784,7 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
     for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
         // 如果符号类型为变量
-        if (symbol->type == S_VARIABLE) {
+        if (symbol->s_type == S_VARIABLE) {
             if (c->global.length >= 65535) {
                 compiler_error(c, symbol->node, "too many global variables\n");
                 return 1;

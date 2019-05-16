@@ -37,7 +37,7 @@ static lgx_symbol_t* symbol_new() {
     return (lgx_symbol_t*)xcalloc(1, sizeof(lgx_symbol_t));
 }
 
-static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, lgx_symbol_type_t type) {
+static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, lgx_symbol_type_t s_type) {
     assert(node->type == IDENTIFIER_TOKEN);
 
     lgx_str_t name;
@@ -55,8 +55,12 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
     if (!symbol) {
         return 1;
     }
-    symbol->type = type;
+    symbol->s_type = s_type;
     symbol->node = node;
+
+    if (node->parent && node->parent->type == BLOCK_STATEMENT && node->parent->parent == NULL) {
+        symbol->is_global = 1;
+    }
 
     if (lgx_ht_set(symbols, &name, symbol)) {
         symbol_error(ast, node, "symbol `%.*s` unkonwn error\n", name.length, name.buffer);
