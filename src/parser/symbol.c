@@ -71,7 +71,13 @@ static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, l
 }
 
 static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
+    assert(node->children >= 2);
+
+    // 变量名称标识符
     lgx_ast_node_t* id = node->child[0];
+
+    // 变量类型
+    lgx_ast_node_t* type = node->child[1];
 
     switch (node->parent->type) {
         case BLOCK_STATEMENT: { // 在块作用域内定义变量

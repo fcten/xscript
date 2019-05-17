@@ -1,24 +1,17 @@
-echo to_string("hello world")
-echo to_string(true)
-echo to_string(false)
-echo to_string(12345)
-echo to_string(12.345)
-echo to_string(null)
+function main() {
+    var a int;
+    var b float;
+    var c bool, d string;
+    var e array;
+    var f map;
+    var g struct;
+    var h interface;
+    var i function;
 
-echo to_int("hello world")
-echo to_int(true)
-echo to_int(false)
-echo to_int(12345)
-echo to_int(12.345)
-echo to_int("12345")
-echo to_int("12.345")
-echo to_int(null)
+    type user struct {
+        id int;
+        name string;
+    }
 
-echo to_float("hello world")
-echo to_float(true)
-echo to_float(false)
-echo to_float(12345)
-echo to_float(12.345)
-echo to_float("12345")
-echo to_float("12.345")
-echo to_float(null)
+    var j user;
+}
