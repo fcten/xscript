@@ -17,7 +17,6 @@ const lgx_token_str_t reserved_words[LGX_RESERVED_WORDS] = {
     {TK_FLOAT, "float"},
     {TK_BOOL, "bool"},
     {TK_STRING, "string"},
-    {TK_ARRAY, "array"},
     {TK_STRUCT, "struct"},
     {TK_INTERFACE, "interface"},
     {TK_FUNCTION, "function"},

@@ -2,15 +2,17 @@ function main() {
     var a int;
     var b float;
     var c bool, d string;
-    var e array;
-    var f map;
-    var g struct;
-    var h interface;
-    var i function;
+    var e []int;
+    var f [int]string;
+    var g struct {
+        var id int;
+    };
+    var h interface{};
+    var i function();
 
     type user struct {
-        id int;
-        name string;
+        var id int;
+        var name string;
     }
 
     var j user;

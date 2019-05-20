@@ -249,6 +249,26 @@ static int ast_parse_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+static int ast_parse_decl_parameter_with_parentheses(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    if (ast->cur_token != TK_LEFT_PAREN) {
+        ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+    ast_step(ast);
+
+    if (ast_parse_decl_parameter(ast, parent)) {
+        return 1;
+    }
+
+    if (ast->cur_token != TK_RIGHT_PAREN) {
+        ast_error(ast, "')' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+    ast_step(ast);
+
+    return 0;
+}
+
 static int ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* param_list = ast_node_new(ast, FUNCTION_CALL_PARAMETER);
     ast_node_append_child(parent, param_list);
@@ -270,24 +290,92 @@ static int ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+static int ast_parse_block_statement_with_braces(lgx_ast_t* ast, lgx_ast_node_t* parent);
+
 static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* type_expression = ast_node_new(ast, TYPE_EXPRESSION);
     ast_node_append_child(parent, type_expression);
 
     switch (ast->cur_token) {
         case TK_INT:
+            type_expression->u.type = T_LONG;
+            ast_step(ast);     
+            break;
         case TK_FLOAT:
-        case TK_BOOL:
-        case TK_STRING:
-        case TK_IDENTIFIER:
+            type_expression->u.type = T_DOUBLE;
             ast_step(ast);
             break;
-        case TK_ARRAY:
-        case TK_STRUCT:
-        case TK_INTERFACE:
-        case TK_FUNCTION:
-        // TODO
+        case TK_BOOL:
+            type_expression->u.type = T_BOOL;
             ast_step(ast);
+            break;
+        case TK_STRING:
+            type_expression->u.type = T_STRING;
+            ast_step(ast);
+            break;
+        case TK_IDENTIFIER:
+            type_expression->u.type = T_CUSTOM;
+            if (ast_parse_identifier_token(ast, type_expression)) {
+                return 1;
+            }
+            break;
+        case TK_LEFT_BRACK:
+            ast_step(ast);
+
+            if (ast->cur_token == TK_RIGHT_BRACK) {
+                type_expression->u.type = T_ARRAY;
+                ast_step(ast);
+
+                if (ast_parse_type_expression(ast, type_expression)) {
+                    return 1;
+                }
+            } else {
+                type_expression->u.type = T_MAP;
+
+                // 解析 key
+                if (ast_parse_type_expression(ast, type_expression)) {
+                    return 1;
+                }
+
+                if (ast->cur_token != TK_RIGHT_BRACK) {
+                    ast_error(ast, "`]` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
+                    return 1;
+                }
+                ast_step(ast);
+
+                // 解析 value
+                if (ast_parse_type_expression(ast, type_expression)) {
+                    return 1;
+                }
+            }
+            break;
+        case TK_STRUCT:
+            type_expression->u.type = T_STRUCT;
+            ast_step(ast);
+
+            if (ast_parse_block_statement_with_braces(ast, type_expression)) {
+                return 1;
+            }
+            break;
+        case TK_INTERFACE:
+            type_expression->u.type = T_INTERFACE;
+            ast_step(ast);
+
+            if (ast_parse_block_statement_with_braces(ast, type_expression)) {
+                return 1;
+            }
+            break;
+        case TK_FUNCTION:
+            type_expression->u.type = T_FUNCTION;
+            ast_step(ast);
+
+            if (ast_parse_decl_parameter_with_parentheses(ast, type_expression)) {
+                return 1;
+            }
+
+            if (ast_parse_type_expression(ast, type_expression)) {
+                return 1;
+            }
             break;
         default:
             break;
@@ -972,21 +1060,9 @@ static int ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         lgx_ast_node_t* catch_statement = ast_node_new(ast, CATCH_STATEMENT);
         ast_node_append_child(try_statement, catch_statement);
 
-        if (ast->cur_token != TK_LEFT_PAREN) {
-            ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+        if (ast_parse_decl_parameter_with_parentheses(ast, catch_statement)) {
             return 1;
         }
-        ast_step(ast);
-
-        if (ast_parse_decl_parameter(ast, catch_statement)) {
-            return 1;
-        }
-
-        if (ast->cur_token != TK_RIGHT_PAREN) {
-            ast_error(ast, "')' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
-            return 1;
-        }
-        ast_step(ast);
 
         if (ast_parse_block_statement_with_braces(ast, catch_statement)) {
             return 1;
@@ -1194,21 +1270,9 @@ static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     }
 
     // 参数
-    if (ast->cur_token != TK_LEFT_PAREN) {
-        ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+    if (ast_parse_decl_parameter_with_parentheses(ast, function_declaration)) {
         return 1;
     }
-    ast_step(ast);
-
-    if (ast_parse_decl_parameter(ast, function_declaration)) {
-        return 1;
-    }
-
-    if (ast->cur_token != TK_RIGHT_PAREN) {
-        ast_error(ast, "')' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-    ast_step(ast);
 
     // 返回值
     if (ast_parse_type_expression(ast, function_declaration)) {
@@ -1216,10 +1280,8 @@ static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     }
 
     // 函数体
-    if (ast->cur_token == TK_LEFT_BRACE) {
-        if (ast_parse_block_statement_with_braces(ast, function_declaration)) {
-            return 1;
-        }
+    if (ast_parse_block_statement_with_braces(ast, function_declaration)) {
+        return 1;
     }
 
     return 0;
@@ -1423,7 +1485,11 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
 
 int lgx_ast_cleanup(lgx_ast_t* ast) {
     lgx_lex_cleanup(&ast->lex);
-    ast_node_cleanup(ast->root);
+
+    if (ast->root) {
+        ast_node_cleanup(ast->root);
+        ast->root = NULL;
+    }
 
     // TODO 释放错误信息链表
 

@@ -88,7 +88,6 @@ typedef enum lgx_token_e {
     TK_FLOAT,
     TK_BOOL,
     TK_STRING,
-    TK_ARRAY,
     TK_STRUCT,
     TK_INTERFACE,
     TK_FUNCTION,

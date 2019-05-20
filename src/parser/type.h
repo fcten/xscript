@@ -6,12 +6,11 @@
 #include "../common/str.h"
 
 typedef enum lgx_val_type_e {
-    // 基本类型
     T_UNKNOWN = 0,  // 未知类型
+    T_CUSTOM,       // 自定义类型
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数
-    T_BOOL,         // T_BOOL 必须是基本类型的最后一种，因为它被用于是否为基本类型的判断
-    // 高级类型
+    T_BOOL,
     T_STRING,
     T_ARRAY,
     T_MAP,
@@ -188,5 +187,8 @@ struct lgx_function_s {
 };
 
 char* lgx_type_to_string(lgx_val_type_t type);
+
+int lgx_type_init(lgx_type_t* type);
+void lgx_type_cleanup(lgx_type_t* type);
 
 #endif // LGX_TYPE_H

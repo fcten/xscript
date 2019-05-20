@@ -42,7 +42,7 @@ typedef enum {
     ARRAY_EXPRESSION,
     STRUCT_EXPRESSION,
     TYPE_EXPRESSION,
-    // Other
+    // Token
     IDENTIFIER_TOKEN,
     LONG_TOKEN,
     DOUBLE_TOKEN,
@@ -51,6 +51,7 @@ typedef enum {
     TRUE_TOKEN,
     FALSE_TOKEN,
     NULL_TOKEN,
+    // Other
     FOR_CONDITION
 } lgx_ast_type_t;
 
@@ -86,6 +87,9 @@ typedef struct lgx_ast_node_s {
 
         // 当节点类型为 BINARY_EXPRESSION、UNARY_EXPRESSION 时，用于保存 EXPRESSION 的操作符
         lgx_token_t op;
+
+        // 当节点类型为 TYPE_EXPRESSION 时，用于保存类型
+        lgx_val_type_t type;
 
         // 当节点类型为 FOR_STATEMENT、WHILE_STATEMENT、DO_WHILE_STATEMENT 时，用于保存 break 与 continue 语句出现的位置
         // 当节点类型为 SWITCH_CASE_STATEMENT 时，保存 break 语句出现的位置
