@@ -1299,7 +1299,13 @@ static int ast_parse_type_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     // ast->cur_token == TK_TYPE
     ast_step(ast);
 
-    // TODO
+    if (ast_parse_identifier_token(ast, type_declaration)) {
+        return 1;
+    }
+
+    if (ast_parse_type_expression(ast, type_declaration)) {
+        return 1;
+    }
 
     return 0;
 }
@@ -1639,7 +1645,7 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "}");
             break;
         case TYPE_EXPRESSION:
-            printf("%*s%s\n", indent, "", "TYPE_DECLARATION");
+            printf("%*s%s\n", indent, "", "TYPE_EXPRESSION");
             ast_print_child(node, indent);
             break;
         // Other
