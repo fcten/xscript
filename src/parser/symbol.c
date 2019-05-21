@@ -37,34 +37,163 @@ static lgx_symbol_t* symbol_new() {
     return (lgx_symbol_t*)xcalloc(1, sizeof(lgx_symbol_t));
 }
 
-static int symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_ht_t *symbols, lgx_symbol_type_t s_type) {
-    assert(node->type == IDENTIFIER_TOKEN);
+static void symbol_del(lgx_symbol_t* symbol) {
+    xfree(symbol);
+}
 
-    lgx_str_t name;
-    name.buffer = ast->lex.source.content + node->offset;
-    name.length = node->length;
+static lgx_symbol_t* symbol_add(lgx_ast_t* ast, lgx_ast_node_t* node,
+    lgx_ht_t* symbols, lgx_symbol_type_t s_type,
+    lgx_str_t* name, unsigned char is_global) {
 
-    lgx_ht_node_t* ht_node = lgx_ht_get(symbols, &name);
+    lgx_ht_node_t* ht_node = lgx_ht_get(symbols, name);
     if (ht_node) {
         lgx_symbol_t* symbol = (lgx_symbol_t*)ht_node->v;
-        symbol_error(ast, node, "symbol `%.*s` alreay declared at line %d row %d\n", name.length, name.buffer, symbol->node->line, symbol->node->row);
-        return 1;
+        symbol_error(ast, node, "symbol `%.*s` alreay declared at line %d row %d\n", name->length, name->buffer, symbol->node->line, symbol->node->row);
+        return NULL;
     }
 
     lgx_symbol_t* symbol = symbol_new();
     if (!symbol) {
-        return 1;
+        return NULL;
     }
     symbol->s_type = s_type;
     symbol->node = node;
+    symbol->is_global = is_global;
 
-    if (node->parent && node->parent->type == BLOCK_STATEMENT && node->parent->parent == NULL) {
-        symbol->is_global = 1;
+    if (lgx_ht_set(symbols, name, symbol)) {
+        symbol_del(symbol);
+        symbol_error(ast, node, "symbol `%.*s` unkonwn error\n", name->length, name->buffer);
+        return NULL;
     }
 
-    if (lgx_ht_set(symbols, &name, symbol)) {
-        symbol_error(ast, node, "symbol `%.*s` unkonwn error\n", name.length, name.buffer);
+    return symbol;
+}
+
+static int symbol_parse_type(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_t* type);
+
+static int symbol_parse_type_array(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_array_t* arr) {
+    assert(node->type == TYPE_EXPRESSION);
+    assert(node->u.type == T_ARRAY);
+    assert(node->children == 1);
+
+    if (symbol_parse_type(ast, node->child[0], &arr->value)) {
         return 1;
+    }
+
+    return 0;
+}
+
+static int symbol_parse_type_map(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_map_t* map) {
+    assert(node->type == TYPE_EXPRESSION);
+    assert(node->u.type == T_MAP);
+    assert(node->children == 2);
+
+    if (symbol_parse_type(ast, node->child[0], &map->key)) {
+        return 1;
+    }
+
+    if (symbol_parse_type(ast, node->child[1], &map->value)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+static int symbol_parse_type_struct(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_struct_t* sru) {
+    assert(node->type == TYPE_EXPRESSION);
+    assert(node->u.type == T_STRUCT);
+
+    return 0;
+}
+
+static int symbol_parse_type_interface(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_interface_t* itf) {
+    assert(node->type == TYPE_EXPRESSION);
+    assert(node->u.type == T_INTERFACE);
+
+    return 0;
+}
+
+static int symbol_parse_type_function(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
+    assert(node->type == TYPE_EXPRESSION);
+    assert(node->u.type == T_FUNCTION);
+
+    return 0;
+}
+
+static int symbol_parse_type(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_t* type) {
+    assert(node->type == TYPE_EXPRESSION);
+
+    type->type = node->u.type;
+
+    type->literal.length = node->length;
+    type->literal.buffer = ast->lex.source.content + node->offset;
+
+    switch (node->u.type) {
+        case T_CUSTOM:
+        case T_LONG:
+        case T_DOUBLE:
+        case T_BOOL:
+        case T_STRING:
+            // 简单类型
+            break;
+        case T_ARRAY:
+            type->u.arr = xmalloc(sizeof(lgx_type_array_t));
+            if (!type->u.arr) {
+                return 1;
+            }
+            if (symbol_parse_type_array(ast, node, type->u.arr)) {
+                xfree(type->u.arr);
+                type->u.arr = NULL;
+                return 1;
+            }
+            break;
+        case T_MAP:
+            type->u.map = xmalloc(sizeof(lgx_type_map_t));
+            if (!type->u.map) {
+                return 1;
+            }
+            if (symbol_parse_type_map(ast, node, type->u.map)) {
+                xfree(type->u.map);
+                type->u.map = NULL;
+                return 1;
+            }
+            break;
+        case T_STRUCT:
+            type->u.sru = xmalloc(sizeof(lgx_type_struct_t));
+            if (!type->u.sru) {
+                return 1;
+            }
+            if (symbol_parse_type_struct(ast, node, type->u.sru)) {
+                xfree(type->u.sru);
+                type->u.sru = NULL;
+                return 1;
+            }
+            break;
+        case T_INTERFACE:
+            type->u.itf = xmalloc(sizeof(lgx_type_interface_t));
+            if (!type->u.itf) {
+                return 1;
+            }
+            if (symbol_parse_type_interface(ast, node, type->u.itf)) {
+                xfree(type->u.itf);
+                type->u.itf = NULL;
+                return 1;
+            }
+            break;
+        case T_FUNCTION:
+            type->u.fun = xmalloc(sizeof(lgx_type_function_t));
+            if (!type->u.fun) {
+                return 1;
+            }
+            if (symbol_parse_type_function(ast, node, type->u.fun)) {
+                xfree(type->u.fun);
+                type->u.fun = NULL;
+                return 1;
+            }
+            break;
+        default:
+            symbol_error(ast, node, "[invalid type expression] %.*s\n", type->literal.length, type->literal.buffer);
+            return 1;
     }
 
     return 0;
@@ -74,23 +203,31 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
     assert(node->children >= 2);
 
     // 变量名称标识符
-    lgx_ast_node_t* id = node->child[0];
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    lgx_str_t name;
+    name.buffer = ast->lex.source.content + node->child[0]->offset;
+    name.length = node->child[0]->length;
 
-    // 变量类型
-    //lgx_ast_node_t* type = node->child[1];
+    // 是否全局变量
+    unsigned char is_global = 0;
+    if (node->parent && node->parent->type == BLOCK_STATEMENT && node->parent->parent == NULL) {
+        is_global = 1;
+    }
+
+    lgx_symbol_t* symbol;
 
     switch (node->parent->type) {
         case BLOCK_STATEMENT: { // 在块作用域内定义变量
             // 添加变量到该块作用域中
-            if (symbol_add(ast, id, node->parent->u.symbols, S_VARIABLE)) {
-                return 1;
-            }
+            symbol = symbol_add(ast, node,
+                node->parent->u.symbols, S_VARIABLE,
+                &name, is_global);
             break;
         }
         case FOR_STATEMENT: { // 在 for 循环条件中定义变量
             // TODO 必须是第一个循环条件
             if (0) {
-                symbol_error(ast, id, "[invalid variable declaration] %.*s\n", id->length, ast->lex.source.content + id->offset);
+                symbol_error(ast, node, "[invalid variable declaration] %.*s\n", name.length, name.buffer);
                 return 1;
             }
 
@@ -108,47 +245,101 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
             break;
         }
         default:
-            symbol_error(ast, id, "[invalid variable declaration] %.*s\n", id->length, ast->lex.source.content + id->offset);
+            symbol_error(ast, node, "[invalid variable declaration] %.*s\n", name.length, name.buffer);
             return 1;
     }
+
+    if (!symbol) {
+        return 1;
+    }
+
+    if (symbol_parse_type(ast, node->child[1], &symbol->type)) {
+        return 1;
+    }
+
+    // TODO 如果有初始化，进行类型推断
 
     return 0;
 }
 
 static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
-    lgx_ast_node_t* id = node->child[0];
+    assert(node->children >= 2);
+
+    // 常量名称标识符
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    lgx_str_t name;
+    name.buffer = ast->lex.source.content + node->child[0]->offset;
+    name.length = node->child[0]->length;
+
+    // 是否全局常量
+    unsigned char is_global = 0;
+    if (node->parent && node->parent->type == BLOCK_STATEMENT && node->parent->parent == NULL) {
+        is_global = 1;
+    }
+
+    lgx_symbol_t* symbol;
 
     switch (node->parent->type) {
         case BLOCK_STATEMENT: { // 在块作用域内定义常量
             // 添加常量到该块作用域中
-            if (symbol_add(ast, id, node->parent->u.symbols, S_CONSTANT)) {
-                return 1;
-            }
+            symbol = symbol_add(ast, node,
+                node->parent->u.symbols, S_CONSTANT,
+                &name, is_global);
             break;
         }
         default:
-            symbol_error(ast, id, "[invalid constant declaration] %.*s\n", id->length, ast->lex.source.content + id->offset);
+            symbol_error(ast, node, "[invalid constant declaration] %.*s\n", name.length, name.buffer);
             return 1;
     }
+
+    if (!symbol) {
+        return 1;
+    }
+
+    if (symbol_parse_type(ast, node->child[1], &symbol->type)) {
+        return 1;
+    }
+
+    // TODO 如果有初始化，进行类型推断
 
     return 0;
 }
 
 static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
-    lgx_ast_node_t* id = node->child[0];
+    assert(node->children == 4);
+
+    // 函数名称标识符
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    lgx_str_t name;
+    name.buffer = ast->lex.source.content + node->child[0]->offset;
+    name.length = node->child[0]->length;
+
+    // 是否全局函数
+    unsigned char is_global = 0;
+    if (node->parent && node->parent->type == BLOCK_STATEMENT && node->parent->parent == NULL) {
+        is_global = 1;
+    }
+
+    lgx_symbol_t* symbol;
 
     switch (node->parent->type) {
         case BLOCK_STATEMENT: { // 在块作用域内定义函数
             // 添加函数到该块作用域中
-            if (symbol_add(ast, id, node->parent->u.symbols, S_CONSTANT)) {
-                return 1;
-            }
+            symbol = symbol_add(ast, node,
+                node->parent->u.symbols, S_CONSTANT,
+                &name, is_global);
             break;
         }
         default:
-            symbol_error(ast, id, "[invalid function declaration] %.*s\n", id->length, ast->lex.source.content + id->offset);
+            symbol_error(ast, node, "[invalid function declaration] %.*s\n", name.length, name.buffer);
             return 1;
     }
+
+    if (!symbol) {
+        return 1;
+    }
+
+    // TODO 解析参数列表和返回值
 
     return 0;
 }
