@@ -27,7 +27,7 @@ char* lgx_type_to_string(lgx_type_t* type) {
     }
 }
 
-int lgx_type_equal(lgx_type_t* t1, lgx_type_t* t2) {
+int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
     if (t1->type != t2->type) {
         return 1;
     }

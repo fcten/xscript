@@ -856,7 +856,7 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
             ret = 1;
         }
 
-        if (lgx_type_equal(&e1.v_type, &e2.v_type)) {
+        if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
             compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
             ret = 1;
         }
