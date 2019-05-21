@@ -22,9 +22,6 @@ typedef struct {
     // 常量表
     lgx_ht_t constant;
 
-    // 分配在堆上的变量
-    lgx_ht_t global;
-
     // 异常处理信息
     lgx_rb_t exception;
 } lgx_compiler_t;

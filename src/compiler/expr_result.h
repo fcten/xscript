@@ -21,16 +21,14 @@ typedef enum {
 typedef struct {
     lgx_expr_type_t type;
 
-    // 如果结果为字面量，存储字面量具体的值
-    // 否则，存储常量或变量的类型
-    struct {
-        lgx_val_type_t type;
+    // 值类型
+    lgx_type_t v_type;
 
-        union {
-            long long       l; // 64 位有符号整数
-            double          d; // 64 位有符号浮点数
-            lgx_str_t       str;
-        } v;
+    // 如果结果为字面量或常量，存储其具体的值
+    union {
+        long long       l; // 64 位有符号整数
+        double          d; // 64 位有符号浮点数
+        lgx_str_t       str;
     } v;
 
     union {
@@ -51,7 +49,7 @@ typedef struct {
 #define is_constant(e)  (is_literal(e) || is_const(e))
 #define is_variable(e)  (is_global(e) || is_local(e) || is_temp(e))
 
-#define check_type(e, t)     ((e)->v.type == t)
+#define check_type(e, t)     ((e)->v_type.type == t)
 #define check_constant(e, t) (is_constant(e) && check_type(e, t))
 #define check_variable(e, t) (is_variable(e) && check_type(e, t))
 

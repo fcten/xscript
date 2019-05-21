@@ -1,7 +1,7 @@
 #include "type.h"
 
-char* lgx_type_to_string(lgx_val_type_t type) {
-    switch (type) {
+char* lgx_type_to_string(lgx_type_t* type) {
+    switch (type->type) {
         case T_UNKNOWN:
             return "unknown";
         case T_LONG:
@@ -14,6 +14,8 @@ char* lgx_type_to_string(lgx_val_type_t type) {
             return "string";
         case T_ARRAY:
             return "array";
+        case T_MAP:
+            return "map";
         case T_STRUCT:
             return "struct";
         case T_INTERFACE:
@@ -23,6 +25,34 @@ char* lgx_type_to_string(lgx_val_type_t type) {
         default:
             return "invalid";
     }
+}
+
+int lgx_type_equal(lgx_type_t* t1, lgx_type_t* t2) {
+    if (t1->type != t2->type) {
+        return 1;
+    }
+
+    switch (t1->type) {
+        case T_ARRAY:
+            // TODO
+            break;
+        case T_MAP:
+            // TODO
+            break;
+        case T_STRUCT:
+            // TODO
+            break;
+        case T_INTERFACE:
+            // TODO
+            break;
+        case T_FUNCTION:
+            // TODO
+            break;
+        default:
+            break;
+    }
+
+    return 0;
 }
 
 int lgx_type_init(lgx_type_t* type) {
