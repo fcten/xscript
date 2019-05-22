@@ -29,6 +29,7 @@ typedef struct {
         long long       l; // 64 位有符号整数
         double          d; // 64 位有符号浮点数
         lgx_str_t       str;
+        lgx_ht_t        arr;
     } v;
 
     union {

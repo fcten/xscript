@@ -7,6 +7,7 @@
 
 typedef enum lgx_val_type_e {
     T_UNKNOWN = 0,  // 未知类型
+    T_NULL,
     T_CUSTOM,       // 自定义类型
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数

@@ -28,7 +28,13 @@ typedef struct {
     } u;
 
     // 是否为全局符号
-    unsigned char is_global;
+    unsigned char is_global:1;
+
+    // 是否被赋值
+    unsigned char is_initialized:1;
+
+    // 是否被使用
+    unsigned char is_used:1;
 
     // 符号声明对应的 AST 节点
     lgx_ast_node_t* node;

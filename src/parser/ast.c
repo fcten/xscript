@@ -161,7 +161,7 @@ static void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line, ast->lex.row);
+            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line + 1, ast->lex.row);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
             "[ERROR] ");

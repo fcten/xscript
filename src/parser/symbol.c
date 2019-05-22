@@ -19,7 +19,7 @@ static void symbol_error(lgx_ast_t* ast, lgx_ast_node_t* node, const char *fmt, 
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line, node->row);
+            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
             "[ERROR] ");
@@ -191,6 +191,9 @@ static int symbol_parse_type(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_t* t
                 return 1;
             }
             break;
+        case T_UNKNOWN:
+            // 未知类型，后续进行类型推断
+            break;
         default:
             symbol_error(ast, node, "[invalid type expression] %.*s\n", type->literal.length, type->literal.buffer);
             return 1;
@@ -257,7 +260,7 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
         return 1;
     }
 
-    // TODO 如果有初始化，进行类型推断
+    // 注意：这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
 
     return 0;
 }

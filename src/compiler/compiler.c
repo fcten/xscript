@@ -30,7 +30,7 @@ void compiler_error(lgx_compiler_t* c, lgx_ast_node_t* node, const char *fmt, ..
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line, node->row);
+            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
             "[ERROR] ");
@@ -358,10 +358,10 @@ static void cast_double(lgx_expr_result_t* e) {
 }
 
 static int op_add(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_LONG;
         e->v.l = l->v.l + r->v.l;
@@ -377,10 +377,10 @@ static int op_add(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e,
 }
 
 static int op_sub(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_LONG;
         e->v.l = l->v.l - r->v.l;
@@ -396,10 +396,10 @@ static int op_sub(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e,
 }
 
 static int op_mul(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_LONG;
         e->v.l = l->v.l * r->v.l;
@@ -415,10 +415,10 @@ static int op_mul(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e,
 }
 
 static int op_div(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_LONG;
         if (r->v.l == 0) {
@@ -442,10 +442,10 @@ static int op_div(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e,
 }
 
 static int op_mod(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_LONG;
         e->v.l = l->v.l % r->v.l;
@@ -458,10 +458,10 @@ static int op_mod(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e,
 }
 
 static int op_eq(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l == r->v.l;
@@ -477,10 +477,10 @@ static int op_eq(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
 }
 
 static int op_ne(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l != r->v.l;
@@ -496,10 +496,10 @@ static int op_ne(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
 }
 
 static int op_gt(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l > r->v.l;
@@ -515,10 +515,10 @@ static int op_gt(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
 }
 
 static int op_ge(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l >= r->v.l;
@@ -534,10 +534,10 @@ static int op_ge(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
 }
 
 static int op_lt(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l < r->v.l;
@@ -553,10 +553,10 @@ static int op_lt(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
 }
 
 static int op_le(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
-    assert(check_type(l, T_LONG) || check_type(l, T_DOUBLE));
-    assert(check_type(r, T_LONG) || check_type(r, T_DOUBLE));
+    assert(check_constant(l, T_LONG) || check_constant(l, T_DOUBLE));
+    assert(check_constant(r, T_LONG) || check_constant(r, T_DOUBLE));
 
-    if (check_type(l, T_LONG) && check_type(r, T_LONG)) {
+    if (check_constant(l, T_LONG) && check_constant(r, T_LONG)) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_BOOL;
         e->v.l = l->v.l <= r->v.l;
@@ -567,6 +567,23 @@ static int op_le(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, 
         e->v_type.type = T_BOOL;
         e->v.l = l->v.d <= r->v.d;
     }
+
+    return 0;
+}
+
+static int op_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_constant(l, T_ARRAY));
+    // TODO 允许更多类型作为键
+    assert(check_constant(r, T_LONG) || check_constant(r, T_STRING));
+
+    lgx_ht_node_t *n = lgx_ht_get(&l->v.arr, &r->v.str);
+    if (!n) {
+        e->type = EXPR_LITERAL;
+        e->v_type.type = T_NULL;
+        return 0;
+    }
+
+    // TODO 读取具体的值
 
     return 0;
 }
@@ -585,66 +602,71 @@ static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_res
             case TK_GREATER_EQUAL: return op_ge(c, node, e, l, r);
             case TK_LESS: return op_lt(c, node, e, l, r);
             case TK_LESS_EQUAL: return op_le(c, node, e, l, r);
+            case TK_LEFT_BRACK: return op_index(c, node, e, l, r);
             default:
                 compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
                 return 1;
         }
-    } else if (0) {
-        // TODO 如果一个操作数为立即数并且范围在 0 - 255 之内，使用立即数指令
-    } else {
-        int r1 = -1, r2 = -1, ret = 0;;
-
-        do {
-            if (is_local(l) || is_temp(l)) {
-                r1 = l->u.local;
-            } else {
-                r1 = load_to_reg(c, node, l);
-                if (r1 < 0) {
-                    ret = 1;
-                    break;
-                }
-            }
-
-            if (is_local(r) || is_temp(r)) {
-                r2 = r->u.local;
-            } else {
-                r2 = load_to_reg(c, node, r);
-                if (r2 < 0) {
-                    ret = 1;
-                    break;
-                }
-            }
-            
-            e->type = EXPR_TEMP;
-            e->u.local = reg_pop(c, node);
-            switch (node->u.op) {
-                case TK_ADD: ret = bc_add(c, e->u.local, r1, r2); break;
-                case TK_SUB: ret = bc_sub(c, e->u.local, r1, r2); break;
-                case TK_MUL: ret = bc_mul(c, e->u.local, r1, r2); break;
-                case TK_DIV: ret = bc_div(c, e->u.local, r1, r2); break;
-                //case TK_MOD: ret = bc_mod(c, e->u.local, r1, r2); break;
-                case TK_EQUAL: ret = bc_eq(c, e->u.local, r1, r2); break;
-                case TK_NOT_EQUAL: ret = bc_ne(c, e->u.local, r1, r2); break;
-                case TK_GREATER: ret = bc_gt(c, e->u.local, r1, r2); break;
-                case TK_GREATER_EQUAL: ret = bc_ge(c, e->u.local, r1, r2); break;
-                case TK_LESS: ret = bc_lt(c, e->u.local, r1, r2); break;
-                case TK_LESS_EQUAL: ret = bc_le(c, e->u.local, r1, r2); break;
-                default:
-                    compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
-                    return 1;
-            }
-        } while (0);
-
-        if (!is_local(l) && r1 >= 0) {
-            reg_push(c, node, r1);
-        }
-
-        if (!is_local(r) && r2 >= 0) {
-            reg_push(c, node, r2);
-        }
-
-        return ret;
     }
+    
+    if (0) {
+        // TODO 如果一个操作数为立即数并且范围在 0 - 255 之内，使用立即数指令
+    }
+
+    // 编译为普通指令
+    int r1 = -1, r2 = -1, ret = 0;;
+
+    do {
+        if (is_local(l) || is_temp(l)) {
+            r1 = l->u.local;
+        } else {
+            r1 = load_to_reg(c, node, l);
+            if (r1 < 0) {
+                ret = 1;
+                break;
+            }
+        }
+
+        if (is_local(r) || is_temp(r)) {
+            r2 = r->u.local;
+        } else {
+            r2 = load_to_reg(c, node, r);
+            if (r2 < 0) {
+                ret = 1;
+                break;
+            }
+        }
+        
+        e->type = EXPR_TEMP;
+        e->u.local = reg_pop(c, node);
+        switch (node->u.op) {
+            case TK_ADD: ret = bc_add(c, e->u.local, r1, r2); break;
+            case TK_SUB: ret = bc_sub(c, e->u.local, r1, r2); break;
+            case TK_MUL: ret = bc_mul(c, e->u.local, r1, r2); break;
+            case TK_DIV: ret = bc_div(c, e->u.local, r1, r2); break;
+            //case TK_MOD: ret = bc_mod(c, e->u.local, r1, r2); break;
+            case TK_EQUAL: ret = bc_eq(c, e->u.local, r1, r2); break;
+            case TK_NOT_EQUAL: ret = bc_ne(c, e->u.local, r1, r2); break;
+            case TK_GREATER: ret = bc_gt(c, e->u.local, r1, r2); break;
+            case TK_GREATER_EQUAL: ret = bc_ge(c, e->u.local, r1, r2); break;
+            case TK_LESS: ret = bc_lt(c, e->u.local, r1, r2); break;
+            case TK_LESS_EQUAL: ret = bc_le(c, e->u.local, r1, r2); break;
+            case TK_LEFT_BRACK: return bc_array_get(c, e->u.local, r1, r2); break;
+            default:
+                compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
+                return 1;
+        }
+    } while (0);
+
+    if (!is_local(l) && r1 >= 0) {
+        reg_push(c, node, r1);
+    }
+
+    if (!is_local(r) && r2 >= 0) {
+        reg_push(c, node, r2);
+    }
+
+    return ret;
 }
 
 static int op_lnot(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* r) {
@@ -887,11 +909,81 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
 }
 
 static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    return 0;
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LEFT_PAREN);
+    assert(node->children == 2);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1;
+    lgx_expr_result_init(&e1);
+
+    if (node->child[0]->type == BINARY_EXPRESSION &&
+        (node->child[0]->u.op == TK_DOT || node->child[0]->u.op == TK_ARROW)) {
+        // TODO 方法调用
+    } else {
+        if (compiler_expression(c, node->child[0], &e1)) {
+            ret = 1;
+        }
+    }
+
+    if (!check_type(&e1, T_FUNCTION)) {
+        compiler_error(c, node, "makes function from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        ret = 1;
+    }
+
+    if (node->child[0]->type == BINARY_EXPRESSION &&
+        (node->child[0]->u.op == TK_DOT || node->child[0]->u.op == TK_ARROW)) {
+        // TODO 方法调用
+    } else {
+
+    }
+
+    // TODO 设置返回值
+
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
 }
 
 static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    return 0;
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LEFT_BRACK);
+    assert(node->children == 2);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    if (compiler_expression(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    if (!check_type(&e1, T_ARRAY)) {
+        compiler_error(c, node, "makes array from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        return 1;
+    }
+
+    if (compiler_expression(c, node->child[1], &e2)) {
+        ret = 1;
+    }
+
+    // TODO 这里应该也能够接受任意实现了 toString 方法的类型
+    if (!check_type(&e2, T_LONG) && !!check_type(&e1, T_STRING)) {
+        compiler_error(c, node, "attempt to index a %s key, integer or string expected\n", lgx_type_to_string(&e2.v_type));
+        ret = 1;
+    }
+
+    if (binary_operator(c , node, e, &e1, &e2)) {
+        ret = 1;
+    }
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
 }
 
 static int compiler_binary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
