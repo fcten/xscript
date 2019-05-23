@@ -55,6 +55,14 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
     return 0;
 }
 
+int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
+    dst->type = src->type;
+
+    // TODO
+
+    return 0;
+}
+
 int lgx_type_init(lgx_type_t* type) {
     memset(type, 0, sizeof(lgx_type_t));
 

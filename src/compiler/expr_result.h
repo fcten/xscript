@@ -2,6 +2,7 @@
 #define LGX_EXPRESSION_H
 
 #include "../parser/type.h"
+#include "../parser/symbol.h"
 #include "register.h"
 
 typedef enum {
@@ -21,7 +22,7 @@ typedef enum {
 typedef struct {
     lgx_expr_type_t type;
 
-    // 值类型
+    // 存储值的类型
     lgx_type_t v_type;
 
     // 如果结果为字面量或常量，存储其具体的值
@@ -40,6 +41,9 @@ typedef struct {
         // 如果结果为全局变量，存储全局变量编号
         int global;
     } u;
+
+    // 如果结果为常量或变量，指向对应的符号表节点
+    lgx_symbol_t* symbol;
 } lgx_expr_result_t;
 
 #define is_literal(e)   ((e)->type == EXPR_LITERAL)

@@ -98,13 +98,17 @@ int lgx_expr_result_cleanup(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_re
         reg_push(c, node, e->u.local);
     }
 
-    switch (e->v_type.type) {
-        case T_STRING:
-            lgx_str_cleanup(&e->v.str);
-            break;
-        default:
-            break;
+    if (is_constant(e)) {
+        switch (e->v_type.type) {
+            case T_STRING:
+                lgx_str_cleanup(&e->v.str);
+                break;
+            default:
+                break;
+        }
     }
+
+    lgx_type_cleanup(&e->v_type);
 
     return 0;
 }
@@ -298,15 +302,26 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
             if (symbol->is_global) {
                 e->type = EXPR_GLOBAL;
                 e->u.global = symbol->u.r;
+                e->symbol = symbol;
+                if (lgx_type_dup(&symbol->type, &e->v_type)) {
+                    return 1;
+                }
             } else {
                 e->type = EXPR_LOCAL;
                 e->u.local = symbol->u.r;
+                e->symbol = symbol;
+                if (lgx_type_dup(&symbol->type, &e->v_type)) {
+                    return 1;
+                }
             }
             break;
         case S_CONSTANT:
             e->type = EXPR_CONSTANT;
-            // TODO 读取常量的值
-            // TODO 读取常量的编号
+            e->u.constant = symbol->u.r;
+            e->symbol = symbol;
+            if (lgx_type_dup(&symbol->type, &e->v_type)) {
+                return 1;
+            }
             break;
         default:
             compiler_error(c, node, "use invalid identifier `%.*s`\n", name.length, name.buffer);
@@ -776,8 +791,11 @@ static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *no
     }
 
     if (node->u.op == TK_ADD && check_type(&e1, T_STRING) && check_type(&e2, T_STRING)) {
+        e->v_type.type = T_STRING;
         // TODO 字符串拼接
-    } else if ((check_type(&e1, T_LONG) || check_type(&e1, T_DOUBLE)) && (check_type(&e2, T_LONG) || check_type(&e2, T_DOUBLE))) {
+    } else if ((check_type(&e1, T_LONG) && check_type(&e2, T_LONG)) ||
+        (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE))) {
+        e->v_type.type = e1.v_type.type;
         switch (node->u.op) {
             case TK_ADD:
             case TK_SUB:
@@ -820,7 +838,8 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
 
     if (node->u.op == TK_EQUAL && check_type(&e1, T_STRING) && check_type(&e2, T_STRING)) {
         // TODO 字符串比较
-    } else if ((check_type(&e1, T_LONG) || check_type(&e1, T_DOUBLE)) && (check_type(&e2, T_LONG) || check_type(&e2, T_DOUBLE))) {
+    } else if ((check_type(&e1, T_LONG) && check_type(&e2, T_LONG)) ||
+        (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE))) {
         switch (node->u.op) {
             case TK_EQUAL:
             case TK_NOT_EQUAL:
@@ -838,6 +857,8 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
         compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(&e1.v_type), node->u.op, lgx_type_to_string(&e2.v_type));
         ret = 1;
     }
+
+    e->v_type.type = T_BOOL;
 
     lgx_expr_result_cleanup(c, node, &e2);
     lgx_expr_result_cleanup(c, node, &e1);
@@ -901,6 +922,8 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
         compiler_error(c, node, "invalid left variable for assignment\n");
         ret = 1;
     }
+
+    // TODO 设置表达式返回值
 
     lgx_expr_result_cleanup(c, node, &e2);
     lgx_expr_result_cleanup(c, node, &e1);
@@ -1862,6 +1885,130 @@ static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node
     return 0;
 }
 
+static int compiler_global_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    assert(node->type == VARIABLE_DECLARATION);
+    assert(node->children >= 2);
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    assert(node->child[1]->type == TYPE_EXPRESSION);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    lgx_str_t name;
+    name.buffer = c->ast->lex.source.content + node->child[0]->offset;
+    name.length = name.size = node->child[0]->length;
+
+    if (compiler_identifier_token(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    assert(is_global(&e1));
+
+    if (node->children > 2) {
+        if (compiler_expression(c, node->child[2], &e2)) {
+            ret = 1;
+        }
+
+        // 全局变量只能用常量或字面量初始化
+        if (!is_constant(&e2)) {
+            compiler_error(c, node, "global variable `%.*s` can only be initialized with constants\n", name.length, name.buffer);
+            ret = 1;
+        }
+
+        // 类型检查
+        if (check_type(&e1, T_UNKNOWN)) {
+            // 根据表达式初始化符号类型
+            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+                ret = 1;
+            }
+        } else {
+            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+        }
+
+        // TODO 初始化全局变量的值
+    } else {
+        if (check_type(&e1, T_UNKNOWN)) {
+            compiler_error(c, node, "unable to determine the type of global variable `%.*s`\n", name.length, name.buffer);
+            ret = 1;
+        }
+    }
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
+}
+
+static int compiler_local_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    assert(node->type == VARIABLE_DECLARATION);
+    assert(node->children >= 2);
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    assert(node->child[1]->type == TYPE_EXPRESSION);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    lgx_str_t name;
+    name.buffer = c->ast->lex.source.content + node->child[0]->offset;
+    name.length = name.size = node->child[0]->length;
+
+    if (compiler_identifier_token(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    assert(is_local(&e1));
+
+    if (node->children > 2) {
+        if (compiler_expression(c, node->child[2], &e2)) {
+            ret = 1;
+        }
+
+        // 类型检查
+        if (check_type(&e1, T_UNKNOWN)) {
+            // 根据表达式初始化符号类型
+            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+                ret = 1;
+            }
+        } else {
+            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+        }
+
+        if (is_local(&e2) || is_temp(&e2)) {
+            bc_mov(c, e1.u.local, e2.u.local);
+        } else {
+            int r = load_to_reg(c, node, &e2);
+            if (r >= 0) {
+                bc_mov(c, e1.u.local, r);
+                reg_push(c, node, r);
+            } else {
+                ret = 1;
+            }
+        }
+    } else {
+        if (check_type(&e1, T_UNKNOWN)) {
+            compiler_error(c, node, "unable to determine the type of global variable `%.*s`\n", name.length, name.buffer);
+            ret = 1;
+        }
+    }
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
+}
+
 static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     switch(node->type) {
         case IF_STATEMENT: return compiler_if_statement(c, node);
@@ -1876,9 +2023,7 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         case THROW_STATEMENT: return compiler_throw_statement(c, node);
         case RETURN_STATEMENT: return compiler_return_statement(c, node);
         case EXPRESSION_STATEMENT: return compiler_expression_statement(c, node);
-        case VARIABLE_DECLARATION:
-            // TODO 如果变量声明带初始化
-            break;
+        case VARIABLE_DECLARATION: return compiler_local_variable_declaration(c, node);
         case CONSTANT_DECLARATION:
             // TODO 更新化常量表
             break;
@@ -1906,13 +2051,15 @@ static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     return 0;
 }
 
-static int compiler_function(lgx_compiler_t* c, lgx_ast_node_t *node) {
+static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == FUNCTION_DECLARATION);
     assert(node->children == 4);
     assert(node->child[0]->type == IDENTIFIER_TOKEN);
     assert(node->child[1]->type == FUNCTION_DECL_PARAMETER);
     assert(node->child[2]->type == TYPE_EXPRESSION);
     assert(node->child[3]->type == BLOCK_STATEMENT);
+
+    int ret = 0;
 
     // 为局部变量分配寄存器
     lgx_ht_node_t* n;
@@ -1923,14 +2070,23 @@ static int compiler_function(lgx_compiler_t* c, lgx_ast_node_t *node) {
             int reg = lgx_reg_pop(node->u.regs);
             if (reg < 0) {
                 compiler_error(c, symbol->node, "too many local variables\n");
-                return 1;
+                ret = 1;
             }
             symbol->u.r = reg;
         }
     }
 
     // 编译语句
-    return compiler_block_statement(c, node->child[3]);
+    if (compiler_block_statement(c, node->child[3])) {
+        ret = 1;
+    }
+
+    // TODO 检查函数是否总是有返回值
+
+    // 写入一句 ret null
+    bc_ret(c, 0);
+
+    return ret;
 }
 
 static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -1952,16 +2108,27 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
     }
 
-    // 编译函数
+    int ret = 0;
     for(i = 0; i < node->children; ++i) {
-        if (node->child[i]->type == FUNCTION_DECLARATION) {
-            if (compiler_function(c, node->child[i])) {
-                return 1;
-            }
+        switch (node->child[i]->type) {
+            case FUNCTION_DECLARATION:
+                if (compiler_function_declaration(c, node->child[i])) {
+                    ret = 1;
+                }
+                break;
+            case VARIABLE_DECLARATION:
+                if (compiler_global_variable_declaration(c, node->child[i])) {
+                    ret = 1;
+                }
+                break;
+            default:
+                compiler_error(c, node->child[i], "invalid ast-node %d\n", node->child[i]->type);
+                ret = 1;
+                break;
         }
     }
 
-    return 0;
+    return ret;
 }
 
 int lgx_compiler_init(lgx_compiler_t* c) {
