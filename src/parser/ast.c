@@ -1250,6 +1250,17 @@ static int ast_parse_constant_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     return 0;
 }
 
+static int ast_parse_function_receiver(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* function_receiver = ast_node_new(ast, FUNCTION_RECEIVER);
+    ast_node_append_child(parent, function_receiver);\
+
+    if (ast->cur_token != TK_LEFT_PAREN) {
+        return 0;
+    }
+
+    return ast_parse_decl_parameter_with_parentheses(ast, function_receiver);
+}
+
 static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* function_declaration = ast_node_new(ast, FUNCTION_DECLARATION);
     ast_node_append_child(parent, function_declaration);
@@ -1262,7 +1273,10 @@ static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     // ast->cur_token == TK_FUNCTION
     ast_step(ast);
 
-    // TODO 所属结构体
+    // 接收者
+    if (ast_parse_function_receiver(ast, function_declaration)) {
+        return 1;
+    }
 
     // 函数名
     if (ast_parse_identifier_token(ast, function_declaration)) {
@@ -1675,6 +1689,10 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
             break;
         case FOR_CONDITION:
             printf("%*s%s\n", indent, "", "FOR_CONDITION");
+            ast_print_child(node, indent);
+            break;
+        case FUNCTION_RECEIVER:
+            printf("%*s%s\n", indent, "", "FUNCTION_RECEIVER");
             ast_print_child(node, indent);
             break;
         default:

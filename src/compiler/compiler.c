@@ -2053,17 +2053,18 @@ static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
 static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == FUNCTION_DECLARATION);
-    assert(node->children == 4);
-    assert(node->child[0]->type == IDENTIFIER_TOKEN);
-    assert(node->child[1]->type == FUNCTION_DECL_PARAMETER);
-    assert(node->child[2]->type == TYPE_EXPRESSION);
-    assert(node->child[3]->type == BLOCK_STATEMENT);
+    assert(node->children == 5);
+    assert(node->child[0]->type == FUNCTION_RECEIVER);
+    assert(node->child[1]->type == IDENTIFIER_TOKEN);
+    assert(node->child[2]->type == FUNCTION_DECL_PARAMETER);
+    assert(node->child[3]->type == TYPE_EXPRESSION);
+    assert(node->child[4]->type == BLOCK_STATEMENT);
 
     int ret = 0;
 
     // 为局部变量分配寄存器
     lgx_ht_node_t* n;
-    for (n = lgx_ht_first(node->child[3]->u.symbols); n; n = lgx_ht_next(n)) {
+    for (n = lgx_ht_first(node->child[4]->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
         // 如果符号类型为变量
         if (symbol->s_type == S_VARIABLE) {
@@ -2077,7 +2078,7 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     }
 
     // 编译语句
-    if (compiler_block_statement(c, node->child[3])) {
+    if (compiler_block_statement(c, node->child[4])) {
         ret = 1;
     }
 

@@ -52,7 +52,8 @@ typedef enum {
     FALSE_TOKEN,
     NULL_TOKEN,
     // Other
-    FOR_CONDITION
+    FOR_CONDITION,
+    FUNCTION_RECEIVER
 } lgx_ast_type_t;
 
 typedef struct lgx_ast_node_list_s {

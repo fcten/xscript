@@ -309,13 +309,15 @@ static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
 }
 
 static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
-    assert(node->children == 4);
+    assert(node->children == 5);
+
+    // TODO 是否为成员函数
 
     // 函数名称标识符
-    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    assert(node->child[1]->type == IDENTIFIER_TOKEN);
     lgx_str_t name;
-    name.buffer = ast->lex.source.content + node->child[0]->offset;
-    name.length = node->child[0]->length;
+    name.buffer = ast->lex.source.content + node->child[1]->offset;
+    name.length = node->child[1]->length;
 
     // 是否全局函数
     unsigned char is_global = 0;
