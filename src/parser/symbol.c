@@ -19,10 +19,10 @@ static void symbol_error(lgx_ast_t* ast, lgx_ast_node_t* node, const char *fmt, 
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
+            "[SYMBOL ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] ");
+            "[SYMBOL ERROR] ");
     }
 
     va_start(args, fmt);
@@ -400,7 +400,7 @@ lgx_symbol_t* lgx_symbol_get(lgx_ast_node_t* node, lgx_str_t* name, unsigned off
         lgx_ht_node_t* ht_node = lgx_ht_get(node->u.symbols, name);
         if (ht_node) {
             lgx_symbol_t* n = (lgx_symbol_t*)ht_node->v;
-            if (offset == 0 || n->node->offset < offset) {
+            if (offset == 0 || n->node->offset <= offset) {
                 return n;
             }
         }

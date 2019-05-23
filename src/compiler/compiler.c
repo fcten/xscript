@@ -30,10 +30,10 @@ void compiler_error(lgx_compiler_t* c, lgx_ast_node_t* node, const char *fmt, ..
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
+            "[COMPILER ERROR] [%s:%d:%d] ", ast->lex.source.path, node->line + 1, node->row);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[ERROR] ");
+            "[COMPILER ERROR] ");
     }
 
     va_start(args, fmt);
@@ -1163,6 +1163,10 @@ static int compiler_unary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
     return ret;
 }
 
+static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    return 0;
+}
+
 static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
     switch (node->type) {
         case STRING_TOKEN:
@@ -1183,6 +1187,10 @@ static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr
             return compiler_binary_expression(c, node, e);
         case UNARY_EXPRESSION:
             return compiler_unary_expression(c, node, e);
+        case ARRAY_EXPRESSION:
+            return compiler_array_expression(c, node, e);
+        case STRUCT_EXPRESSION:
+            return 0;
         default:
             compiler_error(c, node, "expression expected, ast-node type: %d\n", node->type);
             return 1;
@@ -2041,14 +2049,14 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == BLOCK_STATEMENT);
 
-    int i;
+    int i, ret = 0;
     for(i = 0; i < node->children; ++i) {
         if (compiler_statement(c, node->child[i])) {
-            return 1;
+            ret = 1;
         }
     }
 
-    return 0;
+    return ret;
 }
 
 static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {

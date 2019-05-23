@@ -4,13 +4,13 @@ function main() {
     var c bool, d string;
     var e []int;
     var f [int]string;
-    var g struct {
+    var g struct{
         var id int;
     };
     var h interface{};
     var i function();
 
-    type user struct {
+    type user struct{
         var id int;
         var name string;
     }
