@@ -194,12 +194,12 @@ static int ast_parse_string_token(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* string_token = ast_node_new(ast, STRING_TOKEN);
     ast_node_append_child(parent, string_token);
 
-    if (ast->cur_token != TK_STRING) {
+    if (ast->cur_token != TK_LITERAL_STRING) {
         ast_error(ast, "`<string>` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
         return 1;
     }
 
-    // ast->cur_token == TK_STRING
+    // ast->cur_token == TK_LITERAL_STRING
     ast_step(ast);
 
     return 0;
@@ -815,7 +815,7 @@ static int ast_parse_if_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* if_statement = ast_node_new(ast, IF_STATEMENT);
     ast_node_append_child(parent, if_statement);
 
-    // ast->cur_token == TK_IF
+    assert(ast->cur_token == TK_IF);
     ast_step(ast);
     
     if (ast_parse_expression_with_parentheses(ast, if_statement)) {
@@ -844,7 +844,7 @@ static int ast_parse_for_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* for_statement = ast_node_new(ast, FOR_STATEMENT);
     ast_node_append_child(parent, for_statement);
 
-    // ast->cur_token == TK_FOR
+    assert(ast->cur_token == TK_FOR);
     ast_step(ast);
 
     if (ast->cur_token != TK_LEFT_PAREN) {
@@ -908,7 +908,7 @@ static int ast_parse_while_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* while_statement = ast_node_new(ast, WHILE_STATEMENT);
     ast_node_append_child(parent, while_statement);
 
-    // ast->cur_token == TK_WHILE
+    assert(ast->cur_token == TK_WHILE);
     ast_step(ast);
     
     if (ast_parse_expression_with_parentheses(ast, while_statement)) {
@@ -922,7 +922,7 @@ static int ast_parse_do_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* do_statement = ast_node_new(ast, DO_STATEMENT);
     ast_node_append_child(parent, do_statement);
 
-    // ast->cur_token == TK_DO
+    assert(ast->cur_token == TK_DO);
     ast_step(ast);
     
     if (ast_parse_block_statement_with_braces(ast, do_statement)) {
@@ -942,7 +942,7 @@ static int ast_parse_break_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* break_statement = ast_node_new(ast, BREAK_STATEMENT);
     ast_node_append_child(parent, break_statement);
 
-    // ast->cur_token == TK_BREAK
+    assert(ast->cur_token == TK_BREAK);
     ast_step(ast);
 
     return 0;
@@ -952,7 +952,7 @@ static int ast_parse_continue_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) 
     lgx_ast_node_t* continue_statement = ast_node_new(ast, CONTINUE_STATEMENT);
     ast_node_append_child(parent, continue_statement);
 
-    // ast->cur_token == TK_CONTINUE
+    assert(ast->cur_token == TK_CONTINUE);
     ast_step(ast);
 
     return 0;
@@ -962,7 +962,7 @@ static int ast_parse_case_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* case_statement = ast_node_new(ast, CASE_STATEMENT);
     ast_node_append_child(parent, case_statement);
 
-    // ast->cur_token == TK_CASE
+    assert(ast->cur_token == TK_CASE);
     ast_step(ast);
 
     if (ast_parse_expression(ast, case_statement)) {
@@ -986,7 +986,7 @@ static int ast_parse_default_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* default_statement = ast_node_new(ast, DEFAULT_STATEMENT);
     ast_node_append_child(parent, default_statement);
 
-    // ast->cur_token == TK_DEFAULT
+    assert(ast->cur_token == TK_DEFAULT);
     ast_step(ast);
 
     if (ast->cur_token != TK_SEMICOLON) {
@@ -1006,7 +1006,7 @@ static int ast_parse_switch_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* switch_statement = ast_node_new(ast, SWITCH_STATEMENT);
     ast_node_append_child(parent, switch_statement);
 
-    // ast->cur_token == TK_SWITCH
+    assert(ast->cur_token == TK_SWITCH);
     ast_step(ast);
 
     if (ast_parse_expression_with_parentheses(ast, switch_statement)) {
@@ -1047,7 +1047,7 @@ static int ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* try_statement = ast_node_new(ast, TRY_STATEMENT);
     ast_node_append_child(parent, try_statement);
 
-    // ast->cur_token == TK_TRY
+    assert(ast->cur_token == TK_TRY);
     ast_step(ast);
 
     if (ast_parse_block_statement_with_braces(ast, try_statement)) {
@@ -1076,7 +1076,7 @@ static int ast_parse_throw_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* throw_statement = ast_node_new(ast, THROW_STATEMENT);
     ast_node_append_child(parent, throw_statement);
 
-    // ast->cur_token == TK_THROW
+    assert(ast->cur_token == TK_THROW);
     ast_step(ast);
 
     return ast_parse_expression(ast, throw_statement);
@@ -1086,7 +1086,7 @@ static int ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* return_statement = ast_node_new(ast, RETURN_STATEMENT);
     ast_node_append_child(parent, return_statement);
 
-    // ast->cur_token == TK_RETURN
+    assert(ast->cur_token == TK_RETURN);
     ast_step(ast);
 
     return ast_parse_expression(ast, return_statement);
@@ -1103,12 +1103,7 @@ static int ast_parse_package_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent)
     lgx_ast_node_t* package_declaration = ast_node_new(ast, PACKAGE_DECLARATION);
     ast_node_append_child(parent, package_declaration);
 
-    if (ast->cur_token != TK_PACKAGE) {
-        ast_error(ast, "`package` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_PACKAGE
+    assert(ast->cur_token == TK_PACKAGE);
     ast_step(ast);
 
     return ast_parse_identifier_token(ast, package_declaration);
@@ -1118,12 +1113,7 @@ static int ast_parse_import_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) 
     lgx_ast_node_t* import_declaration = ast_node_new(ast, IMPORT_DECLARATION);
     ast_node_append_child(parent, import_declaration);
 
-    if (ast->cur_token != TK_IMPORT) {
-        ast_error(ast, "`import` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_IMPORT
+    assert(ast->cur_token == TK_IMPORT);
     ast_step(ast);
 
     if (ast->cur_token == TK_IDENTIFIER) {
@@ -1139,12 +1129,7 @@ static int ast_parse_export_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) 
     lgx_ast_node_t* export_declaration = ast_node_new(ast, EXPORT_DECLARATION);
     ast_node_append_child(parent, export_declaration);
 
-    if (ast->cur_token != TK_EXPORT) {
-        ast_error(ast, "`export` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_EXPORT
+    assert(ast->cur_token == TK_EXPORT);
     ast_step(ast);
 
     // TODO 指定被导出的方法
@@ -1156,12 +1141,7 @@ static int ast_parse_variable_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     lgx_ast_node_t* variable_declaration = ast_node_new(ast, VARIABLE_DECLARATION);
     ast_node_append_child(parent, variable_declaration);
 
-    if (ast->cur_token != TK_VAR) {
-        ast_error(ast, "`var` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_VAR
+    assert(ast->cur_token == TK_VAR);
     ast_step(ast);
 
     while (1) {
@@ -1204,12 +1184,7 @@ static int ast_parse_constant_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     lgx_ast_node_t* constant_declaration = ast_node_new(ast, CONSTANT_DECLARATION);
     ast_node_append_child(parent, constant_declaration);
 
-    if (ast->cur_token != TK_CONST) {
-        ast_error(ast, "`const` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_CONST
+    assert(ast->cur_token == TK_CONST);
     ast_step(ast);
 
     while (1) {
@@ -1265,12 +1240,7 @@ static int ast_parse_function_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent
     lgx_ast_node_t* function_declaration = ast_node_new(ast, FUNCTION_DECLARATION);
     ast_node_append_child(parent, function_declaration);
 
-    if (ast->cur_token != TK_FUNCTION) {
-        ast_error(ast, "`function` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_FUNCTION
+    assert(ast->cur_token == TK_FUNCTION);
     ast_step(ast);
 
     // 接收者
@@ -1305,12 +1275,7 @@ static int ast_parse_type_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* type_declaration = ast_node_new(ast, TYPE_DECLARATION);
     ast_node_append_child(parent, type_declaration);
 
-    if (ast->cur_token != TK_TYPE) {
-        ast_error(ast, "`type` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
-        return 1;
-    }
-
-    // ast->cur_token == TK_TYPE
+    assert(ast->cur_token == TK_TYPE);
     ast_step(ast);
 
     if (ast_parse_identifier_token(ast, type_declaration)) {

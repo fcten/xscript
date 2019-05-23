@@ -2,6 +2,8 @@
 5050
 */
 
+import "io";
+
 function main() {
     var a = 100000, b = 0;
 
@@ -10,5 +12,5 @@ function main() {
         a = a - 1;
     }
 
-    print(b);
+    io.print(b);
 }

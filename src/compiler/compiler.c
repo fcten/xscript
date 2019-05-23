@@ -2130,6 +2130,11 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
                     ret = 1;
                 }
                 break;
+            case PACKAGE_DECLARATION:
+            case IMPORT_DECLARATION:
+            case EXPORT_DECLARATION:
+                // TODO
+                break;
             default:
                 compiler_error(c, node->child[i], "invalid ast-node %d\n", node->child[i]->type);
                 ret = 1;
