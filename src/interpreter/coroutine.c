@@ -1,9 +1,6 @@
 #include <assert.h>
 #include "../common/common.h"
 #include "../common/str.h"
-#include "../common/obj.h"
-#include "../common/res.h"
-#include "../common/exception.h"
 #include "coroutine.h"
 #include "gc.h"
 

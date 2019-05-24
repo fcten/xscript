@@ -1,9 +1,8 @@
 #ifndef LGX_VM_H
 #define LGX_VM_H
 
-#include "../common/val.h"
+#include "../parser/type.h"
 #include "../compiler/compiler.h"
-#include "../webit/wbt.h"
 
 typedef enum {
     CO_READY,
@@ -14,7 +13,7 @@ typedef enum {
 
 typedef struct {
     // 栈内存
-    lgx_val_t *buf;
+    lgx_value_t *buf;
     // 栈总长度
     unsigned int size;
     // 可用栈起始地址
@@ -24,7 +23,7 @@ typedef struct {
 typedef struct lgx_vm_s lgx_vm_t;
 
 typedef struct lgx_co_s {
-    wbt_list_t head;
+    lgx_list_t head;
     // 协程 ID
     unsigned long long id;
     // 协程状态
@@ -48,21 +47,21 @@ typedef struct lgx_co_s {
 
 struct lgx_vm_s {
     // 字节码
-    lgx_bc_t *bc;
+    lgx_compiler_t *c;
 
     // 协程
     lgx_co_t *co_running;
     lgx_co_t *co_main;
-    wbt_list_t co_ready;
-    wbt_list_t co_suspend;
-    wbt_list_t co_died;
+    lgx_list_t co_ready;
+    lgx_list_t co_suspend;
+    lgx_list_t co_died;
     // 协程创建统计
     unsigned long long co_id;
     // 协程数量统计
     unsigned co_count;
 
     // 寄存器组 (指向当前协程栈)
-    lgx_val_t *regs;
+    lgx_value_t *regs;
 
     // 堆内存
     // 新的 value 会加入新生代链表。每当 young_size 超过阈值，会触发一次 Minor GC，
@@ -73,34 +72,31 @@ struct lgx_vm_s {
     // 如果 Full GC 触发过于频繁，将会抛出 OutOfMemory 异常。
     struct {
         // 新生代
-        wbt_list_t young;
+        lgx_list_t young;
         unsigned young_size;
         // 老年代
-        wbt_list_t old;
+        lgx_list_t old;
         unsigned old_size;
     } heap;
 
     // 常量表
-    lgx_hash_t *constant;
+    lgx_ht_t *constant;
 
     // 异常
-    wbt_rb_t *exception;
+    lgx_rb_t *exception;
 
     // GC 开关
     unsigned gc_enable;
-
-    // 事件池
-    wbt_event_pool_t *events;
 };
 
-int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc);
+int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c);
 int lgx_vm_execute(lgx_vm_t *vm);
 int lgx_vm_start(lgx_vm_t *vm);
 int lgx_vm_cleanup(lgx_vm_t *vm);
 
-void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e);
+void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e);
 void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...);
-void lgx_vm_throw_v(lgx_vm_t *vm, lgx_val_t *v);
+void lgx_vm_throw_v(lgx_vm_t *vm, lgx_value_t *v);
 
 int lgx_vm_checkstack(lgx_vm_t *vm, unsigned int stack_size);
 

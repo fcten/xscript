@@ -27,6 +27,7 @@ typedef struct lgx_map_s       lgx_map_t;
 typedef struct lgx_struct_s    lgx_struct_t;
 typedef struct lgx_interface_s lgx_interface_t;
 typedef struct lgx_function_s  lgx_function_t;
+typedef struct lgx_gc_s        lgx_gc_t;
 
 typedef struct lgx_value_s {
     // 8 字节
@@ -39,6 +40,7 @@ typedef struct lgx_value_s {
         lgx_struct_t    *sru;
         lgx_interface_t *itf;
         lgx_function_t  *fun;
+        lgx_gc_t        *gc;
     } v;
 
     // 以下控制在 4 字节以内
@@ -50,7 +52,7 @@ typedef struct lgx_val_list_s {
     lgx_value_t v;
 } lgx_val_list_t;
 
-typedef struct lgx_gc_s {
+struct lgx_gc_s {
     lgx_list_t head;
 
     // 引用计数
@@ -58,7 +60,7 @@ typedef struct lgx_gc_s {
 
     // GC 标记
     unsigned char color;
-} lgx_gc_t;
+};
 
 struct lgx_type_s {
     union {

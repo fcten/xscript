@@ -1,11 +1,5 @@
 #include "../common/common.h"
-#include "../common/bytecode.h"
-#include "../common/operator.h"
-#include "../common/fun.h"
-#include "../common/obj.h"
-#include "../common/str.h"
-#include "../common/res.h"
-#include "../common/exception.h"
+#include "../compiler/bytecode.h"
 #include "vm.h"
 #include "gc.h"
 #include "coroutine.h"
@@ -14,7 +8,7 @@
 #define C(r)  (vm->constant->table[r].v)
 #define G(r)  (vm->co_main->stack.buf[r])
 
-void lgx_vm_throw(lgx_vm_t *vm, lgx_val_t *e) {
+void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e) {
     assert(vm->co_running);
     lgx_co_throw(vm->co_running, e);
     vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
@@ -28,7 +22,7 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     int len = vsnprintf(buf, 128, fmt, args);
     va_end(args);
 
-    lgx_val_t e;
+    lgx_value_t e;
     e.type = T_STRING;
     e.v.str = lgx_str_new_ref(buf, 128);
     e.v.str->length = len;
@@ -39,35 +33,29 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     lgx_vm_throw(vm, &e);
 }
 
-void lgx_vm_throw_v(lgx_vm_t *vm, lgx_val_t *v) {
-    lgx_val_t e;
+void lgx_vm_throw_v(lgx_vm_t *vm, lgx_value_t *v) {
+    lgx_value_t e;
     e = *v;
 
-    // 把原始变量标记为 undefined，避免 exception 值被释放
-    v->type = T_UNDEFINED;
+    // 把原始变量标记为 unknown，避免 exception 值被释放
+    v->type = T_UNKNOWN;
 
     lgx_vm_throw(vm, &e);
 }
 
-int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
-    wbt_list_init(&vm->co_ready);
-    wbt_list_init(&vm->co_suspend);
-    wbt_list_init(&vm->co_died);
+int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
+    lgx_list_init(&vm->co_ready);
+    lgx_list_init(&vm->co_suspend);
+    lgx_list_init(&vm->co_died);
 
-    wbt_list_init(&vm->heap.young);
-    wbt_list_init(&vm->heap.old);
+    lgx_list_init(&vm->heap.young);
+    lgx_list_init(&vm->heap.old);
     vm->heap.young_size = 0;
     vm->heap.old_size = 0;
 
-    vm->bc = bc;
-    vm->exception = bc->exception;
-    vm->constant = bc->constant;
-
-    // 创建事件池
-    vm->events = wbt_event_init();
-    if (!vm->events) {
-        return 1;
-    }
+    vm->c = c;
+    vm->exception = &c->exception;
+    vm->constant = &c->constant;
 
     vm->co_id = 0;
     vm->co_count = 0;
@@ -75,10 +63,8 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
     // 创建主协程
     vm->co_running = NULL;
 
-    lgx_fun_t *fun = lgx_fun_new(0);
-    fun->addr = 0;
-    fun->end = bc->bc_top - 1;
-    fun->stack_size = bc->reg->max + 1;
+    // TODO 寻找 main 函数
+    lgx_function_t* fun  = NULL;
 
     vm->co_main = lgx_co_create(vm, fun);
     if (!vm->co_main) {
@@ -91,13 +77,6 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_bc_t *bc) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
-    // 释放事件池
-    if (vm->events) {
-        wbt_event_cleanup(vm->events);
-        wbt_free(vm->events);
-        vm->events = NULL;
-    }
-
     // 释放主协程堆栈
     assert(vm->co_main);
     lgx_co_t *co = vm->co_main;
@@ -107,7 +86,7 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     int n;
     for (n = 0; n < size; n ++) {
         lgx_gc_ref_del(&co->stack.buf[n]);
-        co->stack.buf[n].type = T_UNDEFINED;
+        co->stack.buf[n].type = T_UNKNOWN;
     }
 
     // 释放主协程
@@ -116,18 +95,16 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
     // TODO 释放消息队列
 
-    lgx_bc_cleanup(vm->bc);
-
     // 清理存在循环引用的变量
-    wbt_list_t *list = vm->heap.young.next;
+    lgx_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
-        wbt_list_t *next = list->next;
+        lgx_list_t *next = list->next;
         xfree(list);
         list = next;
     }
     list = vm->heap.old.next;
     while(list != &vm->heap.old) {
-        wbt_list_t *next = list->next;
+        lgx_list_t *next = list->next;
         xfree(list);
         list = next;
     }
@@ -153,7 +130,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
     }
 
     unsigned i, pa, pb, pc;
-    unsigned *bc = vm->bc->bc;
+    unsigned *bc = vm->c->bc.buffer;
 
     for(;;) {
         i = bc[vm->co_running->pc++];
@@ -195,7 +172,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).v.d = R(pb).v.d + R(pc).v.d;
                 } else {
                     if (lgx_op_add(&R(pa), &R(pb), &R(pc))) {
-                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "+", lgx_val_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "+", lgx_value_typeof(&R(pc)));
                     }
                     lgx_gc_ref_add(&R(pa));
                 }
@@ -212,7 +189,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).v.d = R(pb).v.d - R(pc).v.d;
                 } else {
                     if (lgx_op_sub(&R(pa), &R(pb), &R(pc))) {
-                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "-", lgx_val_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "-", lgx_value_typeof(&R(pc)));
                     }
                 }
                 break;
@@ -228,7 +205,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).v.d = R(pb).v.d * R(pc).v.d;
                 } else {
                     if (lgx_op_mul(&R(pa), &R(pb), &R(pc))) {
-                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "*", lgx_val_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "*", lgx_value_typeof(&R(pc)));
                     }
                 }
                 break;
@@ -252,7 +229,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     if (lgx_op_div(&R(pa), &R(pb), &R(pc))) {
-                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "/", lgx_val_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "/", lgx_value_typeof(&R(pc)));
                     }
                 }
                 break;
@@ -267,11 +244,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d + pc;
                 } else {
-                    lgx_val_t c;
+                    lgx_value_t c;
                     c.type = T_LONG;
                     c.v.l = pc;
                     if (lgx_op_add(&R(pa), &R(pb), &c)) {
-                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                     }
                 }
                 break;
@@ -286,11 +263,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d - pc;
                 } else {
-                    lgx_val_t c;
+                    lgx_value_t c;
                     c.type = T_LONG;
                     c.v.l = pc;
                     if (lgx_op_sub(&R(pa), &R(pb), &c)) {
-                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                     }
                 }
                 break;
@@ -305,11 +282,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d * pc;
                 } else {
-                    lgx_val_t c;
+                    lgx_value_t c;
                     c.type = T_LONG;
                     c.v.l = pc;
                     if (lgx_op_mul(&R(pa), &R(pb), &c)) {
-                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                     }
                 }
                 break;
@@ -324,11 +301,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d / pc;
                 } else {
-                    lgx_val_t c;
+                    lgx_value_t c;
                     c.type = T_LONG;
                     c.v.l = pc;
                     if (lgx_op_div(&R(pa), &R(pb), &c)) {
-                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                        lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                     }
                 }
                 break;
@@ -343,7 +320,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.d = -R(pb).v.d;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -354,7 +331,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "<<", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "<<", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -365,7 +342,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), ">>", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), ">>", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -376,7 +353,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -387,7 +364,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -398,7 +375,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l & R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "&", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "&", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -409,7 +386,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l | R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "|", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "|", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -420,7 +397,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l ^ R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "^", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "^", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -431,7 +408,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = ~R(pb).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_val_typeof(&R(pb)), "~", lgx_val_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "~", lgx_value_typeof(&R(pc)));
                 }
                 break;
             }
@@ -497,7 +474,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d >= pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -511,7 +488,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d <= pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -525,7 +502,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d > pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -539,7 +516,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d < pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -551,7 +528,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (EXPECTED(R(pb).type == T_BOOL)) {
                     R(pa).v.l = !R(pb).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -561,7 +538,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         vm->co_running->pc += PD(i);
                     }
                 } else {
-                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_val_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pa)));
                 }
                 break;
             }
@@ -569,7 +546,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (R(pa).type == T_LONG) {
                     vm->co_running->pc = R(pa).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_val_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pa)));
                 }
                 break;
             }
@@ -586,7 +563,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
                 }
                 break;
             }
@@ -598,7 +575,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_TAIL_CALL:{
                 if (EXPECTED(R(pa).type == T_FUNCTION)) {
-                    lgx_fun_t *fun = R(pa).v.fun;
+                    lgx_function_t *fun = R(pa).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
                     lgx_gc_ref_add(&R(pa));
@@ -607,23 +584,23 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     // 移动参数
                     int n;
-                    for (n = 4; n < 4 + fun->args_num + 1; n ++) {
+                    for (n = 4; n < 4 + fun->type->arg_len + 1; n ++) {
                         lgx_gc_ref_del(&R(n));
                         R(n) = R(base + n);
-                        R(base + n).type = T_UNDEFINED;
+                        R(base + n).type = T_UNKNOWN;
                     }
 
                     // 跳转到函数入口
                     vm->co_running->pc = fun->addr;
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
                 }
                 break;
             }
             case OP_CALL:{
                 if (EXPECTED(R(pb).type == T_FUNCTION)) {
-                    lgx_fun_t *fun = R(pb).v.fun;
+                    lgx_function_t *fun = R(pb).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
                     // 写入函数信息
@@ -648,7 +625,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         if (vm->co_running == NULL) {
                             return 0;
                         }
-                    } else if (fun->is_async) {
+                    }/* else if (fun->is_async) {
                         lgx_co_t *co = lgx_co_create(vm, fun);
                         if (!co) {
                             lgx_vm_throw_s(vm, "out of memory");
@@ -658,10 +635,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             int n;
                             for (n = 4; n < 4 + fun->args_num + 1; n ++) {
                                 co->stack.buf[n] = R(base + n);
-                                R(base + n).type = T_UNDEFINED;
+                                R(base + n).type = T_UNKNOWN;
                             }
 
-                            lgx_val_t ret;
+                            lgx_value_t ret;
                             ret.type = T_OBJECT;
                             ret.v.obj = lgx_co_obj_new(vm, co);
                             if (!ret.v.obj) {
@@ -672,7 +649,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                                 lgx_co_return_object(vm->co_running, ret.v.obj);
                             }
                         }
-                    } else {
+                    }*/ else {
                         // 切换执行堆栈
                         vm->co_running->stack.base += R(0).v.fun->stack_size;
                         vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
@@ -682,7 +659,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -693,7 +670,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 // 判断返回值
                 int ret_idx = R(1).v.l;
                 int has_ret = pa;
-                lgx_val_t ret_val;
+                lgx_value_t ret_val;
                 if (has_ret) {
                     ret_val = R(pa);
                     lgx_gc_ref_add(&ret_val);
@@ -706,7 +683,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     int n;
                     for (n = 0; n < R(0).v.fun->stack_size; n ++) {
                         lgx_gc_ref_del(&R(n));
-                        R(n).type = T_UNDEFINED;
+                        R(n).type = T_UNKNOWN;
                     }
                 }
 
@@ -719,7 +696,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (has_ret) {
                     R(ret_idx) = ret_val;
                 } else {
-                    R(ret_idx).type = T_UNDEFINED;
+                    R(ret_idx).type = T_UNKNOWN;
                 }
 
                 if (UNEXPECTED(pc < 0)) {
@@ -738,17 +715,17 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     if (pb == 0) {
                         lgx_hash_add(R(pa).v.arr, &R(pc));
                     } else if (R(pb).type == T_LONG || R(pb).type == T_STRING) {
-                        lgx_hash_node_t n;
+                        lgx_ht_node_t n;
                         n.k = R(pb);
                         n.v = R(pc);
                         lgx_hash_set(R(pa).v.arr, &n);
                     } else {
                         // runtime warning
-                        lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_val_typeof(&R(pa)));
+                        lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_value_typeof(&R(pa)));
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_val_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
                 }
                 break;
             }
@@ -758,7 +735,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 R(pa).type = T_ARRAY;
                 R(pa).v.arr = lgx_hash_new(0);
                 if (UNEXPECTED(!R(pa).v.arr)) {
-                    R(pa).type = T_UNDEFINED;
+                    R(pa).type = T_UNKNOWN;
                     lgx_vm_throw_s(vm, "out of memory");
                     break;
                 }
@@ -769,22 +746,22 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_ARRAY_GET:{
                 if (EXPECTED(R(pb).type == T_ARRAY)) {
                     if (EXPECTED(R(pc).type == T_LONG || R(pc).type == T_STRING)) {
-                        lgx_hash_node_t *n = lgx_hash_get(R(pb).v.arr, &R(pc));
-                        lgx_val_t v = R(pa);
+                        lgx_ht_node_t *n = lgx_hash_get(R(pb).v.arr, &R(pc));
+                        lgx_value_t v = R(pa);
                         if (n) {
                             R(pa) = n->v;
                         } else {
                             // runtime warning
-                            R(pa).type = T_UNDEFINED;
+                            R(pa).type = T_UNKNOWN;
                         }
                         lgx_gc_ref_del(&v);
                         lgx_gc_ref_add(&R(pa));
                     } else {
                         // runtime warning
-                        lgx_vm_throw_s(vm, "attempt to index a %s key, integer or string expected", lgx_val_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "attempt to index a %s key, integer or string expected", lgx_value_typeof(&R(pc)));
                     }
                 } else {
-                    lgx_vm_throw_s(vm, "attempt to index a %s value, array expected", lgx_val_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "attempt to index a %s value, array expected", lgx_value_typeof(&R(pb)));
                 }
                 break;
             }
@@ -796,13 +773,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_ARRAY;
                     R(pa).v.arr = lgx_hash_new(C(pd).v.arr->size);
                     if (UNEXPECTED(!R(pa).v.arr)) {
-                        R(pa).type = T_UNDEFINED;
+                        R(pa).type = T_UNKNOWN;
                         lgx_vm_throw_s(vm, "out of memory");
                         break;
                     }
                     lgx_gc_ref_add(&R(pa));
                     lgx_gc_trace(vm, &R(pa));
-                    if (UNEXPECTED(lgx_hash_copy(C(pd).v.arr, R(pa).v.arr) != 0)) {
+                    if (UNEXPECTED(lgx_ht_dup(C(pd).v.arr, R(pa).v.arr) != 0)) {
                         lgx_vm_throw_s(vm, "copy hash table failed");
                     }
                 } else {
@@ -836,7 +813,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     // 参数为 Coroutine 对象
                     lgx_str_t s;
                     lgx_str_set(s, "res");
-                    lgx_val_t k, *v;
+                    lgx_value_t k, *v;
                     k.type = T_STRING;
                     k.v.str = &s;
                     v = lgx_obj_get(R(pb).v.obj, &k);
@@ -853,18 +830,18 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                             // 该 Coroutine 已经退出
                             lgx_gc_ref_del(&R(pa));
                             R(pa) = co->stack.buf[1];
-                            co->stack.buf[1].type = T_UNDEFINED;
+                            co->stack.buf[1].type = T_UNKNOWN;
                         }
                     }
                 } else {
                     if (R(pb).type == T_OBJECT) {
                         lgx_vm_throw_s(vm, "attempt to await a %s<%.*s> value, object<Coroutine> expected",
-                            lgx_val_typeof(&R(pb)),
+                            lgx_value_typeof(&R(pb)),
                             R(pb).v.obj->name->length,
                             R(pb).v.obj->name->buffer
                         );
                     } else {
-                        lgx_vm_throw_s(vm, "attempt to await a %s value, object<Coroutine> expected", lgx_val_typeof(&R(pb)));
+                        lgx_vm_throw_s(vm, "attempt to await a %s value, object<Coroutine> expected", lgx_value_typeof(&R(pb)));
                     }
                 }
                 break;
@@ -875,18 +852,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 int n;
                 for (n = 0; n < R(0).v.fun->stack_size; n ++) {
                     lgx_gc_ref_del(&R(n));
-                    R(n).type = T_UNDEFINED;
+                    R(n).type = T_UNKNOWN;
                 }
 
                 // 写入返回值
-                R(1).type = T_UNDEFINED;
+                R(1).type = T_UNKNOWN;
 
                 return 0;
-            }
-            case OP_ECHO:{
-                lgx_val_print(&R(pa), 0);
-                printf("\n");
-                break;
             }
             case OP_TYPEOF:{
                 lgx_gc_ref_del(&R(pa));
@@ -901,14 +873,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
     return 0;
 }
 
-extern wbt_atomic_t wbt_wating_to_exit;
-
 int lgx_vm_start(lgx_vm_t *vm) {
     assert(vm->co_running);
 
-    time_t timeout = 0;
-
-    while (!wbt_wating_to_exit) {
+    while (1) {
         lgx_vm_execute(vm);
 
         if (!lgx_co_has_task(vm)) {
@@ -921,9 +889,8 @@ int lgx_vm_start(lgx_vm_t *vm) {
         } else if (lgx_co_has_ready_task(vm)) {
             lgx_co_schedule(vm);
         } else {
-            timeout = wbt_timer_process(&vm->events->timer);
-            wbt_event_wait(vm->events, timeout);
-            timeout = wbt_timer_process(&vm->events->timer);
+            // error: dead lock
+            return 1;
         }
     }
 

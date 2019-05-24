@@ -1,7 +1,7 @@
 #ifndef LGX_GC_H
 #define LGX_GC_H
 
-#include "../common/val.h"
+#include "../parser/type.h"
 #include "vm.h"
 
 // 启用垃圾回收
@@ -13,7 +13,7 @@ void lgx_gc_enable(lgx_vm_t *vm);
 void lgx_gc_disable(lgx_vm_t *vm);
 
 // 把一个变量加入 GC 跟踪
-int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t *val);
+int lgx_gc_trace(lgx_vm_t *vm, lgx_value_t *v);
 
 // 获取指定 val 的引用计数
 #define lgx_gc_ref_get(n, p) do {\
