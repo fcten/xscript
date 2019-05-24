@@ -19,9 +19,6 @@ typedef struct lgx_lex_s {
 
     // 当前行起始偏移
     int line_start;
-
-    // 当前列
-    int row;
 } lgx_lex_t;
 
 int lgx_lex_init(lgx_lex_t *ctx, char* path);

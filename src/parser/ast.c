@@ -30,7 +30,7 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
     node->offset = ast->lex.milestone;
     node->length = ast->lex.offset - ast->lex.milestone;
     node->line = ast->lex.line;
-    node->row = ast->lex.row;
+    node->row = ast->lex.milestone - ast->lex.line_start;
 
     node->type = type;
     switch (type) {
@@ -161,7 +161,7 @@ static void ast_error(lgx_ast_t* ast, const char *fmt, ...) {
 
     if (ast->lex.source.path) {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
-            "[PARSER ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line + 1, ast->lex.row);
+            "[PARSER ERROR] [%s:%d:%d] ", ast->lex.source.path, ast->lex.line + 1, ast->lex.milestone - ast->lex.line_start);
     } else {
         err->err_msg.length = snprintf(err->err_msg.buffer, err->err_msg.size,
             "[PARSER ERROR] ");
