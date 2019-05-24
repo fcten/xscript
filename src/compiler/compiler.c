@@ -217,6 +217,7 @@ static int compiler_string_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
     src.buffer = c->ast->lex.source.content + node->offset + 1;
     src.length = src.size = node->length - 2;
     if (lgx_str_init(&dst, src.length)) {
+        compiler_error(c, node, "out of memory\n");
         return 1;
     }
     lgx_escape_decode(&src, &dst);
@@ -603,6 +604,22 @@ static int op_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* 
     return 0;
 }
 
+static int op_concat(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_constant(l, T_STRING));
+    assert(check_constant(r, T_STRING));
+
+    e->type = EXPR_LITERAL;
+    e->v_type.type = T_STRING;
+    if (lgx_str_init(&e->v.str, l->v.str.length + r->v.str.length)) {
+        compiler_error(c, node, "out of memory\n");
+        return 1;
+    }
+    lgx_str_concat(&l->v.str, &e->v.str);
+    lgx_str_concat(&r->v.str, &e->v.str);
+
+    return 0;
+}
+
 static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
     if (is_constant(l) && is_constant(r)) {
         switch (node->u.op) {
@@ -618,6 +635,7 @@ static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_res
             case TK_LESS: return op_lt(c, node, e, l, r);
             case TK_LESS_EQUAL: return op_le(c, node, e, l, r);
             case TK_LEFT_BRACK: return op_index(c, node, e, l, r);
+            case TK_CONCAT: return op_concat(c, node, e, l, r);
             default:
                 compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
                 return 1;
@@ -666,7 +684,8 @@ static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_res
             case TK_GREATER_EQUAL: ret = bc_ge(c, e->u.local, r1, r2); break;
             case TK_LESS: ret = bc_lt(c, e->u.local, r1, r2); break;
             case TK_LESS_EQUAL: ret = bc_le(c, e->u.local, r1, r2); break;
-            case TK_LEFT_BRACK: return bc_array_get(c, e->u.local, r1, r2); break;
+            case TK_LEFT_BRACK: ret = bc_array_get(c, e->u.local, r1, r2); break;
+            case TK_CONCAT: bc_concat(c, e->u.local, r1, r2); break;
             default:
                 compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
                 return 1;
@@ -792,7 +811,8 @@ static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *no
 
     if (node->u.op == TK_ADD && check_type(&e1, T_STRING) && check_type(&e2, T_STRING)) {
         e->v_type.type = T_STRING;
-        // TODO 字符串拼接
+        node->u.op = TK_CONCAT;
+        ret = binary_operator(c, node, e, &e1, &e2);
     } else if ((check_type(&e1, T_LONG) && check_type(&e2, T_LONG)) ||
         (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE))) {
         e->v_type.type = e1.v_type.type;
@@ -2017,6 +2037,58 @@ static int compiler_local_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t
     return ret;
 }
 
+static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    assert(node->type == CONSTANT_DECLARATION);
+    assert(node->children == 3);
+    assert(node->child[0]->type == IDENTIFIER_TOKEN);
+    assert(node->child[1]->type == TYPE_EXPRESSION);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    lgx_str_t name;
+    name.buffer = c->ast->lex.source.content + node->child[0]->offset;
+    name.length = name.size = node->child[0]->length;
+
+    if (compiler_identifier_token(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    assert(is_const(&e1));
+
+    if (compiler_expression(c, node->child[2], &e2)) {
+        ret = 1;
+    }
+
+    if (!is_constant(&e2)) {
+        compiler_error(c, node, "invalid constant initializer\n");
+        ret = 1;
+    } else {
+        // 类型检查
+        if (check_type(&e1, T_UNKNOWN)) {
+            // 根据表达式初始化符号类型
+            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+                ret = 1;
+            }
+        } else {
+            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+        }
+
+        // TODO 写入常量表
+    }
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
+}
+
 static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     switch(node->type) {
         case IF_STATEMENT: return compiler_if_statement(c, node);
@@ -2032,9 +2104,7 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         case RETURN_STATEMENT: return compiler_return_statement(c, node);
         case EXPRESSION_STATEMENT: return compiler_expression_statement(c, node);
         case VARIABLE_DECLARATION: return compiler_local_variable_declaration(c, node);
-        case CONSTANT_DECLARATION:
-            // TODO 更新化常量表
-            break;
+        case CONSTANT_DECLARATION: return compiler_constant_declaration(c, node);
         case TYPE_DECLARATION:
             // TODO 更新类型表
             break;
@@ -2127,6 +2197,11 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
                 break;
             case VARIABLE_DECLARATION:
                 if (compiler_global_variable_declaration(c, node->child[i])) {
+                    ret = 1;
+                }
+                break;
+            case CONSTANT_DECLARATION:
+                if (compiler_constant_declaration(c, node->child[i])) {
                     ret = 1;
                 }
                 break;

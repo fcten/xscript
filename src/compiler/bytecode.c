@@ -41,13 +41,14 @@ const char* op_name[] = {
     "CALL",
     "RET",
     "TAIL_CALL",
+    "CO_CALL",
     "ARRAY_NEW",
     "ARRAY_GET",
     "ARRAY_SET",
     "GLOBAL_GET",
     "GLOBAL_SET",
     "THROW",
-    "AWAIT",
+    "CONCAT",
     "HLT"
 };
 
@@ -433,4 +434,9 @@ int bc_global_set(lgx_compiler_t* c, unsigned global, unsigned char reg) {
 
 int bc_throw(lgx_compiler_t* c, unsigned char reg) {
     return bc_append(c, I1(OP_THROW, reg));
+}
+
+// 寄存器1 = 寄存器2 + 寄存器3
+int bc_concat(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3) {
+    return bc_append(c, I3(OP_CONCAT, reg1, reg2, reg3));
 }

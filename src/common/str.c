@@ -58,7 +58,7 @@ static int str_resize(lgx_str_t *str, unsigned size) {
 }
 
 int lgx_str_dup(lgx_str_t *src, lgx_str_t *dst) {
-    assert(src->length && src->buffer);
+    assert(src->size && src->buffer);
 
     if (dst->length < src->length) {
         if (str_resize(dst, src->length)) {
@@ -70,4 +70,12 @@ int lgx_str_dup(lgx_str_t *src, lgx_str_t *dst) {
     dst->length = src->length;
 
     return 0;
+}
+
+void lgx_str_concat(lgx_str_t *src, lgx_str_t *dst) {
+    assert(src->size && src->buffer);
+    assert(dst->size && dst->buffer);
+    assert(dst->size >= dst->length + src->length);
+
+    memcpy(dst->buffer + dst->length, src->buffer, src->length);
 }

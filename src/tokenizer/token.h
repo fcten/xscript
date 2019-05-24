@@ -17,6 +17,10 @@ typedef enum lgx_token_e {
     TK_LITERAL_CHAR,   // 字符
     TK_LITERAL_STRING, // 字符串
 
+    // 字符串连接符
+    // 当 TK_ADD 两边均为 string 时，自动转换为 TK_CONCAT
+    TK_CONCAT,
+
     // 算术运算符
 	TK_ADD, // +
 	TK_SUB, // -

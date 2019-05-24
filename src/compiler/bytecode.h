@@ -66,7 +66,8 @@ enum {
     OP_CALL,      // CALL     R F       执行调用，返回值写入到 R 中
     OP_RET,       // RET      R
 
-    OP_TAIL_CALL, // TAIL_CALL F         复用当前的函数栈，执行调用
+    OP_TAIL_CALL, // TAIL_CALL F        复用当前的函数栈，执行调用
+    OP_CO_CALL,   // CO_CALL   F        创建新的调用栈，执行调用
 
     // 数组
     OP_ARRAY_NEW, // ARRAY_NEW R        R = []
@@ -80,6 +81,9 @@ enum {
 
     // 异常处理
     OP_THROW,
+
+    // 字符串拼接
+    OP_CONCAT,
 
     // 终止执行
     OP_HLT
@@ -168,5 +172,7 @@ int bc_global_get(lgx_compiler_t* c, unsigned char reg, unsigned global);
 int bc_global_set(lgx_compiler_t* c, unsigned global, unsigned char reg);
 
 int bc_throw(lgx_compiler_t* c, unsigned char reg);
+
+int bc_concat(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
 
 #endif // LGX_BYTECODE_H
