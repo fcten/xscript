@@ -7,15 +7,25 @@ static void ast_node_del(lgx_ast_node_t* node) {
             if (node->u.symbols) {
                 lgx_ht_cleanup(node->u.symbols);
                 xfree(node->u.symbols);
-                node->u.symbols = NULL;
             }
             break;
         case FUNCTION_DECLARATION:
             if (node->u.regs) {
                 lgx_reg_cleanup(node->u.regs);
                 xfree(node->u.regs);
-                node->u.regs = NULL;
             }
+            break;
+        case FOR_STATEMENT: case WHILE_STATEMENT: case DO_STATEMENT:
+        case SWITCH_STATEMENT:
+            if (node->u.jmps) {
+                while (!lgx_list_empty(node->u.jmps)) {
+                    lgx_ast_node_list_t* n = lgx_list_first_entry(node->u.jmps, lgx_ast_node_list_t, head);
+                    lgx_list_del(&n->head);
+                    xfree(n);
+                }
+                xfree(node->u.jmps);
+            }
+            break;
         default:
             break;
     }

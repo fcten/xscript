@@ -115,34 +115,69 @@ int lgx_type_init(lgx_type_t* type, lgx_val_type_t t) {
 }
 
 void lgx_type_array_cleanup(lgx_type_array_t* arr) {
+    memset(arr, 0, sizeof(lgx_type_array_t));
+}
 
+void lgx_type_map_cleanup(lgx_type_map_t* map) {
+    memset(map, 0, sizeof(lgx_type_map_t));
 }
 
 void lgx_type_struct_cleanup(lgx_type_struct_t* sru) {
-
+    memset(sru, 0, sizeof(lgx_type_struct_t));
 }
 
 void lgx_type_interface_cleanup(lgx_type_interface_t* itf) {
-
+    memset(itf, 0, sizeof(lgx_type_interface_t));
 }
 
 void lgx_type_function_cleanup(lgx_type_function_t* fun) {
+    lgx_type_cleanup(&fun->receiver);
+    lgx_type_cleanup(&fun->ret);
 
+    int i;
+    for (i = 0; i < fun->arg_len; ++i) {
+        if (fun->args[i]) {
+            lgx_type_cleanup(fun->args[i]);
+            xfree(fun->args[i]);
+        }
+    }
+
+    xfree(fun->args);
+
+    memset(fun, 0, sizeof(lgx_type_function_t));
 }
 
 void lgx_type_cleanup(lgx_type_t* type) {
     switch (type->type) {
         case T_ARRAY:
-            lgx_type_array_cleanup(type->u.arr);
+            if (type->u.arr) {
+                lgx_type_array_cleanup(type->u.arr);
+                xfree(type->u.arr);
+            }
+            break;
+        case T_MAP:
+            if (type->u.map) {
+                lgx_type_map_cleanup(type->u.map);
+                xfree(type->u.map);
+            }
             break;
         case T_STRUCT:
-            lgx_type_struct_cleanup(type->u.sru);
+            if (type->u.sru) {
+                lgx_type_struct_cleanup(type->u.sru);
+                xfree(type->u.sru);
+            }
             break;
         case T_INTERFACE:
-            lgx_type_interface_cleanup(type->u.itf);
+            if (type->u.itf) {
+                lgx_type_interface_cleanup(type->u.itf);
+                xfree(type->u.itf);
+            }
             break;
         case T_FUNCTION:
-            lgx_type_function_cleanup(type->u.fun);
+            if (type->u.fun) {
+                lgx_type_function_cleanup(type->u.fun);
+                xfree(type->u.fun);
+            }
             break;
         case T_UNKNOWN:
         case T_LONG:

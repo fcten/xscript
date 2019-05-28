@@ -144,10 +144,9 @@ static int jmp_add(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     // 初始化
     if (!loop->u.jmps) {
-        loop->u.jmps = (lgx_ast_node_list_t *)xmalloc(sizeof(lgx_ast_node_list_t));
+        loop->u.jmps = (lgx_list_t *)xmalloc(sizeof(lgx_list_t));
         if (loop->u.jmps) {
-            lgx_list_init(&loop->u.jmps->head);
-            loop->u.jmps->node = NULL;
+            lgx_list_init(loop->u.jmps);
         } else {
             compiler_error(c, node, "out of memory\n");
             return 1;
@@ -158,7 +157,7 @@ static int jmp_add(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (n) {
         n->node = node;
         lgx_list_init(&n->head);
-        lgx_list_add_tail(&n->head, &loop->u.jmps->head);
+        lgx_list_add_tail(&n->head, loop->u.jmps);
 
         return 0;
     } else {
@@ -181,7 +180,7 @@ static int jmp_fix(lgx_compiler_t* c, lgx_ast_node_t *node, unsigned start, unsi
     }
 
     lgx_ast_node_list_t *n;
-    lgx_list_for_each_entry(n, lgx_ast_node_list_t, &node->u.jmps->head, head) {
+    lgx_list_for_each_entry(n, lgx_ast_node_list_t, node->u.jmps, head) {
         if (n->node->type == BREAK_STATEMENT) {
             bc_set_param_e(c, n->node->u.pos, end);
         } else if (n->node->type == CONTINUE_STATEMENT) {
@@ -1216,6 +1215,7 @@ static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr
     }
 }
 
+static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node);
 static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node);
 
 static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
@@ -1277,7 +1277,7 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == IF_ELSE_STATEMENT);
     assert(node->children == 3);
     assert(node->child[1]->type == BLOCK_STATEMENT);
-    assert(node->child[2]->type == BLOCK_STATEMENT);
+    assert(node->child[2]->type == BLOCK_STATEMENT || node->child[2]->type == IF_STATEMENT || node->child[2]->type == IF_ELSE_STATEMENT);
 
     if (compiler_check_assignment(c, node->child[0])) {
         return 1;
@@ -1291,7 +1291,11 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     if (check_constant(&e, T_BOOL)) {
         if (e.v.l == 0) {
-            return compiler_block_statement(c, node->child[2]);
+            if (node->child[2]->type == BLOCK_STATEMENT) {
+                return compiler_block_statement(c, node->child[2]);
+            } else {
+                return compiler_statement(c, node->child[2]);
+            }
         } else {
             return compiler_block_statement(c, node->child[1]);
         }
@@ -1315,15 +1319,21 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         lgx_expr_result_cleanup(c, node, &e);
 
         if (compiler_block_statement(c, node->child[1])) {
-            return 1;
+            ret = 1;
         }
 
         unsigned pos2 = c->bc.length; // 跳转指令位置
         bc_jmpi(c, 0);
         bc_set_param_d(c, pos1, c->bc.length - pos1 - 1);
 
-        if (compiler_block_statement(c, node->child[2])) {
-            return 1;
+        if (node->child[2]->type == BLOCK_STATEMENT) {
+            if (compiler_block_statement(c, node->child[2])) {
+                ret = 1;
+            }
+        } else {
+            if (compiler_statement(c, node->child[2])) {
+                ret = 1;
+            }
         }
 
         bc_set_param_e(c, pos2, c->bc.length);

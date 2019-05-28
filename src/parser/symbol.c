@@ -231,6 +231,11 @@ static int symbol_parse_type(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_t* t
         case T_UNKNOWN:
             // 未知类型，后续进行类型推断
             break;
+        case T_LONG:
+        case T_DOUBLE:
+        case T_BOOL:
+        case T_STRING:
+            break;
         default:
             symbol_error(ast, node, "[invalid type expression] %.*s\n", type->literal.length, type->literal.buffer);
             return 1;
@@ -476,7 +481,9 @@ static void symbol_cleanup(lgx_ast_node_t* node) {
 }
 
 void lgx_symbol_cleanup(lgx_ast_t* ast) {
-    symbol_cleanup(ast->root);
+    if (ast->root) {
+        symbol_cleanup(ast->root);
+    }
 }
 
 // 根据名称和位置查找符号表
