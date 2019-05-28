@@ -283,7 +283,6 @@ static int compiler_double_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_ex
     return 0;
 }
 
-// 注意：这里必须是变量，如果是函数名，则遵循不同的规则
 static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
     assert(node->type == IDENTIFIER_TOKEN);
 

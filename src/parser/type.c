@@ -63,8 +63,53 @@ int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
     return 0;
 }
 
-int lgx_type_init(lgx_type_t* type) {
+int lgx_type_init(lgx_type_t* type, lgx_val_type_t t) {
     memset(type, 0, sizeof(lgx_type_t));
+
+    type->type = t;
+
+    switch (type->type) {
+        case T_CUSTOM:
+        case T_LONG:
+        case T_DOUBLE:
+        case T_BOOL:
+        case T_STRING:
+        case T_UNKNOWN:
+            // 简单类型
+            break;
+        case T_ARRAY:
+            type->u.arr = xcalloc(1, sizeof(lgx_type_array_t));
+            if (!type->u.arr) {
+                return 1;
+            }
+            break;
+        case T_MAP:
+            type->u.map = xcalloc(1, sizeof(lgx_type_map_t));
+            if (!type->u.map) {
+                return 1;
+            }
+            break;
+        case T_STRUCT:
+            type->u.sru = xcalloc(1, sizeof(lgx_type_struct_t));
+            if (!type->u.sru) {
+                return 1;
+            }
+            break;
+        case T_INTERFACE:
+            type->u.itf = xcalloc(1, sizeof(lgx_type_interface_t));
+            if (!type->u.itf) {
+                return 1;
+            }
+            break;
+        case T_FUNCTION:
+            type->u.fun = xcalloc(1, sizeof(lgx_type_function_t));
+            if (!type->u.fun) {
+                return 1;
+            }
+            break;
+        default:
+            return 1;
+    }
 
     return 0;
 }

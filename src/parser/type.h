@@ -104,6 +104,9 @@ typedef struct lgx_type_interface_s {
 } lgx_type_interface_t;
 
 typedef struct lgx_type_function_s {
+    // 函数接收者类型
+    lgx_type_t receiver;
+
     // 返回值类型
     lgx_type_t ret;
 
@@ -191,7 +194,7 @@ struct lgx_function_s {
 
 char* lgx_type_to_string(lgx_type_t* type);
 
-int lgx_type_init(lgx_type_t* type);
+int lgx_type_init(lgx_type_t* type, lgx_val_type_t t);
 void lgx_type_cleanup(lgx_type_t* type);
 
 int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2);
