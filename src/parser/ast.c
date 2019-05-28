@@ -1,7 +1,7 @@
 #include "ast.h"
 #include "symbol.h"
 
-static void ast_node_cleanup(lgx_ast_node_t* node) {
+static void ast_node_del(lgx_ast_node_t* node) {
     switch (node->type) {
         case BLOCK_STATEMENT:
             if (node->u.symbols) {
@@ -19,6 +19,17 @@ static void ast_node_cleanup(lgx_ast_node_t* node) {
         default:
             break;
     }
+
+    int i;
+    for (i = 0; i < node->children; ++i) {
+        ast_node_del(node->child[i]);
+    }
+
+    if (node->child) {
+        xfree(node->child);
+    }
+
+    xfree(node);
 }
 
 static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
@@ -60,8 +71,7 @@ static lgx_ast_node_t* ast_node_new(lgx_ast_t* ast, lgx_ast_type_t type) {
 
 error:
     if (node) {
-        ast_node_cleanup(node);
-        xfree(node);
+        ast_node_del(node);
     }
 
     return NULL;
@@ -474,6 +484,7 @@ static int ast_parse_pri_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         case TK_IDENTIFIER:
             return ast_parse_identifier_token(ast, parent);
         default:
+            ast_error(ast, "`<expression>` expected before `%.*s`\n", ast->cur_length, ast->cur_start);
             return 1;
     }
 }
@@ -693,11 +704,6 @@ static int ast_parse_sub_expression(lgx_ast_t* ast, lgx_ast_node_t* parent, int 
             if (ast_parse_bsc_expression(ast, parent)) {
                 return 1;
             }
-    }
-
-    if (parent->children == 0) {
-        ast_error(ast, "`<expression>` expected before `%.*s`\n", ast->cur_length, ast->cur_start);
-        return 1;
     }
 
     int p = ast_operator_precedence(ast->cur_token);
@@ -1354,11 +1360,6 @@ static int ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                     return 1;
                 }
                 break;
-            case TK_FUNCTION:
-                if (ast_parse_function_declaration(ast, parent)) {
-                    return 1;
-                }
-                break;
             case TK_TYPE:
                 if (ast_parse_type_declaration(ast, parent)) {
                     return 1;
@@ -1471,12 +1472,20 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
 int lgx_ast_cleanup(lgx_ast_t* ast) {
     lgx_lex_cleanup(&ast->lex);
 
+    lgx_symbol_cleanup(ast);
+
     if (ast->root) {
-        ast_node_cleanup(ast->root);
+        ast_node_del(ast->root);
         ast->root = NULL;
     }
 
-    // TODO 释放错误信息链表
+    // 释放错误信息链表
+    while (!lgx_list_empty(&ast->errors)) {
+        lgx_ast_error_list_t *n = lgx_list_first_entry(&ast->errors, lgx_ast_error_list_t, head);
+        lgx_list_del(&n->head);
+        lgx_str_cleanup(&n->err_msg);
+        xfree(n);
+    }
 
     return 0;
 }

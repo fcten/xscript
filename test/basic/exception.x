@@ -5,10 +5,6 @@ function main() {
         print("catch exception 1");
     }
 
-    function test() {
-        throw {errno: 1, errmsg: "exception"};
-    }
-
     try {
         test();
     } catch (e interface{}) {
@@ -26,4 +22,8 @@ function main() {
     }
 
     throw {errno: 2, errmsg: "uncaught exception"};
+}
+
+function test() {
+    throw {errno: 1, errmsg: "exception"};
 }

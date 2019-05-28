@@ -41,7 +41,7 @@ typedef struct {
 } lgx_symbol_t;
 
 int lgx_symbol_init(lgx_ast_t* ast);
-int lgx_symbol_cleanup(lgx_ast_t* ast);
+void lgx_symbol_cleanup(lgx_ast_t* ast);
 
 lgx_symbol_t* lgx_symbol_get(lgx_ast_node_t* node, lgx_str_t* name, unsigned offset);
 

@@ -16,8 +16,10 @@ typedef struct lgx_str_s {
 int lgx_str_init(lgx_str_t* str, unsigned size);
 void lgx_str_cleanup(lgx_str_t* str);
 
+int lgx_str_resize(lgx_str_t *str, unsigned size);
+
 int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
-int lgx_str_dup(lgx_str_t *src, lgx_str_t *dst);
+void lgx_str_dup(lgx_str_t *src, lgx_str_t *dst);
 void lgx_str_concat(lgx_str_t *src, lgx_str_t *dst);
 
 #endif // LGX_STR_H

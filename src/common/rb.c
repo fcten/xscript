@@ -164,10 +164,11 @@ lgx_rb_node_t * lgx_rb_set(lgx_rb_t *rbt, lgx_str_t *key) {
         return NULL;
     }
 
-    if (lgx_str_dup(key, &tmp_node->key)) {
+    if (lgx_str_init(&tmp_node->key, key->length)) {
         xfree(tmp_node);
         return NULL;
     }
+    lgx_str_dup(key, &tmp_node->key);
 
     tmp_node->left = tmp_node->right = NULL;
     rb_set_parent(tmp_node, NULL);

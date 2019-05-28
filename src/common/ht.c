@@ -21,11 +21,6 @@ int lgx_ht_init(lgx_ht_t* ht, unsigned size) {
     return 0;
 }
 
-int lgx_ht_cleanup(lgx_ht_t* ht) {
-
-    return 0;
-}
-
 static unsigned ht_bkdr(lgx_ht_t* ht, lgx_str_t* k) {
     unsigned ret = 0;
     int i;
@@ -68,20 +63,40 @@ static lgx_ht_node_t* ht_node_new(lgx_str_t* k, void* v) {
     if (!node) {
         return NULL;
     }
-    
-    if (lgx_str_dup(k, &node->k)) {
+
+    if (lgx_str_init(&node->k, k->length)) {
         xfree(node);
         return NULL;
     }
-
+    
+    lgx_str_dup(k, &node->k);
     node->v = v;
 
     return node;
 }
 
 static void ht_node_del(lgx_ht_node_t* node) {
+    assert(node->v == NULL);
+
     lgx_str_cleanup(&node->k);
     xfree(node);
+}
+
+void lgx_ht_cleanup(lgx_ht_t* ht) {
+    int i;
+    lgx_ht_node_t *node, *next;
+    for (i = 0; i < ht->size; i++) {
+        node = ht->table[i];
+        while (node) {
+            next = node->next;
+            ht_node_del(node);
+            node = next;
+        }
+    }
+
+    xfree(ht->table);
+
+    memset(ht, 0, sizeof(lgx_ht_t));
 }
 
 // 将 hash table 扩容一倍

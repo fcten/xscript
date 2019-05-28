@@ -210,6 +210,7 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
     lgx_str_t name;
     name.buffer = ast->lex.source.content + node->child[0]->offset;
     name.length = node->child[0]->length;
+    name.size = 0;
 
     // 是否全局变量
     unsigned char is_global = 0;
@@ -217,7 +218,8 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
         is_global = 1;
     }
 
-    lgx_symbol_t* symbol;
+    int ret = 0;
+    lgx_symbol_t* symbol = NULL;
 
     switch (node->parent->type) {
         case BLOCK_STATEMENT: { // 在块作用域内定义变量
@@ -231,10 +233,10 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
             // TODO 必须是第一个循环条件
             if (0) {
                 symbol_error(ast, node, "[invalid variable declaration] %.*s\n", name.length, name.buffer);
-                return 1;
+                ret = 1;
+            } else {
+                // TODO 添加变量到该 FOR 循环的块作用域中
             }
-
-            // TODO 添加变量到该 FOR 循环的块作用域中
             break;
         }
         case FUNCTION_DECL_PARAMETER: { // 在函数参数列表中定义变量
@@ -249,11 +251,11 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
         }
         default:
             symbol_error(ast, node, "[invalid variable declaration] %.*s\n", name.length, name.buffer);
-            return 1;
+            ret = 1;
     }
 
     if (!symbol) {
-        return 1;
+        return ret;
     }
 
     if (symbol_parse_type(ast, node->child[1], &symbol->type)) {
@@ -273,6 +275,7 @@ static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
     lgx_str_t name;
     name.buffer = ast->lex.source.content + node->child[0]->offset;
     name.length = node->child[0]->length;
+    name.size = 0;
 
     // 是否全局常量
     unsigned char is_global = 0;
@@ -318,6 +321,7 @@ static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
     lgx_str_t name;
     name.buffer = ast->lex.source.content + node->child[1]->offset;
     name.length = node->child[1]->length;
+    name.size = 0;
 
     // 是否全局函数
     unsigned char is_global = 0;
@@ -391,6 +395,25 @@ static int symbol_generate(lgx_ast_t* ast, lgx_ast_node_t* node) {
 // 遍历语法树生成符号信息
 int lgx_symbol_init(lgx_ast_t* ast) {
     return symbol_generate(ast, ast->root);
+}
+
+static void symbol_cleanup(lgx_ast_node_t* node) {
+    if (node->type == BLOCK_STATEMENT) {
+        lgx_ht_node_t* n;
+        for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
+            symbol_del(n->v);
+            n->v = NULL;
+        }
+    }
+
+    int i;
+    for (i = 0; i < node->children; ++i) {
+        symbol_cleanup(node->child[i]);
+    }
+}
+
+void lgx_symbol_cleanup(lgx_ast_t* ast) {
+    symbol_cleanup(ast->root);
 }
 
 // 根据名称和位置查找符号表
