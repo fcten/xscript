@@ -1,5 +1,15 @@
 #include "type.h"
 
+const lgx_type_t lgx_type_basic[] = {
+    {T_UNKNOWN, lgx_str("unknown")},
+    {T_NULL,    lgx_str("null")},
+    {T_CUSTOM,  lgx_str("custom")},
+    {T_LONG,    lgx_str("integer")},
+    {T_DOUBLE,  lgx_str("float")},
+    {T_BOOL,    lgx_str("bool")},
+    {T_STRING,  lgx_str("string")}
+};
+
 char* lgx_type_to_string(lgx_type_t* type) {
     switch (type->type) {
         case T_UNKNOWN:

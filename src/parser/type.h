@@ -43,8 +43,7 @@ typedef struct lgx_value_s {
         lgx_gc_t        *gc;
     } v;
 
-    // 以下控制在 4 字节以内
-    lgx_val_type_t type:8;
+    lgx_type_t* type;
 } lgx_value_t;
 
 typedef struct lgx_val_list_s {
@@ -63,6 +62,12 @@ struct lgx_gc_s {
 };
 
 struct lgx_type_s {
+    // 基础类型
+    lgx_val_type_t type;
+
+    // 类型字面量
+    lgx_str_t literal;
+
     union {
         struct lgx_type_array_s     *arr;
         struct lgx_type_map_s       *map;
@@ -70,12 +75,6 @@ struct lgx_type_s {
         struct lgx_type_interface_s *itf;
         struct lgx_type_function_s  *fun;
     } u;
-
-    // 基础类型
-    lgx_val_type_t type;
-
-    // 类型字面量
-    lgx_str_t literal;
 };
 
 typedef struct lgx_type_array_s {

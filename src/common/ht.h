@@ -45,4 +45,6 @@ int lgx_ht_del(lgx_ht_t *ht, lgx_str_t* k);
 lgx_ht_node_t* lgx_ht_first(const lgx_ht_t* ht);
 lgx_ht_node_t* lgx_ht_next(const lgx_ht_node_t* node);
 
+int lgx_ht_dup(lgx_ht_t *src, lgx_ht_t *dst);
+
 #endif	/* LGX_HT_H */

@@ -1,6 +1,8 @@
 #include "../common/common.h"
+#include "../common/ht.h"
 #include "../compiler/bytecode.h"
 #include "vm.h"
+#include "value.h"
 #include "gc.h"
 #include "coroutine.h"
 
@@ -16,6 +18,9 @@ void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e) {
 
 void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     char *buf = (char *)xmalloc(128);
+    if (!buf) {
+        return;
+    }
 
     va_list args;
     va_start(args, fmt);
@@ -24,9 +29,10 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
 
     lgx_value_t e;
     e.type = T_STRING;
-    e.v.str = lgx_str_new_ref(buf, 128);
-    e.v.str->length = len;
-    e.v.str->is_ref = 0;
+    e.v.str = xcalloc(1, sizeof(lgx_string_t));
+    e.v.str->string.length = len;
+    e.v.str->string.size = 128;
+    e.v.str->string.buffer = buf;
 
     lgx_gc_ref_add(&e);
 
@@ -711,14 +717,15 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_SET:{
+                /*
                 if (EXPECTED(R(pa).type == T_ARRAY)) {
                     if (pb == 0) {
-                        lgx_hash_add(R(pa).v.arr, &R(pc));
+                        lgx_ht_add(R(pa).v.arr, &R(pc));
                     } else if (R(pb).type == T_LONG || R(pb).type == T_STRING) {
                         lgx_ht_node_t n;
                         n.k = R(pb);
                         n.v = R(pc);
-                        lgx_hash_set(R(pa).v.arr, &n);
+                        lgx_ht_set(R(pa).v.arr, &n);
                     } else {
                         // runtime warning
                         lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_value_typeof(&R(pa)));
@@ -727,6 +734,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     // runtime error
                     lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
                 }
+                */
                 break;
             }
             case OP_ARRAY_NEW:{
@@ -749,7 +757,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         lgx_ht_node_t *n = lgx_hash_get(R(pb).v.arr, &R(pc));
                         lgx_value_t v = R(pa);
                         if (n) {
-                            R(pa) = n->v;
+                            R(pa) = *(lgx_value_t*)n->v;
                         } else {
                             // runtime warning
                             R(pa).type = T_UNKNOWN;
@@ -767,26 +775,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_LOAD:{
                 unsigned pd = PD(i);
-                // TODO switch 所使用的数组以及常量类型的数组无需执行复制
-                if (C(pd).type == T_ARRAY) {
-                    lgx_gc_ref_del(&R(pa));
-                    R(pa).type = T_ARRAY;
-                    R(pa).v.arr = lgx_hash_new(C(pd).v.arr->size);
-                    if (UNEXPECTED(!R(pa).v.arr)) {
-                        R(pa).type = T_UNKNOWN;
-                        lgx_vm_throw_s(vm, "out of memory");
-                        break;
-                    }
-                    lgx_gc_ref_add(&R(pa));
-                    lgx_gc_trace(vm, &R(pa));
-                    if (UNEXPECTED(lgx_ht_dup(C(pd).v.arr, R(pa).v.arr) != 0)) {
-                        lgx_vm_throw_s(vm, "copy hash table failed");
-                    }
-                } else {
-                    lgx_gc_ref_add(&C(pd));
-                    lgx_gc_ref_del(&R(pa));
-                    R(pa) = C(pd);
+
+                lgx_gc_ref_del(&R(pa));
+                if (UNEXPECTED(lgx_value_dup(C(pd), &R(pa)) != 0)) {
+                    lgx_vm_throw_s(vm, "out of memory");
+                    break;
                 }
+                lgx_gc_ref_add(&R(pa));
                 break;
             }
             case OP_GLOBAL_GET:{
@@ -803,47 +798,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_THROW: {
                 lgx_vm_throw_v(vm, &R(pa));
-                break;
-            }
-            case OP_AWAIT: {
-                // TODO is_instanceof 判断
-                // static lgx_obj_t *coroutine = NULL;
-
-                if (EXPECTED(R(pb).type == T_OBJECT)) {
-                    // 参数为 Coroutine 对象
-                    lgx_str_t s;
-                    lgx_str_set(s, "res");
-                    lgx_value_t k, *v;
-                    k.type = T_STRING;
-                    k.v.str = &s;
-                    v = lgx_obj_get(R(pb).v.obj, &k);
-                    if (!v || v->type != T_RESOURCE || v->v.res->type != LGX_CO_RES_TYPE) {
-                        lgx_vm_throw_s(vm, "invalid `Coroutine` object");
-                    } else {
-                        lgx_co_t *co = (lgx_co_t *)v->v.res->buf;
-
-                        if (co->status != CO_DIED) {
-                            vm->co_running->child = co;
-                            lgx_co_suspend(vm);
-                            return 0;
-                        } else {
-                            // 该 Coroutine 已经退出
-                            lgx_gc_ref_del(&R(pa));
-                            R(pa) = co->stack.buf[1];
-                            co->stack.buf[1].type = T_UNKNOWN;
-                        }
-                    }
-                } else {
-                    if (R(pb).type == T_OBJECT) {
-                        lgx_vm_throw_s(vm, "attempt to await a %s<%.*s> value, object<Coroutine> expected",
-                            lgx_value_typeof(&R(pb)),
-                            R(pb).v.obj->name->length,
-                            R(pb).v.obj->name->buffer
-                        );
-                    } else {
-                        lgx_vm_throw_s(vm, "attempt to await a %s value, object<Coroutine> expected", lgx_value_typeof(&R(pb)));
-                    }
-                }
                 break;
             }
             case OP_NOP: break;

@@ -10,6 +10,7 @@ typedef struct lgx_str_s {
     char *buffer;
 } lgx_str_t;
 
+#define lgx_str(stri)            {0, sizeof(stri) - 1, stri}
 #define lgx_str_set(stri, text)  (stri).length = sizeof(text) - 1; (stri).buffer = (char *) text
 #define lgx_str_set_null(stri)   (stri).length = 0; (stri).buffer = NULL
 
