@@ -4,7 +4,7 @@
 
 function main() {
     var a = 1;
-    var b, c;
+    var b int, c int;
 
     do {
         var a = 2;
@@ -13,5 +13,5 @@ function main() {
 
     c = a;
 
-    print(b + c);
+    //print(b + c);
 }
