@@ -10,7 +10,8 @@ typedef struct {
     unsigned start;
     unsigned end;
     // catch params
-    lgx_value_t e;
+    lgx_type_t e;
+    unsigned char reg;
 } lgx_exception_block_t;
 
 typedef struct {

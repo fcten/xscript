@@ -90,9 +90,11 @@ struct lgx_vm_s {
 };
 
 int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c);
+int lgx_vm_cleanup(lgx_vm_t *vm);
+
+int lgx_vm_call(lgx_vm_t *vm, lgx_function_t* fun);
 int lgx_vm_execute(lgx_vm_t *vm);
 int lgx_vm_start(lgx_vm_t *vm);
-int lgx_vm_cleanup(lgx_vm_t *vm);
 
 void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e);
 void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...);

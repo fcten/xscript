@@ -26,13 +26,13 @@ int lgx_co_return_double(lgx_co_t *co, double v);
 int lgx_co_return_true(lgx_co_t *co);
 int lgx_co_return_false(lgx_co_t *co);
 int lgx_co_return_void(lgx_co_t *co);
-int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str);
-int lgx_co_return_array(lgx_co_t *co, lgx_ht_t *hash);
+int lgx_co_return_string(lgx_co_t *co, lgx_string_t *str);
+int lgx_co_return_array(lgx_co_t *co, lgx_array_t *arr);
 
 int lgx_co_set(lgx_co_t *co, unsigned pos, lgx_value_t *v);
 int lgx_co_set_long(lgx_co_t *co, unsigned pos, long long l);
 int lgx_co_set_function(lgx_co_t *co, unsigned pos, lgx_function_t *fun);
-int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_str_t *str);
+int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_string_t *str);
 
 int lgx_co_backtrace(lgx_co_t *co);
 

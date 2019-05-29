@@ -2,11 +2,12 @@
 #include "../common/str.h"
 #include "../compiler/exception.h"
 #include "coroutine.h"
+#include "value.h"
 #include "gc.h"
 
 #define LGX_MAX_STACK_SIZE (256 << 8)
 
-#define check_type(e, t)     ((e)->type.type == t)
+#define check_type(e, t)     ((e)->type == t)
 
 int lgx_co_stack_init(lgx_co_stack_t *stack, unsigned size) {
     stack->size = size;
@@ -51,7 +52,7 @@ int lgx_co_set_function(lgx_co_t *co, unsigned pos, lgx_function_t *fun) {
     return lgx_co_set(co, pos, &v);
 }
 
-int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_str_t *str) {
+int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_string_t *str) {
     lgx_value_t v;
     v.type = T_STRING;
     v.v.str = str;
@@ -88,7 +89,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {
     co->vm = vm;
 
     co->status = CO_READY;
-    wbt_list_add_tail(&co->head, &vm->co_ready);
+    lgx_list_add_tail(&co->head, &vm->co_ready);
 
     // 初始化函数
     lgx_co_set_function(co, 0, fun);
@@ -106,8 +107,8 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {
 }
 
 int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co) {
-    if (!wbt_list_empty(&co->head)) {
-        wbt_list_del(&co->head);
+    if (!lgx_list_empty(&co->head)) {
+        lgx_list_del(&co->head);
     }
 
     // 主协程不能删除，必须和虚拟机一起销毁
@@ -132,7 +133,7 @@ int lgx_co_set_on_resume(lgx_co_t *co, int (*on_yield)(struct lgx_vm_s *vm)) {
 }
 
 int lgx_co_has_ready_task(lgx_vm_t *vm) {
-    if (!wbt_list_empty(&vm->co_ready)) {
+    if (!lgx_list_empty(&vm->co_ready)) {
         return 1;
     }
 
@@ -144,11 +145,11 @@ int lgx_co_has_task(lgx_vm_t *vm) {
         return 1;
     }
 
-    if (!wbt_list_empty(&vm->co_ready)) {
+    if (!lgx_list_empty(&vm->co_ready)) {
         return 1;
     }
 
-    if (!wbt_list_empty(&vm->co_suspend)) {
+    if (!lgx_list_empty(&vm->co_suspend)) {
         return 1;
     }
 
@@ -168,10 +169,10 @@ int lgx_co_run(lgx_vm_t *vm, lgx_co_t *co) {
     assert(vm->co_running == NULL);
     assert(co->status == CO_READY);
 
-    if (!wbt_list_empty(&co->head)) {
-        wbt_list_del(&co->head);
+    if (!lgx_list_empty(&co->head)) {
+        lgx_list_del(&co->head);
     }
-    wbt_list_init(&co->head);
+    lgx_list_init(&co->head);
 
     co->child = NULL;
     co->status = CO_RUNNING;
@@ -185,15 +186,15 @@ int lgx_co_run(lgx_vm_t *vm, lgx_co_t *co) {
 int lgx_co_resume(lgx_vm_t *vm, lgx_co_t *co) {
     assert(co->status == CO_SUSPEND);
 
-    if (!wbt_list_empty(&co->head)) {
-        wbt_list_del(&co->head);
+    if (!lgx_list_empty(&co->head)) {
+        lgx_list_del(&co->head);
     }
-    wbt_list_init(&co->head);
+    lgx_list_init(&co->head);
 
     co->child = NULL;
     co->status = CO_READY;
 
-    wbt_list_add_tail(&co->head, &vm->co_ready);
+    lgx_list_add_tail(&co->head, &vm->co_ready);
 
     if (vm->co_running) {
         return 0;
@@ -215,7 +216,7 @@ int lgx_co_yield(lgx_vm_t *vm) {
     if (vm->co_running == co) {
         vm->co_running = NULL;
     }
-    wbt_list_add_tail(&co->head, &vm->co_ready);
+    lgx_list_add_tail(&co->head, &vm->co_ready);
 
     return 0;
 }
@@ -233,7 +234,7 @@ int lgx_co_suspend(lgx_vm_t *vm) {
     if (vm->co_running == co) {
         vm->co_running = NULL;
     }
-    wbt_list_add_tail(&co->head, &vm->co_suspend);
+    lgx_list_add_tail(&co->head, &vm->co_suspend);
 
     return 0;
 }
@@ -261,7 +262,7 @@ int lgx_co_died(lgx_vm_t *vm) {
 
     if (co->ref_cnt) {
         // 暂时不能删除
-        wbt_list_move_tail(&co->head, &vm->co_died);
+        lgx_list_move_tail(&co->head, &vm->co_died);
     } else {
         lgx_co_delete(vm, co);
     }
@@ -335,7 +336,7 @@ int lgx_co_return_void(lgx_co_t *co) {
     return lgx_co_return(co, &ret);
 }
 
-int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str) {
+int lgx_co_return_string(lgx_co_t *co, lgx_string_t *str) {
     lgx_value_t ret;
     ret.type = T_STRING;
     ret.v.str = str;
@@ -343,10 +344,10 @@ int lgx_co_return_string(lgx_co_t *co, lgx_str_t *str) {
     return lgx_co_return(co, &ret);
 }
 
-int lgx_co_return_array(lgx_co_t *co, lgx_ht_t *hash) {
+int lgx_co_return_array(lgx_co_t *co, lgx_array_t *arr) {
     lgx_value_t ret;
     ret.type = T_ARRAY;
-    ret.v.arr = hash;
+    ret.v.arr = arr;
 
     return lgx_co_return(co, &ret);
 }
@@ -386,12 +387,24 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
             // 匹配参数类型符合的 catch block
             lgx_exception_block_t *b;
             lgx_list_for_each_entry(b, lgx_exception_block_t, &exception->catch_blocks, head) {
-                if (b->e.type.type == T_UNKNOWN) {
-                    block = b;
-                    break;
-                } else if (lgx_type_cmp(&b->e, &e->type) == 0) {
-                    block = b;
-                    break;
+                if (b->e.type == e->type) {
+                    switch (e->type) {
+                        case T_LONG:
+                        case T_DOUBLE:
+                        case T_BOOL:
+                        case T_STRING:
+                            block = b;
+                            break;
+                        case T_ARRAY:
+                        case T_MAP:
+                        case T_STRUCT:
+                        case T_INTERFACE:
+                        case T_FUNCTION:
+                            // TODO
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
         }
@@ -403,8 +416,8 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
 
         // 把异常变量写入到 catch block 的参数中
         //printf("%d\n",block->e->u.symbol.reg_num);
-        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->e->u.symbol.reg_num]);
-        co->stack.buf[co->stack.base + block->e->u.symbol.reg_num] = *e;
+        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->reg]);
+        co->stack.buf[co->stack.base + block->reg] = *e;
     } else {
         // 没有匹配的 catch 块，递归向上寻找
         unsigned base = co->stack.base;
@@ -431,7 +444,7 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
         } else {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
             printf("[uncaught exception] [%llu] ", co->id);
-            lgx_val_print(e, 0);
+            lgx_value_print(e);
             printf("\n");
 
             lgx_gc_ref_del(e);
@@ -453,7 +466,7 @@ void lgx_co_throw_s(lgx_co_t *co, const char *fmt, ...) {
     va_end(args);
 
     lgx_value_t e;
-    e.type.type = T_STRING;
+    e.type = T_STRING;
     e.v.str->string.length = len;
     e.v.str->string.size = 128;
     e.v.str->string.buffer = buf;
@@ -468,7 +481,7 @@ void lgx_co_throw_v(lgx_co_t *co, lgx_value_t *v) {
     e = *v;
 
     // 把原始变量标记为 undefined，避免 exception 值被释放
-    v->type.type = T_UNKNOWN;
+    v->type = T_UNKNOWN;
 
     lgx_co_throw(co, &e);
 }

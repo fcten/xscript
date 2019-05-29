@@ -7,8 +7,8 @@
 
 typedef enum lgx_val_type_e {
     T_UNKNOWN = 0,  // 未知类型
-    T_NULL,
     T_CUSTOM,       // 自定义类型
+    T_NULL,
     T_LONG,         // 64 位有符号整数
     T_DOUBLE,       // 64 位有符号浮点数
     T_BOOL,
@@ -43,23 +43,13 @@ typedef struct lgx_value_s {
         lgx_gc_t        *gc;
     } v;
 
-    lgx_type_t* type;
+    lgx_val_type_t type;
 } lgx_value_t;
 
 typedef struct lgx_val_list_s {
     lgx_list_t head;
     lgx_value_t v;
 } lgx_val_list_t;
-
-struct lgx_gc_s {
-    lgx_list_t head;
-
-    // 引用计数
-    unsigned ref_cnt;
-
-    // GC 标记
-    unsigned char color;
-};
 
 struct lgx_type_s {
     // 基础类型
@@ -75,6 +65,19 @@ struct lgx_type_s {
         struct lgx_type_interface_s *itf;
         struct lgx_type_function_s  *fun;
     } u;
+};
+
+struct lgx_gc_s {
+    lgx_list_t head;
+
+    // 类型
+    lgx_type_t type;
+
+    // 引用计数
+    unsigned ref_cnt;
+
+    // GC 标记
+    unsigned char color;
 };
 
 typedef struct lgx_type_array_s {
@@ -126,9 +129,6 @@ struct lgx_array_s {
     // GC 信息
     lgx_gc_t gc;
 
-    // 类型
-    lgx_type_array_t* type;
-
     // 哈希表
     lgx_ht_t table;
 };
@@ -137,9 +137,6 @@ struct lgx_map_s {
     // GC 信息
     lgx_gc_t gc;
 
-    // 类型
-    lgx_type_map_t* type;
-
     // 哈希表
     lgx_ht_t table;
 };
@@ -147,9 +144,6 @@ struct lgx_map_s {
 struct lgx_struct_s {
     // GC 信息
     lgx_gc_t gc;
-
-    // 类型
-    lgx_type_struct_t* type;
 
     // 属性
     lgx_ht_t properties;

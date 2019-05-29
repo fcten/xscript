@@ -9,6 +9,14 @@ void lgx_gc_disable(lgx_vm_t *vm) {
     vm->gc_enable = 0;
 }
 
+void lgx_gc_free(lgx_value_t *v) {
+
+}
+
+static int gc_size(lgx_gc_t *gc) {
+    return 0;
+}
+
 static int full_gc(lgx_vm_t *vm) {
     // TODO
     printf("[full gc]\n");
@@ -23,27 +31,30 @@ static int full_gc(lgx_vm_t *vm) {
 }
 
 static int minor_gc(lgx_vm_t *vm) {
-    int cnt = 0;
+    //int cnt = 0;
 
     lgx_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
         lgx_list_t *next = list->next;
         lgx_list_del(list);
         
-        switch (((lgx_gc_t*)list)->type) {
+        switch (((lgx_gc_t*)list)->type.type) {
             case T_STRING: {
+                /*
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
                     xfree(list);
                 } else {
                     lgx_list_add_tail(list, &vm->heap.old);
 
-                    vm->heap.old_size += ((lgx_gc_t*)list)->size;
+                    vm->heap.old_size += gc_size((lgx_gc_t*)list);
 
                     cnt ++;
                 }
+                */
                 break;
             }
             case T_ARRAY: {
+                /*
                 if (((lgx_gc_t*)list)->ref_cnt == 0) {
                     lgx_hash_delete((lgx_hash_t *)list);
                 } else {
@@ -53,8 +64,11 @@ static int minor_gc(lgx_vm_t *vm) {
 
                     cnt ++;
                 }
+                */
                 break;
             }
+            default:
+                break;
         }
 
         list = next;
@@ -77,8 +91,8 @@ static int minor_gc(lgx_vm_t *vm) {
 }
 
 // 只需要跟踪可能存在循环引用的变量
-int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
-    if (IS_BASIC_VALUE(v)) {
+int lgx_gc_trace(lgx_vm_t *vm, lgx_value_t *v) {
+    if (!IS_GC_VALUE(v)) {
         return 0;
     }
 
@@ -92,7 +106,7 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_val_t*v) {
     }
 
     lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
-    vm->heap.young_size += v->v.gc->size;
+    vm->heap.young_size += gc_size(v->v.gc);
 
     return 0;
 }
