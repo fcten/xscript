@@ -96,3 +96,7 @@ void lgx_str_concat(lgx_str_t *src, lgx_str_t *dst) {
     memcpy(dst->buffer + dst->length, src->buffer, src->length);
     dst->length += src->length;
 }
+
+void lgx_str_print(lgx_str_t *str) {
+    printf("%.*s", str->length, str->buffer);
+}

@@ -289,7 +289,8 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
 
     lgx_str_t name;
     name.buffer = c->ast->lex.source.content + node->offset;
-    name.length = name.size = node->length;
+    name.length = node->length;
+    name.size = 0;
     lgx_symbol_t* symbol = lgx_symbol_get(node, &name, node->offset);
 
     if (!symbol) {
@@ -2233,19 +2234,10 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
 
     int ret = 0;
 
-    // 为局部变量分配寄存器
-    lgx_ht_node_t* n;
-    for (n = lgx_ht_first(node->child[4]->u.symbols); n; n = lgx_ht_next(n)) {
-        lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
-        // 如果符号类型为变量
-        if (symbol->s_type == S_VARIABLE) {
-            int reg = lgx_reg_pop(node->u.regs);
-            if (reg < 0) {
-                compiler_error(c, symbol->node, "too many local variables\n");
-                ret = 1;
-            }
-            symbol->u.r = reg;
-        }
+    // 为函数调用预留 4 个寄存器
+    int i;
+    for (i = 0; i < 4; ++i) {
+        lgx_reg_pop(node->u.regs);
     }
 
     symbol->u.v.v.fun->addr = c->bc.length;
@@ -2260,7 +2252,7 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     // 写入一句 ret null
     bc_ret(c, 0);
 
-    symbol->u.v.v.fun->end = c->bc.length;
+    symbol->u.v.v.fun->end = c->bc.length - 1;
     symbol->u.v.v.fun->stack_size = node->u.regs->max;
 
     return ret;
@@ -2358,6 +2350,7 @@ void lgx_compiler_cleanup(lgx_compiler_t* c) {
     // 释放常量表
     lgx_ht_node_t *n;
     for (n = lgx_ht_first(&c->constant); n; n = lgx_ht_next(n)) {
+        lgx_const_del(n->v);
         n->v = NULL;
     }
     lgx_ht_cleanup(&c->constant);

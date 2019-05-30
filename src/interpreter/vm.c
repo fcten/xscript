@@ -1,6 +1,7 @@
 #include "../common/common.h"
 #include "../common/ht.h"
 #include "../compiler/bytecode.h"
+#include "../compiler/constant.h"
 #include "vm.h"
 #include "value.h"
 #include "gc.h"
@@ -62,7 +63,11 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
     vm->exception = &c->exception;
 
     vm->constant = xcalloc(c->constant.length, sizeof(lgx_value_t*));
-    // TODO 
+    lgx_ht_node_t* n;
+    for (n = lgx_ht_first(&c->constant); n; n = lgx_ht_next(n)) {
+        lgx_const_t* c = (lgx_const_t*)n->v;
+        vm->constant[c->num] = &c->v;
+    }
 
     vm->co_id = 0;
     vm->co_count = 0;
@@ -116,6 +121,11 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
         xfree(list);
         list = next;
     }
+
+    // 释放常量表
+    xfree(vm->constant);
+
+    memset(vm, 0, sizeof(lgx_vm_t));
 
     return 0;
 }
@@ -780,6 +790,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_ECHO: {
                 lgx_value_print(&R(pa));
+                printf("\n");
                 break;
             }
             case OP_NOP: break;

@@ -19,7 +19,7 @@ char* lgx_type_to_string(lgx_type_t* type) {
         case T_DOUBLE:
             return "float";
         case T_BOOL:
-            return "boolen";
+            return "boolean";
         case T_STRING:
             return "string";
         case T_ARRAY:

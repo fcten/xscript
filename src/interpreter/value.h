@@ -11,4 +11,6 @@ char* lgx_value_typeof(lgx_value_t* v);
 
 int lgx_value_cmp(lgx_value_t* v1, lgx_value_t* v2);
 
+lgx_string_t* lgx_string_new();
+
 #endif // LGX_VALUE_H

@@ -29,19 +29,21 @@ typedef struct lgx_interface_s lgx_interface_t;
 typedef struct lgx_function_s  lgx_function_t;
 typedef struct lgx_gc_s        lgx_gc_t;
 
+typedef union {
+    long long       l; // 64 位有符号整数
+    double          d; // 64 位有符号浮点数
+    lgx_string_t    *str;
+    lgx_array_t     *arr;
+    lgx_map_t       *map;
+    lgx_struct_t    *sru;
+    lgx_interface_t *itf;
+    lgx_function_t  *fun;
+    lgx_gc_t        *gc;
+} lgx_v_t;
+
 typedef struct lgx_value_s {
     // 8 字节
-    union {
-        long long       l; // 64 位有符号整数
-        double          d; // 64 位有符号浮点数
-        lgx_string_t    *str;
-        lgx_array_t     *arr;
-        lgx_map_t       *map;
-        lgx_struct_t    *sru;
-        lgx_interface_t *itf;
-        lgx_function_t  *fun;
-        lgx_gc_t        *gc;
-    } v;
+    lgx_v_t v;
 
     lgx_val_type_t type;
 } lgx_value_t;

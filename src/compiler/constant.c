@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "../interpreter/value.h"
 #include "constant.h"
 
 int const_key(lgx_str_t* key, lgx_expr_result_t* e) {
@@ -76,16 +76,21 @@ int lgx_const_get(lgx_ht_t* ct, lgx_expr_result_t* e) {
     lgx_str_t key;
     lgx_str_init(&key, 0);
     if (const_key(&key, e)) {
-        return 1;
+        return -1;
     }
 
     lgx_ht_node_t* n = lgx_ht_get(ct, &key);
     if (n) {
         lgx_str_cleanup(&key);
-        return (intptr_t)n->v;
+        return ((lgx_const_t*)n->v)->num;
     }
 
-    if (lgx_ht_set(ct, &key, (void *)(intptr_t)ct->length)) {
+    lgx_const_t* c = lgx_const_new(ct, e);
+    if (!c) {
+        return -1;
+    }
+
+    if (lgx_ht_set(ct, &key, c)) {
         lgx_str_cleanup(&key);
         return -1;
     }
@@ -93,5 +98,36 @@ int lgx_const_get(lgx_ht_t* ct, lgx_expr_result_t* e) {
     n = lgx_ht_get(ct, &key);
     assert(n);
     lgx_str_cleanup(&key);
-    return (intptr_t)n->v;
+    return ((lgx_const_t*)n->v)->num;
+}
+
+lgx_const_t* lgx_const_new(lgx_ht_t* ct, lgx_expr_result_t* e) {
+    lgx_const_t* c = xcalloc(1, sizeof(lgx_const_t));
+    c->num = ct->length;
+    c->v.type = e->v_type.type;
+
+    switch (e->v_type.type) {
+    case T_LONG:
+        c->v.v.l = e->v.l;
+        break;
+    case T_DOUBLE:
+        c->v.v.d = e->v.d;
+        break;
+    case T_STRING:
+        c->v.v.str = lgx_string_new();
+        assert(c->v.v.str);
+        lgx_str_init(&c->v.v.str->string, e->v.str.length);
+        lgx_str_dup(&e->v.str, &c->v.v.str->string);
+        break;
+    // case T_ARRAY:
+    // TODO 其他类型
+    default:
+        break;
+    }
+
+    return c;
+}
+
+void lgx_const_del(lgx_const_t* c) {
+    xfree(c);
 }

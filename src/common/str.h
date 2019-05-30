@@ -23,4 +23,6 @@ int lgx_str_cmp(lgx_str_t *str1, lgx_str_t *str2);
 void lgx_str_dup(lgx_str_t *src, lgx_str_t *dst);
 void lgx_str_concat(lgx_str_t *src, lgx_str_t *dst);
 
+void lgx_str_print(lgx_str_t *str);
+
 #endif // LGX_STR_H

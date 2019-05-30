@@ -1598,6 +1598,10 @@ static void ast_print(lgx_ast_node_t* node, int indent) {
             printf("%*s%s\n", indent, "", "THROW_STATEMENT");
             ast_print_child(node, indent);
             break;
+        case ECHO_STATEMENT:
+            printf("%*s%s\n", indent, "", "ECHO_STATEMENT");
+            ast_print_child(node, indent);
+            break;
         // Declaration
         case PACKAGE_DECLARATION:
             printf("%*s%s\n", indent, "", "PACKAGE_DECLARATION");
