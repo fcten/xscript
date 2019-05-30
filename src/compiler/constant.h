@@ -4,9 +4,8 @@
 // 常量表
 
 #include "../common/ht.h"
-#include "../parser/type.h"
+#include "expr_result.h"
 
-int lgx_const_set(lgx_ht_t* ct, lgx_str_t* k, lgx_value_t* v);
-int lgx_const_get(lgx_ht_t* ct, lgx_str_t* k);
+int lgx_const_get(lgx_ht_t* ct, lgx_expr_result_t* e);
 
 #endif // LGX_CONSTANT_H

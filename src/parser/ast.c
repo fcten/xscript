@@ -1108,6 +1108,16 @@ static int ast_parse_return_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     return ast_parse_expression(ast, return_statement);
 }
 
+static int ast_parse_echo_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* echo_statement = ast_node_new(ast, ECHO_STATEMENT);
+    ast_node_append_child(parent, echo_statement);
+
+    assert(ast->cur_token == TK_ECHO);
+    ast_step(ast);
+
+    return ast_parse_expression(ast, echo_statement);
+}
+
 static int ast_parse_expression_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* expression_statement = ast_node_new(ast, EXPRESSION_STATEMENT);
     ast_node_append_child(parent, expression_statement);
@@ -1357,6 +1367,11 @@ static int ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
                 break;
             case TK_THROW:
                 if (ast_parse_throw_statement(ast, parent)) {
+                    return 1;
+                }
+                break;
+            case TK_ECHO:
+                if (ast_parse_echo_statement(ast, parent)) {
                     return 1;
                 }
                 break;

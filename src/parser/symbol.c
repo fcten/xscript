@@ -41,6 +41,7 @@ static void symbol_del(lgx_symbol_t* symbol) {
     if (symbol->s_type == S_CONSTANT) {
         switch (symbol->type.type) {
             case T_FUNCTION:
+                lgx_str_cleanup(&symbol->u.v.v.fun->name);
                 xfree(symbol->u.v.v.fun);
                 break;
             default:

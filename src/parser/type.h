@@ -169,6 +169,9 @@ struct lgx_function_s {
     // GC 信息
     lgx_gc_t gc;
 
+    // 名字
+    lgx_str_t name;
+
     // 类型
     lgx_type_function_t* type;
 

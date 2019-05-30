@@ -80,7 +80,7 @@ struct lgx_vm_s {
     } heap;
 
     // 常量表
-    lgx_ht_t *constant;
+    lgx_value_t **constant;
 
     // 异常
     lgx_rb_t *exception;

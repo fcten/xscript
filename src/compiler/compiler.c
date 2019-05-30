@@ -76,7 +76,9 @@ static int load_to_reg(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_
 
     if (r >= 0) {
         if (is_literal(e)) {
-            // TODO
+            int reg = lgx_const_get(&c->constant, e);
+            assert(reg >= 0);
+            bc_load(c, r, reg);
         } else if (is_const(e)) {
             bc_load(c, r, e->u.constant);
         } else if (is_global(e)) {
@@ -1908,6 +1910,36 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     return ret;
 }
 
+static int compiler_echo_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    assert(node->type == ECHO_STATEMENT);
+    assert(node->children == 1);
+
+    lgx_expr_result_t e;
+    lgx_expr_result_init(&e);
+
+    if (compiler_expression(c, node->child[0], &e)) {
+        return 1;
+    }
+
+    int ret = 0;
+
+    if (is_local(&e) || is_temp(&e)) {
+        bc_echo(c, e.u.local);
+    } else {
+        int r = load_to_reg(c, node, &e);
+        if (r >= 0) {
+            bc_echo(c, r);
+            reg_push(c, node, r);
+        } else {
+            ret = 1;
+        }
+    }
+
+    lgx_expr_result_cleanup(c, node, &e);
+
+    return ret;
+}
+
 static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == EXPRESSION_STATEMENT);
     assert(node->children == 1);
@@ -2089,7 +2121,10 @@ static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
             }
         }
 
-        // TODO 写入常量表
+        // 写入常量表
+        int r = lgx_const_get(&c->constant, &e2);
+        assert(r >= 0);
+        e1.symbol->u.r = r;
     }
 
     lgx_expr_result_cleanup(c, node, &e2);
@@ -2111,6 +2146,7 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         case TRY_STATEMENT: return compiler_try_statement(c, node);
         case THROW_STATEMENT: return compiler_throw_statement(c, node);
         case RETURN_STATEMENT: return compiler_return_statement(c, node);
+        case ECHO_STATEMENT: return compiler_echo_statement(c, node);
         case EXPRESSION_STATEMENT: return compiler_expression_statement(c, node);
         case VARIABLE_DECLARATION: return compiler_local_variable_declaration(c, node);
         case CONSTANT_DECLARATION: return compiler_constant_declaration(c, node);
@@ -2192,6 +2228,8 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
         return 1;
     }
     symbol->u.v.v.fun->type = symbol->type.u.fun;
+    lgx_str_init(&symbol->u.v.v.fun->name, name.length);
+    lgx_str_dup(&name, &symbol->u.v.v.fun->name);
 
     int ret = 0;
 
@@ -2317,7 +2355,11 @@ void lgx_compiler_cleanup(lgx_compiler_t* c) {
         xfree(c->bc.buffer);
     }
 
-    // 是否常量表
+    // 释放常量表
+    lgx_ht_node_t *n;
+    for (n = lgx_ht_first(&c->constant); n; n = lgx_ht_next(n)) {
+        n->v = NULL;
+    }
     lgx_ht_cleanup(&c->constant);
 
     // 释放异常信息

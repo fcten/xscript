@@ -7,7 +7,6 @@
 #include "coroutine.h"
 
 #define R(r)  (vm->regs[r])
-#define C(r)  (vm->constant->table[r].v)
 #define G(r)  (vm->co_main->stack.buf[r])
 
 void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e) {
@@ -61,7 +60,9 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
 
     vm->c = c;
     vm->exception = &c->exception;
-    vm->constant = &c->constant;
+
+    vm->constant = xcalloc(c->constant.length, sizeof(lgx_value_t*));
+    // TODO 
 
     vm->co_id = 0;
     vm->co_count = 0;
@@ -136,7 +137,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
         return 0;
     }
 
-    unsigned i, pa, pb, pc;
+    unsigned i, op, pa, pb, pc;
     unsigned *bc = vm->c->bc.buffer;
 
     for(;;) {
@@ -146,12 +147,13 @@ int lgx_vm_execute(lgx_vm_t *vm) {
         //lgx_bc_echo(vm->co_running->pc-1, i);
         //getchar();
 
+        op = OP(i);
         pa = PA(i);
         pb = PB(i);
         pc = PC(i);
         // pd 和 pe 较少使用，所以不默认解析
 
-        switch(OP(i)) {
+        switch(op) {
             case OP_MOV:{
                 lgx_gc_ref_add(&R(pb));
                 lgx_gc_ref_del(&R(pa));
@@ -750,16 +752,14 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LOAD:{
-                /*
                 unsigned pd = PD(i);
 
                 lgx_gc_ref_del(&R(pa));
-                if (UNEXPECTED(lgx_value_dup(C(pd), &R(pa)) != 0)) {
+                if (UNEXPECTED(lgx_value_dup(vm->constant[pd], &R(pa)) != 0)) {
                     lgx_vm_throw_s(vm, "out of memory");
                     break;
                 }
                 lgx_gc_ref_add(&R(pa));
-                */
                 break;
             }
             case OP_GLOBAL_GET:{
@@ -776,6 +776,10 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_THROW: {
                 lgx_vm_throw_v(vm, &R(pa));
+                break;
+            }
+            case OP_ECHO: {
+                lgx_value_print(&R(pa));
                 break;
             }
             case OP_NOP: break;

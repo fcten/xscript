@@ -49,6 +49,7 @@ const char* op_name[] = {
     "GLOBAL_SET",
     "THROW",
     "CONCAT",
+    "ECHO",
     "HLT"
 };
 
@@ -109,6 +110,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_CALL_NEW:
         case OP_THROW:
         case OP_TAIL_CALL:
+        case OP_ECHO:
             printf("%4d %11s R[%d]\n", n, op_name[OP(i)], PA(i));
             break;
         case OP_JMPI:
@@ -439,4 +441,8 @@ int bc_throw(lgx_compiler_t* c, unsigned char reg) {
 // 寄存器1 = 寄存器2 + 寄存器3
 int bc_concat(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3) {
     return bc_append(c, I3(OP_CONCAT, reg1, reg2, reg3));
+}
+
+int bc_echo(lgx_compiler_t* c, unsigned char reg) {
+    return bc_append(c, I1(OP_ECHO, reg));
 }

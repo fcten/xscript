@@ -127,6 +127,8 @@ typedef enum lgx_token_e {
     TK_EXPORT,
     TK_PACKAGE,
 
+    TK_ECHO,
+
     TK_LENGTH
 } lgx_token_t;
 

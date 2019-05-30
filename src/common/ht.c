@@ -106,26 +106,27 @@ static int ht_resize(lgx_ht_t* ht) {
         return 1;
     }
 
-    int i;
-    for (i = 0; i < ht->size; ++i) {
-        lgx_ht_node_t* node = ht->table[i];
-        while (node) {
-            lgx_ht_node_t* next = node->next;
-            ht_set(&resize, node);
-            node = next;
-        }
+    lgx_ht_node_t *n = ht->head, *next;
+    while (n) {
+        next = n->order;
+        ht_set(&resize, n);
+        n = next;
     }
 
     xfree(ht->table);
 
     ht->size = resize.size;
     ht->table = resize.table;
+    ht->head = resize.head;
+    ht->tail = resize.tail;
 
     return 0;
 }
 
 // 注意：键 k 会在插入哈希表时被自动复制，而值 v 不会。
 // 因此，v 必须指向堆内存。而 k 如果指向堆内存，则必须在调用 lgx_ht_set 后手动释放。
+// 如果键已存在，则会返回失败。
+// 成功返回 0，失败返回 1
 int lgx_ht_set(lgx_ht_t *ht, lgx_str_t* k, void* v) {
     // 键不能为空
     assert(k->length && k->buffer);
@@ -138,6 +139,7 @@ int lgx_ht_set(lgx_ht_t *ht, lgx_str_t* k, void* v) {
 
     if (ht_set(ht, node)) {
         // 键已存在
+        node->v = NULL;
         ht_node_del(node);
         return 1;
     }

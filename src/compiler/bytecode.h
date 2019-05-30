@@ -85,6 +85,9 @@ enum {
     // 字符串拼接
     OP_CONCAT,
 
+    // 打印
+    OP_ECHO,
+
     // 终止执行
     OP_HLT
 };
@@ -174,5 +177,7 @@ int bc_global_set(lgx_compiler_t* c, unsigned global, unsigned char reg);
 int bc_throw(lgx_compiler_t* c, unsigned char reg);
 
 int bc_concat(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char reg3);
+
+int bc_echo(lgx_compiler_t* c, unsigned char reg);
 
 #endif // LGX_BYTECODE_H
