@@ -5,19 +5,19 @@ function main() {
         123,
     ];
 
-    print(arr1);
+    echo(arr1);
 
     var arr2 = (["test", 123, arr1])[2][0];
 
-    print(arr2);
+    echo(arr2);
 
     var arr4 = ["test", 123, arr1];
 
-    print(arr4);
+    echo(arr4);
 
     var arr5 = ["test", 123, arr1, [], [1, 2, 3]];
 
-    print(arr5[4][0]);
+    echo(arr5[4][0]);
 
     var arr6 = [];
 
@@ -31,7 +31,7 @@ function main() {
 
     arr6[1][] = 7;
 
-    print(arr6);
+    echo(arr6);
 
     var arr7 = [];
 
@@ -39,7 +39,7 @@ function main() {
     arr7["k-b"] = "v-b";
     arr7[] = "v-c";
 
-    print(arr7);
+    echo(arr7);
 
     var arr8 = {
         "#": arr1,
@@ -47,7 +47,7 @@ function main() {
         arr2: arr7["k-a"],
     };
 
-    print(arr8);
+    echo(arr8);
 
     var arr9 = {
         "name": "Colin",
@@ -56,5 +56,5 @@ function main() {
         "verified": true,
     };
 
-    print(arr9);
+    echo(arr9);
 }

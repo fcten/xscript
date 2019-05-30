@@ -39,21 +39,30 @@ static int ht_set(lgx_ht_t* ht, lgx_ht_node_t* node) {
     if (!ht->table[pos]) {
         node->next = NULL;
         ht->table[pos] = node;
-        return 0;
-    }
-
-    lgx_ht_node_t* next = ht->table[pos];
-    while (next) {
-        if (lgx_str_cmp(&node->k, &next->k) == 0) {
-            // 键已存在
-            return 1;
+    } else {
+        lgx_ht_node_t* next = ht->table[pos];
+        while (next) {
+            if (lgx_str_cmp(&node->k, &next->k) == 0) {
+                // 键已存在
+                return 1;
+            }
+            next = next->next;
         }
-        next = next->next;
+
+        // 插入到链表头部
+        node->next = ht->table[pos];
+        ht->table[pos] = node;
     }
 
-    // 插入到链表头部
-    node->next = ht->table[pos];
-    ht->table[pos] = node;
+    ++ ht->length;
+
+    if (!ht->tail) {
+        ht->head = node;
+        ht->tail = node;
+    } else {
+        ht->tail->order = node;
+        ht->tail = node;
+    }
 
     return 0;
 }
@@ -142,16 +151,6 @@ int lgx_ht_set(lgx_ht_t *ht, lgx_str_t* k, void* v) {
         node->v = NULL;
         ht_node_del(node);
         return 1;
-    }
-
-    ++ ht->length;
-
-    if (!ht->tail) {
-        ht->head = node;
-        ht->tail = node;
-    } else {
-        ht->tail->order = node;
-        ht->tail = node;
     }
 
     if (UNEXPECTED(ht->size < ht->length * 2)) {
