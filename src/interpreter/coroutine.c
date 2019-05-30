@@ -355,8 +355,13 @@ int lgx_co_return_array(lgx_co_t *co, lgx_array_t *arr) {
 // 输出协程的当前调用栈
 int lgx_co_backtrace(lgx_co_t *co) {
     unsigned int base = co->stack.base;
+    lgx_function_t* fun = co->stack.buf[base].v.fun;
+    int i = 0;
+
     while (1) {
-        printf("  <function:%d> %d\n", co->stack.buf[base].v.fun->addr, base);
+        printf("#%d %.*s()\n", i, fun->name.length, fun->name.buffer);
+
+        ++i;
 
         if (base != 0) {
             base = co->stack.buf[base+3].v.l;
@@ -445,7 +450,7 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
             printf("[uncaught exception] [%llu] ", co->id);
             lgx_value_print(e);
-            printf("\n");
+            printf("\n\n");
 
             lgx_gc_ref_del(e);
             // TODO 写入到协程返回值中？

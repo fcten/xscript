@@ -13,5 +13,5 @@ var a = 1;
 function main() {
     a = a + 1;
 
-    print(a);
+    echo(a);
 }

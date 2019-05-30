@@ -6,5 +6,5 @@ function fib(n int) {
 }
 
 function main() {
-    print(fib(20));
+    echo(fib(20));
 }

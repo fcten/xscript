@@ -12,5 +12,5 @@ function main() {
         }
     }
 
-    print(a);
+    echo(a);
 }

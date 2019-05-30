@@ -6,5 +6,5 @@ function tail(n int) int {
 }
 
 function main() {
-    print(tail(100000));
+    echo(tail(100000));
 }

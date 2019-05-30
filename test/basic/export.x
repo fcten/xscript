@@ -1,5 +1,5 @@
 function export_test() {
-    print("export_test")
+    echo("export_test");
 }
 
 export export_test;

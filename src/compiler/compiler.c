@@ -1783,7 +1783,7 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(n);
     n->value = exception;
 
-    return 0;
+    return ret;
 }
 
 static int compiler_throw_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {

@@ -13,5 +13,5 @@ function main() {
 
     c = a;
 
-    echo b + c;
+    echo(b + c);
 }

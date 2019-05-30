@@ -9,5 +9,5 @@ function add(b int) {
 }
 
 function main() {
-    print(add(2));
+    echo(add(2));
 }

@@ -1,5 +1,5 @@
 function test() {
-    print("hello world");
+    echo("hello world");
 }
 
 function add(c int, d int) {
@@ -11,5 +11,5 @@ function main() {
     test();
 
     var a = 1, b = 2;
-    print(add(a, b + 1));
+    echo(add(a, b + 1));
 }

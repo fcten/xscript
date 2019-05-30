@@ -11,7 +11,7 @@ function main () {
     if (b < 0) {
         b = b + 1;
     }
-    print(a + b);
+    echo(a + b);
 
     /* EXPECT
     111
@@ -29,7 +29,7 @@ function main () {
     } else {
         d = d + 2;
     }
-    print(c + d);
+    echo(c + d);
 
     /* EXPECT
     1
@@ -42,13 +42,13 @@ function main () {
 
     var e = 1;
     while (e < 4) {
-        print(e);
+        echo(e);
         if (e > 2) {
-            print("e > 2");
+            echo("e > 2");
         } else if (e > 1) {
-            print("e > 1");
+            echo("e > 1");
         } else {
-            print("e <= 1");
+            echo("e <= 1");
         }
         e = e + 1;
     }

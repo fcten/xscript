@@ -4,12 +4,12 @@ const MAX_NUMBER = 100 * 100;
 
 function test() float {
     const MAX_PRICE = 10.1;
-    print(MAX_PRICE);
+    echo(MAX_PRICE);
     return MAX_PRICE;
 }
 
 function main() {
-    print(WELCOME);
-    print(MAX_NUMBER);
-    print(test());
+    echo(WELCOME);
+    echo(MAX_NUMBER);
+    echo(test());
 }
