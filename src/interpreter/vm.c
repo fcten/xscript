@@ -8,7 +8,6 @@
 #include "coroutine.h"
 
 #define R(r)  (vm->regs[r])
-#define G(r)  (vm->co_main->stack.buf[r])
 
 void lgx_vm_throw(lgx_vm_t *vm, lgx_value_t *e) {
     assert(vm->co_running);
@@ -62,11 +61,21 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
     vm->c = c;
     vm->exception = &c->exception;
 
+    // 初始化常量
     vm->constant = xcalloc(c->constant.length, sizeof(lgx_value_t*));
     lgx_ht_node_t* n;
     for (n = lgx_ht_first(&c->constant); n; n = lgx_ht_next(n)) {
         lgx_const_t* c = (lgx_const_t*)n->v;
         vm->constant[c->num] = &c->v;
+        lgx_gc_ref_add(vm->constant[c->num]);
+    }
+
+    // 初始化全局变量
+    vm->global = xcalloc(c->global.length, sizeof(lgx_value_t));
+    for (n = lgx_ht_first(&c->global); n; n = lgx_ht_next(n)) {
+        lgx_symbol_t* symbol = (lgx_symbol_t*)n->v;
+        lgx_value_dup(&symbol->v, &vm->global[symbol->r]);
+        lgx_gc_ref_add(&vm->global[symbol->r]);
     }
 
     vm->co_id = 0;
@@ -764,24 +773,28 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_LOAD:{
                 unsigned pd = PD(i);
 
+                lgx_gc_ref_add(vm->constant[pd]);
                 lgx_gc_ref_del(&R(pa));
                 if (UNEXPECTED(lgx_value_dup(vm->constant[pd], &R(pa)) != 0)) {
                     lgx_vm_throw_s(vm, "out of memory");
                     break;
                 }
-                lgx_gc_ref_add(&R(pa));
                 break;
             }
             case OP_GLOBAL_GET:{
-                lgx_gc_ref_add(&G(pb));
+                unsigned pd = PD(i);
+
+                lgx_gc_ref_add(&vm->global[pd]);
                 lgx_gc_ref_del(&R(pa));
-                R(pa) = G(pb);
+                R(pa) = vm->global[pd];
                 break;
             }
             case OP_GLOBAL_SET:{
+                unsigned pd = PD(i);
+
                 lgx_gc_ref_add(&R(pa));
-                lgx_gc_ref_del(&G(pb));
-                G(pb) = R(pa);
+                lgx_gc_ref_del(&vm->global[pd]);
+                vm->global[pd] = R(pa);
                 break;
             }
             case OP_THROW: {

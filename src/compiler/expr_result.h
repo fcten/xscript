@@ -3,6 +3,7 @@
 
 #include "../parser/type.h"
 #include "../parser/symbol.h"
+#include "../interpreter/value.h"
 #include "register.h"
 
 typedef enum {
@@ -57,5 +58,7 @@ typedef struct {
 #define check_type(e, t)     ((e)->v_type.type == t)
 #define check_constant(e, t) (is_constant(e) && check_type(e, t))
 #define check_variable(e, t) (is_variable(e) && check_type(e, t))
+
+int lgx_expr_to_value(lgx_expr_result_t* e, lgx_value_t* v);
 
 #endif // LGX_EXPRESSION_H

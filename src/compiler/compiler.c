@@ -303,14 +303,14 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
             // 判断是全局变量还是局部变量
             if (symbol->is_global) {
                 e->type = EXPR_GLOBAL;
-                e->u.global = symbol->u.r;
+                e->u.global = symbol->r;
                 e->symbol = symbol;
                 if (lgx_type_dup(&symbol->type, &e->v_type)) {
                     return 1;
                 }
             } else {
                 e->type = EXPR_LOCAL;
-                e->u.local = symbol->u.r;
+                e->u.local = symbol->r;
                 e->symbol = symbol;
                 if (lgx_type_dup(&symbol->type, &e->v_type)) {
                     return 1;
@@ -319,7 +319,7 @@ static int compiler_identifier_token(lgx_compiler_t* c, lgx_ast_node_t *node, lg
             break;
         case S_CONSTANT:
             e->type = EXPR_CONSTANT;
-            e->u.constant = symbol->u.r;
+            e->u.constant = symbol->r;
             e->symbol = symbol;
             if (lgx_type_dup(&symbol->type, &e->v_type)) {
                 return 1;
@@ -2001,7 +2001,10 @@ static int compiler_global_variable_declaration(lgx_compiler_t* c, lgx_ast_node_
             }
         }
 
-        // TODO 初始化全局变量的值
+        // 初始化全局变量的值
+        if (lgx_expr_to_value(&e2, &e1.symbol->v)) {
+            return 1;
+        }
     } else {
         if (check_type(&e1, T_UNKNOWN)) {
             compiler_error(c, node, "unable to determine the type of global variable `%.*s`\n", name.length, name.buffer);
@@ -2125,7 +2128,7 @@ static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
         // 写入常量表
         int r = lgx_const_get(&c->constant, &e2);
         assert(r >= 0);
-        e1.symbol->u.r = r;
+        e1.symbol->r = r;
     }
 
     lgx_expr_result_cleanup(c, node, &e2);
@@ -2181,7 +2184,7 @@ static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
                 compiler_error(c, symbol->node, "too many local variables\n");
                 ret = 1;
             }
-            symbol->u.r = reg;
+            symbol->r = reg;
         }
     }
 
@@ -2197,7 +2200,7 @@ static int compiler_block_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
         // 如果符号类型为变量
         if (symbol->s_type == S_VARIABLE) {
-            lgx_reg_push(fun_node->u.regs, symbol->u.r);
+            lgx_reg_push(fun_node->u.regs, symbol->r);
         }
     }
 
@@ -2222,15 +2225,15 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     assert(symbol);
     assert(symbol->s_type == S_CONSTANT);
     assert(symbol->type.type == T_FUNCTION);
-    assert(symbol->u.v.v.fun == NULL);
+    assert(symbol->v.v.fun == NULL);
 
-    symbol->u.v.v.fun = xcalloc(1, sizeof(lgx_function_t));
-    if (!symbol->u.v.v.fun) {
+    symbol->v.v.fun = xcalloc(1, sizeof(lgx_function_t));
+    if (!symbol->v.v.fun) {
         return 1;
     }
-    symbol->u.v.v.fun->type = symbol->type.u.fun;
-    lgx_str_init(&symbol->u.v.v.fun->name, name.length);
-    lgx_str_dup(&name, &symbol->u.v.v.fun->name);
+    symbol->v.v.fun->type = symbol->type.u.fun;
+    lgx_str_init(&symbol->v.v.fun->name, name.length);
+    lgx_str_dup(&name, &symbol->v.v.fun->name);
 
     int ret = 0;
 
@@ -2240,7 +2243,7 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
         lgx_reg_pop(node->u.regs);
     }
 
-    symbol->u.v.v.fun->addr = c->bc.length;
+    symbol->v.v.fun->addr = c->bc.length;
 
     // 编译语句
     if (compiler_block_statement(c, node->child[4])) {
@@ -2252,8 +2255,8 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     // 写入一句 ret null
     bc_ret(c, 0);
 
-    symbol->u.v.v.fun->end = c->bc.length - 1;
-    symbol->u.v.v.fun->stack_size = node->u.regs->max;
+    symbol->v.v.fun->end = c->bc.length - 1;
+    symbol->v.v.fun->stack_size = node->u.regs->max;
 
     return ret;
 }
@@ -2261,23 +2264,31 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
 static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == BLOCK_STATEMENT);
 
+    int ret = 0;
+
     // 为全局变量分配寄存器
     lgx_ht_node_t* n;
-    int i = 0;
     for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
         // 如果符号类型为变量
         if (symbol->s_type == S_VARIABLE) {
-            if (i >= 65535) {
+            if (c->global.length >= 65535) {
                 compiler_error(c, symbol->node, "too many global variables\n");
-                return 1;
+                ret = 1;
             }
-            symbol->u.r = i;
-            ++i;
+            symbol->r = c->global.length;
+
+            lgx_str_t name;
+            name.buffer = c->ast->lex.source.content + symbol->node->offset;
+            name.length = symbol->node->length;
+            name.size = 0;
+            if (lgx_ht_set(&c->global, &name, symbol)) {
+                ret = 1;
+            }
         }
     }
 
-    int ret = 0;
+    int i;
     for(i = 0; i < node->children; ++i) {
         switch (node->child[i]->type) {
             case FUNCTION_DECLARATION:
@@ -2325,6 +2336,11 @@ int lgx_compiler_init(lgx_compiler_t* c) {
         return 1;
     }
 
+    if (lgx_ht_init(&c->global, 32)) {
+        lgx_compiler_cleanup(c);
+        return 1;
+    }
+
     if (lgx_rb_init(&c->exception, LGX_RB_KEY_INTEGER)) {
         lgx_compiler_cleanup(c);
         return 1;
@@ -2354,6 +2370,12 @@ void lgx_compiler_cleanup(lgx_compiler_t* c) {
         n->v = NULL;
     }
     lgx_ht_cleanup(&c->constant);
+
+    // 释放全局变量
+    for (n = lgx_ht_first(&c->global); n; n = lgx_ht_next(n)) {
+        n->v = NULL;
+    }
+    lgx_ht_cleanup(&c->global);
 
     // 释放异常信息
     lgx_rb_node_t *node;

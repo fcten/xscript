@@ -19,10 +19,10 @@ typedef struct {
         uint32_t* buffer;
     } bc;
 
-    // 常量表
+    // 常量
     lgx_ht_t constant;
 
-    // 全局变量表
+    // 全局变量
     lgx_ht_t global;
 
     // 异常处理信息

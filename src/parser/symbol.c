@@ -1,3 +1,4 @@
+#include "../interpreter/value.h"
 #include "symbol.h"
 
 // 追加一条错误信息
@@ -38,19 +39,8 @@ static lgx_symbol_t* symbol_new() {
 }
 
 static void symbol_del(lgx_symbol_t* symbol) {
-    if (symbol->s_type == S_CONSTANT) {
-        switch (symbol->type.type) {
-            case T_FUNCTION:
-                lgx_str_cleanup(&symbol->u.v.v.fun->name);
-                xfree(symbol->u.v.v.fun);
-                break;
-            default:
-                break;
-        }
-    }
-
+    lgx_value_cleanup(&symbol->v);
     lgx_type_cleanup(&symbol->type);
-
     xfree(symbol);
 }
 

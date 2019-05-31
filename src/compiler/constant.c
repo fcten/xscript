@@ -104,25 +104,10 @@ int lgx_const_get(lgx_ht_t* ct, lgx_expr_result_t* e) {
 lgx_const_t* lgx_const_new(lgx_ht_t* ct, lgx_expr_result_t* e) {
     lgx_const_t* c = xcalloc(1, sizeof(lgx_const_t));
     c->num = ct->length;
-    c->v.type = e->v_type.type;
 
-    switch (e->v_type.type) {
-    case T_LONG:
-        c->v.v.l = e->v.l;
-        break;
-    case T_DOUBLE:
-        c->v.v.d = e->v.d;
-        break;
-    case T_STRING:
-        c->v.v.str = lgx_string_new();
-        assert(c->v.v.str);
-        lgx_str_init(&c->v.v.str->string, e->v.str.length);
-        lgx_str_dup(&e->v.str, &c->v.v.str->string);
-        break;
-    // case T_ARRAY:
-    // TODO 其他类型
-    default:
-        break;
+    if (lgx_expr_to_value(e, &c->v)) {
+        xfree(c);
+        return NULL;
     }
 
     return c;

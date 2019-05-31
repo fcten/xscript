@@ -1,10 +1,26 @@
 #include "value.h"
 
+int lgx_value_init(lgx_value_t* v) {
+    memset(v, 0, sizeof(lgx_value_t));
+    return 0;
+}
+
+// TODO
+void lgx_value_cleanup(lgx_value_t* v) {
+    switch (v->type) {
+        case T_FUNCTION:
+            lgx_str_cleanup(&v->v.fun->name);
+            xfree(v->v.fun);
+            break;
+        default:
+            break;
+    }
+}
+
 lgx_string_t* lgx_string_new() {
     lgx_string_t* s = xcalloc(1, sizeof(lgx_string_t));
     return s;
 }
-
 
 int lgx_value_dup(lgx_value_t* src, lgx_value_t* dst) {
     switch (src->type) {

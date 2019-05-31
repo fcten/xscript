@@ -79,8 +79,11 @@ struct lgx_vm_s {
         unsigned old_size;
     } heap;
 
-    // 常量表
+    // 常量
     lgx_value_t **constant;
+
+    // 全局变量
+    lgx_value_t *global;
 
     // 异常
     lgx_rb_t *exception;

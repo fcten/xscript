@@ -19,13 +19,11 @@ typedef struct {
     // 值类型
     lgx_type_t type;
 
-    union {
-        // 如果符号类型为 S_CONSTANT，保存符号的值
-        lgx_value_t v;
+    // 保存符号的初始值
+    lgx_value_t v;
 
-        // 如果符号类型为 S_VARIABLE，保存符号的编号
-        unsigned r;
-    } u;
+    // 保存符号的编号（常量编号，全局变量编号，局部变量寄存器编号）
+    unsigned r;
 
     // 是否为全局符号
     unsigned char is_global:1;
