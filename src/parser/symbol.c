@@ -142,7 +142,7 @@ static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* 
     assert(node->type == FUNCTION_DECL_PARAMETER);
 
     if (node->children) {
-        fun->args = xcalloc(node->children, sizeof(lgx_type_t*));
+        fun->args = xcalloc(node->children, sizeof(lgx_type_t));
         if (!fun->args) {
             symbol_error(ast, node, "out of memory\n");
             return 1;
@@ -156,13 +156,7 @@ static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* 
         assert(node->child[i]->children == 2);
         assert(node->child[i]->child[1]->type == TYPE_EXPRESSION);
 
-        fun->args[i] = xmalloc(sizeof(lgx_type_t));
-        if (!fun->args[i]) {
-            symbol_error(ast, node, "out of memory\n");
-            return 1;
-        }
-
-        if (symbol_parse_type(ast, node->child[i]->child[1], fun->args[i])) {
+        if (symbol_parse_type(ast, node->child[i]->child[1], &fun->args[i])) {
             ret = 1;
         }
     }
@@ -285,7 +279,11 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
             break;
         }
         case FUNCTION_DECL_PARAMETER: { // 在函数参数列表中定义变量
-            // TODO 添加变量到该函数的块作用域中
+            // 添加变量到该函数的块作用域中
+            assert(node->parent->parent && node->parent->parent->type == FUNCTION_DECLARATION);
+            symbol = symbol_add(ast, node,
+                node->parent->parent->child[4]->u.symbols, S_VARIABLE,
+                &name, is_global);
             break;
         }
         case CATCH_STATEMENT: { // 在 catch block 中定义变量

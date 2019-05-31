@@ -116,7 +116,7 @@ typedef struct lgx_type_function_s {
 
     // 参数列表
     unsigned arg_len;
-    lgx_type_t** args;
+    lgx_type_t* args;
 } lgx_type_function_t;
 
 struct lgx_string_s {

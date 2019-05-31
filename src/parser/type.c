@@ -65,10 +65,47 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
     return 0;
 }
 
-int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
-    dst->type = src->type;
+int lgx_type_function_dup(lgx_type_function_t* src, lgx_type_function_t* dst) {
+    // 函数接收者类型
+    if (lgx_type_dup(&src->receiver, &dst->receiver)) {
+        return 1;
+    }
 
-    // TODO
+    // 返回值类型
+    if (lgx_type_dup(&src->ret, &dst->ret)) {
+        return 1;
+    }
+
+    // 参数列表
+    dst->arg_len = src->arg_len;
+    dst->args = xcalloc(dst->arg_len, sizeof(lgx_type_t));
+    int i;
+    for (i = 0; i < dst->arg_len; ++i) {
+        if (lgx_type_dup(&src->args[i], &dst->args[i])) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
+    assert(dst->type == T_UNKNOWN);
+    assert(dst->u.arr == NULL);
+
+    if (lgx_type_init(dst, src->type)) {
+        return 1;
+    }
+
+    switch (dst->type) {
+        case T_FUNCTION:
+            if (lgx_type_function_dup(src->u.fun, dst->u.fun)) {
+                return 1;
+            }
+            break;            
+        default:
+            break;
+    }
 
     return 0;
 }
@@ -146,10 +183,7 @@ void lgx_type_function_cleanup(lgx_type_function_t* fun) {
 
     int i;
     for (i = 0; i < fun->arg_len; ++i) {
-        if (fun->args[i]) {
-            lgx_type_cleanup(fun->args[i]);
-            xfree(fun->args[i]);
-        }
+        lgx_type_cleanup(&fun->args[i]);
     }
 
     xfree(fun->args);

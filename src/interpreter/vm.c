@@ -156,7 +156,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
         return 0;
     }
 
-    unsigned i, op, pa, pb, pc;
+    lgx_op_t op;
+    unsigned i, pa, pb, pc;
     unsigned *bc = vm->c->bc.buffer;
 
     for(;;) {

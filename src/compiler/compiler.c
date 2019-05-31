@@ -84,6 +84,8 @@ static int load_to_reg(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_
         } else if (is_global(e)) {
             bc_global_get(c, r, e->u.global);
         }
+    } else {
+        compiler_error(c, node, "too many local variables\n");
     }
 
     return r;
@@ -944,6 +946,10 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
         ret = 1;
     }
 
+    if (!is_local(&e2) && !is_temp(&e2) && r >= 0) {
+        reg_push(c, node, r);
+    }
+
     // TODO 设置表达式返回值
 
     lgx_expr_result_cleanup(c, node, &e2);
@@ -956,6 +962,7 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
     assert(node->type == BINARY_EXPRESSION);
     assert(node->u.op == TK_LEFT_PAREN);
     assert(node->children == 2);
+    assert(node->child[1]->type == FUNCTION_CALL_PARAMETER);
 
     int ret = 0;
 
@@ -976,14 +983,75 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
         ret = 1;
     }
 
-    if (node->child[0]->type == BINARY_EXPRESSION &&
-        (node->child[0]->u.op == TK_DOT || node->child[0]->u.op == TK_ARROW)) {
-        // TODO 方法调用
-    } else {
+    lgx_type_function_t* fun = e1.v_type.u.fun;
 
+    // 实参数量必须等于形参
+    if (node->child[1]->children != fun->arg_len) {
+        compiler_error(c, node, "arguments length mismatch\n");
+        ret = 1;
     }
 
-    // TODO 设置返回值
+    // 编译参数
+    int i;
+    lgx_expr_result_t *expr = (lgx_expr_result_t *)xcalloc(node->child[1]->children, sizeof(lgx_expr_result_t));
+    for(i = 0; i < node->child[1]->children; i++) {
+        if (compiler_expression(c, node->child[1]->child[i], &expr[i])) {
+            ret = 1;
+        }
+    }
+
+    if (node->child[0]->type == BINARY_EXPRESSION &&
+        (node->child[0]->u.op == TK_DOT || node->child[0]->u.op == TK_ARROW)) {
+        // TODO 方法调用，传入 receiver
+    }
+
+    int r;
+
+    if (is_local(&e1) || is_temp(&e1)) {
+        r = e1.u.local;
+    } else {
+        r = load_to_reg(c, node, &e1);
+        if (r < 0 ) {
+            ret = 1;
+        }
+    }
+
+    bc_call_new(c, r);
+
+    int base = 4;
+    for(i = 0; i < node->child[1]->children; i++) {
+        if (lgx_type_cmp(&fun->args[i], &expr[i].v_type)) {
+            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&fun->args[i]), lgx_type_to_string(&expr[i].v_type));
+            ret = 1;
+        }
+
+        if (is_local(&expr[i]) || is_temp(&expr[i])) {
+            bc_call_set(c, i + base, expr[i].u.local);
+        } else {
+            int r = load_to_reg(c, node, &expr[i]);
+            if (r < 0 ) {
+                ret = 1;
+            }
+            bc_call_set(c, i + base, r);
+        }
+        
+        lgx_expr_result_cleanup(c, node, &expr[i]);
+    }
+
+    xfree(expr);
+
+    e->type = EXPR_TEMP;
+    e->u.local = reg_pop(c, node);
+    bc_call(c, r, e->u.local);
+    
+    if (!is_local(&e1) && !is_temp(&e1) && r >= 0) {
+        reg_push(c, node, r);
+    }
+
+    // 设置返回值类型
+    if (lgx_type_dup(&fun->ret, &e->v_type)) {
+        ret = 1;
+    }
 
     lgx_expr_result_cleanup(c, node, &e1);
 

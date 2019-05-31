@@ -5,7 +5,7 @@
 #include "expr_result.h"
 #include "compiler.h"
 
-enum {
+typedef enum {
     // 空指令
     OP_NOP,   // NOP
 
@@ -90,7 +90,7 @@ enum {
 
     // 终止执行
     OP_HLT
-};
+} lgx_op_t;
 
 #define I0(op)          (op)
 #define I1(op, e)       (op + (e << 8))
