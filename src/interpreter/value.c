@@ -22,30 +22,9 @@ lgx_string_t* lgx_string_new() {
     return s;
 }
 
-int lgx_value_dup(lgx_value_t* src, lgx_value_t* dst) {
-    switch (src->type) {
-        case T_LONG:
-        case T_BOOL:
-            dst->type = src->type;
-            dst->v.l = src->v.l;
-            break;
-        case T_DOUBLE:
-            dst->type = src->type;
-            dst->v.d = src->v.d;
-            break;
-        case T_STRING:
-            dst->type = src->type;
-            dst->v.str = lgx_string_new();
-            if (!dst->v.str) {
-                return 1;
-            }
-            lgx_str_init(&dst->v.str->string, src->v.str->string.length);
-            lgx_str_dup(&src->v.str->string, &dst->v.str->string);
-            break;
-        default:
-            return 1;
-    }
-    return 0;
+lgx_function_t* lgx_fucntion_new() {
+    lgx_function_t* f = xcalloc(1, sizeof(lgx_function_t));
+    return f;
 }
 
 void lgx_value_print(lgx_value_t* v) {
@@ -64,7 +43,13 @@ void lgx_value_print(lgx_value_t* v) {
             }
             break;
         case T_STRING:
+            printf("\"");
             lgx_str_print(&v->v.str->string);
+            printf("\"");
+            break;
+        case T_FUNCTION:
+            lgx_str_print(&v->v.fun->name);
+            printf("()");
             break;
         default:
             break;

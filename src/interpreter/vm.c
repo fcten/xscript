@@ -74,7 +74,7 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
     vm->global = xcalloc(c->global.length, sizeof(lgx_value_t));
     for (n = lgx_ht_first(&c->global); n; n = lgx_ht_next(n)) {
         lgx_symbol_t* symbol = (lgx_symbol_t*)n->v;
-        lgx_value_dup(&symbol->v, &vm->global[symbol->r]);
+        vm->global[symbol->r] = symbol->v;
         lgx_gc_ref_add(&vm->global[symbol->r]);
     }
 
@@ -776,10 +776,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                 lgx_gc_ref_add(vm->constant[pd]);
                 lgx_gc_ref_del(&R(pa));
-                if (UNEXPECTED(lgx_value_dup(vm->constant[pd], &R(pa)) != 0)) {
-                    lgx_vm_throw_s(vm, "out of memory");
-                    break;
-                }
+                R(pa) = *vm->constant[pd];
                 break;
             }
             case OP_GLOBAL_GET:{

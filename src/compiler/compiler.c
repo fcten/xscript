@@ -2325,20 +2325,23 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
     lgx_ht_node_t* n;
     for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
         lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
-        // 如果符号类型为变量
         if (symbol->s_type == S_VARIABLE) {
+            // 如果符号类型为变量
             if (c->global.length >= 65535) {
                 compiler_error(c, symbol->node, "too many global variables\n");
                 ret = 1;
             }
             symbol->r = c->global.length;
 
-            lgx_str_t name;
-            name.buffer = c->ast->lex.source.content + symbol->node->offset;
-            name.length = symbol->node->length;
-            name.size = 0;
-            if (lgx_ht_set(&c->global, &name, symbol)) {
+            if (lgx_ht_set(&c->global, &n->k, symbol)) {
                 ret = 1;
+            }
+        } else if (symbol->s_type == S_CONSTANT) {
+            if (symbol->type.type == T_FUNCTION) {
+                symbol->r = lgx_const_get_function(&c->constant, &n->k);
+                if (symbol->r < 0) {
+                    ret = 1;
+                }
             }
         }
     }
@@ -2370,6 +2373,16 @@ static int compiler(lgx_compiler_t* c, lgx_ast_node_t *node) {
                 compiler_error(c, node->child[i], "invalid ast-node %d\n", node->child[i]->type);
                 ret = 1;
                 break;
+        }
+    }
+
+    // 更新常量表中的函数值
+    for (n = lgx_ht_first(node->u.symbols); n; n = lgx_ht_next(n)) {
+        lgx_symbol_t *symbol = (lgx_symbol_t *)n->v;
+        if (symbol->s_type == S_CONSTANT) {
+            if (symbol->type.type == T_FUNCTION) {
+                lgx_const_update_function(&c->constant, symbol->v.v.fun);
+            }
         }
     }
 

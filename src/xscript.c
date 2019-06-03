@@ -2,6 +2,7 @@
 #include "./parser/ast.h"
 #include "./compiler/compiler.h"
 #include "./compiler/bytecode.h"
+#include "./compiler/constant.h"
 #include "./interpreter/vm.h"
 
 int main(int argc, char* argv[]) {
@@ -19,6 +20,8 @@ int main(int argc, char* argv[]) {
 
         lgx_bc_print(c.bc.buffer, c.bc.length);
         lgx_ast_print_error(&ast);
+        lgx_const_print(&c.constant);
+        printf("\n\n");
 
         if (c_ok == 0) {
             lgx_vm_t vm;

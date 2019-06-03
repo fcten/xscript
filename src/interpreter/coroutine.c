@@ -448,9 +448,9 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
             lgx_co_throw(co, e);
         } else {
             // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
-            printf("[uncaught exception] [%llu] ", co->id);
+            printf("[uncaught exception] ");
             lgx_value_print(e);
-            printf("\n\n");
+            printf("\n\nco_id = %llu, pc = %u\n", co->id, co->pc-1);
 
             lgx_gc_ref_del(e);
             // TODO 写入到协程返回值中？

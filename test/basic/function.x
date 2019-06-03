@@ -2,7 +2,7 @@ function test() {
     echo("hello world");
 }
 
-function add(c int, d int) {
+function add(c int, d int) int {
     var e = 3, f = 4;
     return c + d;
 }
