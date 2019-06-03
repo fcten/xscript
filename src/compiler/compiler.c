@@ -355,20 +355,6 @@ static int compiler_false_token(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_exp
     return 0;
 }
 
-static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    assert(node->type == BINARY_EXPRESSION);
-    assert(node->u.op == TK_LOGIC_AND);
-
-    return 0;
-}
-
-static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    assert(node->type == BINARY_EXPRESSION);
-    assert(node->u.op == TK_LOGIC_OR);
-
-    return 0;
-}
-
 static void cast_double(lgx_expr_result_t* e) {
     if (check_type(e, T_LONG)) {
         e->v_type.type = T_DOUBLE;
@@ -794,6 +780,242 @@ static int unary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_resu
 }
 
 static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e);
+
+static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LOGIC_AND);
+
+    // if (e1 == false) {
+    //     e = false;
+    // } else {
+    //     e = e2;
+    // }
+
+    // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+    if (compiler_check_assignment(c, node->child[0])) {
+        return 1;
+    }
+    if (compiler_check_assignment(c, node->child[1])) {
+        return 1;
+    }
+
+    int ret = 0;
+
+    lgx_expr_result_t e1;
+    lgx_expr_result_init(&e1);
+
+    if (compiler_expression(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    if (check_constant(&e1, T_BOOL)) {
+        if (e1.v.l == 0) {
+            e->type = EXPR_LITERAL;
+            e->v_type.type = T_BOOL;
+            e->v.l = 0;
+        } else {
+            lgx_expr_result_t e2;
+            lgx_expr_result_init(&e2);
+
+            if (compiler_expression(c, node->child[1], &e2)) {
+                ret = 1;
+            }
+
+            if (!check_type(&e2, T_BOOL)) {
+                compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+
+            *e = e2;
+        }
+    } else if (check_variable(&e1, T_BOOL)) {
+        e->type = EXPR_TEMP;
+        e->v_type.type = T_BOOL;
+        e->u.local = reg_pop(c, node);
+        if (e->u.local < 0) {
+            ret = 1;
+        }
+
+        int pos1 = c->bc.length;
+
+        if (is_local(&e1) || is_temp(&e1)) {
+            bc_test(c, e1.u.local, 0);
+        } else {
+            int r = load_to_reg(c, node, &e1);
+            if (r < 0) {
+                ret = 1;
+            }
+            bc_test(c, r, 0);
+            reg_push(c, node, r);
+        }
+
+        // e1 == true
+        lgx_expr_result_t e2;
+        lgx_expr_result_init(&e2);
+
+        if (compiler_expression(c, node->child[1], &e2)) {
+            ret = 1;
+        }
+
+        if (!check_type(&e2, T_BOOL)) {
+            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+            ret = 1;
+        }
+
+        if (is_local(&e2) || is_temp(&e2)) {
+            bc_mov(c, e->u.local, e2.u.local);
+        } else {
+            int r = load_to_reg(c, node, &e2);
+            if (r < 0) {
+                ret = 1;
+            }
+            bc_mov(c, e->u.local, r);
+            reg_push(c, node, r);
+        }
+
+        int pos2 = c->bc.length;
+        bc_jmpi(c, 0);
+
+        bc_set_param_d(c, pos1, c->bc.length - pos1 - 1);
+
+        // e1 == false
+        lgx_expr_result_t tmp;
+        tmp.type = EXPR_LITERAL;
+        tmp.v_type.type = T_BOOL;
+        tmp.v.l = 0;
+
+        int reg = lgx_const_get(&c->constant, &tmp);
+        assert(reg >= 0);
+        bc_load(c, e->u.local, reg);
+
+        bc_set_param_e(c, pos2, c->bc.length);
+
+        lgx_expr_result_cleanup(c, node, &e2);
+    } else {
+        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        ret = 1;
+    }
+
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
+}
+
+static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LOGIC_OR);
+
+    // if (e1 == true) {
+    //     e = true;
+    // } else {
+    //     e = e2;
+    // }
+
+    // 禁止在逻辑操作中使用赋值表达式，无论它的返回值是否为布尔值
+    if (compiler_check_assignment(c, node->child[0])) {
+        return 1;
+    }
+    if (compiler_check_assignment(c, node->child[1])) {
+        return 1;
+    }
+
+    int ret = 0;
+
+    lgx_expr_result_t e1;
+    lgx_expr_result_init(&e1);
+
+    if (compiler_expression(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    if (check_constant(&e1, T_BOOL)) {
+        if (e1.v.l) {
+            *e = e1;
+        } else {
+            lgx_expr_result_t e2;
+            lgx_expr_result_init(&e2);
+
+            if (compiler_expression(c, node->child[1], &e2)) {
+                ret = 1;
+            }
+
+            if (!check_type(&e2, T_BOOL)) {
+                compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+
+            *e = e2;
+        }
+    } else if (check_variable(&e1, T_BOOL)) {
+        e->type = EXPR_TEMP;
+        e->v_type.type = T_BOOL;
+        e->u.local = reg_pop(c, node);
+        if (e->u.local < 0) {
+            ret = 1;
+        }
+
+        int pos1 = c->bc.length;
+
+        if (is_local(&e1) || is_temp(&e1)) {
+            bc_test(c, e1.u.local, 0);
+        } else {
+            int r = load_to_reg(c, node, &e1);
+            if (r < 0) {
+                ret = 1;
+            }
+            bc_test(c, r, 0);
+            reg_push(c, node, r);
+        }
+
+        // e1 == true
+        lgx_expr_result_t tmp;
+        tmp.type = EXPR_LITERAL;
+        tmp.v_type.type = T_BOOL;
+        tmp.v.l = 1;
+
+        int reg = lgx_const_get(&c->constant, &tmp);
+        assert(reg >= 0);
+        bc_load(c, e->u.local, reg);
+
+        int pos2 = c->bc.length;
+        bc_jmpi(c, 0);
+
+        bc_set_param_d(c, pos1, c->bc.length - pos1 - 1);
+
+        // e1 == false
+        lgx_expr_result_t e2;
+        lgx_expr_result_init(&e2);
+
+        if (compiler_expression(c, node->child[1], &e2)) {
+            ret = 1;
+        }
+
+        if (!check_type(&e2, T_BOOL)) {
+            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+            ret = 1;
+        }
+
+        if (is_local(&e2) || is_temp(&e2)) {
+            bc_mov(c, e->u.local, e2.u.local);
+        } else {
+            int r = load_to_reg(c, node, &e2);
+            if (r < 0) {
+                ret = 1;
+            }
+            bc_mov(c, e->u.local, r);
+            reg_push(c, node, r);
+        }
+
+        bc_set_param_e(c, pos2, c->bc.length);
+
+        lgx_expr_result_cleanup(c, node, &e2);
+    } else {
+        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        ret = 1;
+    }
+
+    return ret;
+}
 
 static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
     assert(node->type == BINARY_EXPRESSION);

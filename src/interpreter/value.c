@@ -52,6 +52,7 @@ void lgx_value_print(lgx_value_t* v) {
             printf("()");
             break;
         default:
+            printf("unknwon");
             break;
     }
 }

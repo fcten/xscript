@@ -176,10 +176,12 @@ void lgx_const_del(lgx_const_t* c) {
 
 void lgx_const_print(lgx_ht_t* ct) {
     lgx_ht_node_t* n;
-    printf("[");
+    printf("[\n");
     for (n = lgx_ht_first(ct); n; n = lgx_ht_next(n)) {
+        lgx_str_print(&n->k);
+        printf(":\n\t");
         lgx_value_print(&((lgx_const_t*)n->v)->v);
-        printf(",");
+        printf(",\n");
     }
-    printf("\b]");
+    printf("]");
 }

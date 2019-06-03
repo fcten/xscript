@@ -22,6 +22,9 @@ int lgx_expr_to_value(lgx_expr_result_t* e, lgx_value_t* v) {
         }
         lgx_str_dup(&e->v.str, &v->v.str->string);
         break;
+    case T_BOOL:
+        v->v.l = e->v.l;
+        break;
     // case T_ARRAY:
     // TODO 其他类型
     default:
