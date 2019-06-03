@@ -1058,6 +1058,17 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
     return ret;
 }
 
+static int compiler_binary_expression_tail_call(lgx_compiler_t* c, lgx_ast_node_t* node, lgx_expr_result_t* e, unsigned* is_tail) {
+    assert(node->type == BINARY_EXPRESSION);
+    assert(node->u.op == TK_LEFT_PAREN);
+    assert(node->children == 2);
+    assert(node->child[1]->type == FUNCTION_CALL_PARAMETER);
+
+    // TODO
+
+    return 0;
+}
+
 static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
     assert(node->type == BINARY_EXPRESSION);
     assert(node->u.op == TK_LEFT_BRACK);
@@ -1893,71 +1904,46 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
     int ret = 0;
 
-    // 获取返回值类型
-/*
-    lgx_ast_node_t *n = node->parent;
-    while (n && n->type != FUNCTION_DECLARATION) {
-        if (n->parent) {
-            n = n->parent;
-        } else {
-            n = NULL;
-        }
-    }
+    // 获取函数原型
+    lgx_ast_node_t *n = find_function(node);
+    assert(n);
 
-    lgx_val_t ret;
-    if (n) {
-        lgx_str_t s;
-        s.buffer = ((lgx_ast_node_token_t *)(n->child[0]))->tk_start;
-        s.length = ((lgx_ast_node_token_t *)(n->child[0]))->tk_length;
-        lgx_val_t *f = lgx_scope_val_get(n, &s);
-        ret = f->v.fun->ret;
-    } else {
-        ret.type = T_UNDEFINED;
-    }
-*/
+    lgx_str_t name;
+    name.buffer = c->ast->lex.source.content + n->child[1]->offset;
+    name.length = n->child[1]->length;
+    name.size = 0;
+
+    lgx_symbol_t* symbol = lgx_symbol_get(n, &name, n->offset);
+    assert(symbol);
+    assert(symbol->type.type == T_FUNCTION);
+
+    lgx_type_function_t* fun = symbol->type.u.fun;
+
     unsigned is_tail = 0;
 
     // 计算返回值
     if (node->child[0]) {
-/*
-        if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_CALL) {
+        if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_LEFT_PAREN) {
             // 尾调用
-            // 内建函数以及 async 函数不能也不需要做尾调用优化，所以这里也可能生成一个普通调用
-            if (bc_expr_binary_tail_call(bc, node->child[0], &r, &is_tail)) {
-                return 1;
+            // 这里也可能生成一个普通调用
+            if (compiler_binary_expression_tail_call(c, node->child[0], &e, &is_tail)) {
+                ret = 1;
             }
         } else {
-            if (bc_expr(bc, node->child[0], &r)) {
-                return 1;
+            if (compiler_expression(c, node->child[0], &e)) {
+                ret = 1;
             }
         }
 
-        if (ret.type != T_UNDEFINED && !is_auto(&r) && ret.type != r.type) {
-            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(ret.v.type), lgx_type_to_string(r.v.type));
-            return 1;
+        if (lgx_type_cmp(&fun->ret, &e.v_type) != 0) {
+            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&fun->ret), lgx_type_to_string(&e.v_type));
+            ret = 1;
         }
-
-        if (ret.type == T_OBJECT && !lgx_obj_is_instanceof(r.v.obj, ret.v.obj)) {
-            lgx_str_t *n1 = lgx_obj_get_name(r.v.obj);
-            lgx_str_t *n2 = lgx_obj_get_name(ret.v.obj);
-            compiler_error(c, node, "makes %s<%.*s> from %s<%.*s> without a cast\n",
-                lgx_type_to_string(r.v.type),
-                n1->length, n1->buffer,
-                lgx_type_to_string(ret.v.type),
-                n2->length, n2->buffer
-            );
-            return 1;
-        }
-*/
     } else {
-/*
-        if (ret.type == T_UNDEFINED) {
-            r.u.symbol.reg_type = R_LOCAL;
-        } else {
-            compiler_error(c, node, "makes %s from undefined without a cast\n", lgx_type_to_string(ret.v.type));
-            return 1;
+        if (fun->ret.type != T_UNKNOWN) {
+            compiler_error(c, node, "function `%.*s` must return with a value\n", name.length, name.buffer);
+            ret = 1;
         }
-*/
     }
 
     // 写入返回指令
@@ -1974,6 +1960,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             }
         }
     }
+    
     lgx_expr_result_cleanup(c, node, &e);
 
     return ret;

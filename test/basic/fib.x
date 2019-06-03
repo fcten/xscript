@@ -1,4 +1,4 @@
-function fib(n int) {
+function fib(n int) int {
     if (n < 2) {
         return n;
     }
