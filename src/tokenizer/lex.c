@@ -283,7 +283,7 @@ lgx_token_t lgx_lex_next(lgx_lex_t* ctx) {
             if (is_next(ctx, '=')) {
                 return TK_NOT_EQUAL;
             } else {
-                return TK_NOT;
+                return TK_LOGIC_NOT;
             }
         case '&':
             if (is_next(ctx, '&')) {
