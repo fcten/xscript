@@ -37,6 +37,7 @@ typedef enum {
     // Parameter
     FUNCTION_CALL_PARAMETER,
     FUNCTION_DECL_PARAMETER,
+    EXCEPTION_DECL_PARAMETER,
     // Expression
     BINARY_EXPRESSION,
     UNARY_EXPRESSION,

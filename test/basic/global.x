@@ -4,7 +4,7 @@
 
 var a = 1;
 
-function add(b int) {
+function add(b int) int {
     return a + b;
 }
 

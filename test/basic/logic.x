@@ -1,9 +1,9 @@
-function test1() {
+function test1() bool {
     echo("test false");
     return false;
 }
 
-function test2() {
+function test2() bool {
     echo("test true");
     return true;
 }

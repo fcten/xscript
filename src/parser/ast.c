@@ -1080,6 +1080,8 @@ static int ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return 1;
         }
 
+        catch_statement->child[catch_statement->children-1]->type = EXCEPTION_DECL_PARAMETER;
+
         if (ast_parse_block_statement_with_braces(ast, catch_statement)) {
             return 1;
         }

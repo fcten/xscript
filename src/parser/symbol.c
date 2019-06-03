@@ -286,7 +286,7 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
                 &name, is_global);
             break;
         }
-        case CATCH_STATEMENT: { // 在 catch block 中定义变量
+        case EXCEPTION_DECL_PARAMETER: { // 在 catch block 中定义变量
             // TODO 必须是第一个子节点，因为只能定义一个变量
 
             // TODO 添加变量到该异常处理的块作用域中

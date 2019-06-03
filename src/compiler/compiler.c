@@ -980,7 +980,7 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
 
     if (!check_type(&e1, T_FUNCTION)) {
         compiler_error(c, node, "makes function from %s without a cast\n", lgx_type_to_string(&e1.v_type));
-        ret = 1;
+        return 1;
     }
 
     lgx_type_function_t* fun = e1.v_type.u.fun;
