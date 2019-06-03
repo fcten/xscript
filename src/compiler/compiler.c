@@ -609,6 +609,28 @@ static int op_concat(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t*
     return 0;
 }
 
+static int op_shl(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_constant(l, T_LONG));
+    assert(check_constant(r, T_LONG));
+
+    e->type = EXPR_LITERAL;
+    e->v_type.type = T_LONG;
+    e->v.l = l->v.l << r->v.l;
+
+    return 0;
+}
+
+static int op_shr(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
+    assert(check_constant(l, T_LONG));
+    assert(check_constant(r, T_LONG));
+
+    e->type = EXPR_LITERAL;
+    e->v_type.type = T_LONG;
+    e->v.l = l->v.l >> r->v.l;
+
+    return 0;
+}
+
 static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
     if (is_constant(l) && is_constant(r)) {
         switch (node->u.op) {
@@ -625,6 +647,8 @@ static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_res
             case TK_LESS_EQUAL: return op_le(c, node, e, l, r);
             case TK_LEFT_BRACK: return op_index(c, node, e, l, r);
             case TK_CONCAT: return op_concat(c, node, e, l, r);
+            case TK_SHL: return op_shl(c, node, e, l, r);
+            case TK_SHR: return op_shr(c, node, e, l, r);
             default:
                 compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
                 return 1;
@@ -675,6 +699,8 @@ static int binary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_res
             case TK_LESS_EQUAL: ret = bc_le(c, e->u.local, r1, r2); break;
             case TK_LEFT_BRACK: ret = bc_array_get(c, e->u.local, r1, r2); break;
             case TK_CONCAT: bc_concat(c, e->u.local, r1, r2); break;
+            case TK_SHL: bc_shl(c, e->u.local, r1, r2); break;
+            case TK_SHR: bc_shr(c, e->u.local, r1, r2); break;
             default:
                 compiler_error(c, node, "unknown binary operator %d\n", node->u.op);
                 return 1;
@@ -1112,7 +1138,43 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
 }
 
 static int compiler_binary_expression_bitwise(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    return 0;
+    assert(node->type == BINARY_EXPRESSION);
+
+    int ret = 0;
+
+    lgx_expr_result_t e1, e2;
+    lgx_expr_result_init(&e1);
+    lgx_expr_result_init(&e2);
+
+    if (compiler_expression(c, node->child[0], &e1)) {
+        ret = 1;
+    }
+
+    if (compiler_expression(c, node->child[1], &e2)) {
+        ret = 1;
+    }
+
+    if (check_type(&e1, T_LONG) && check_type(&e2, T_LONG)) {
+        switch (node->u.op) {
+            case TK_SHL:
+            case TK_SHR:
+                ret = binary_operator(c, node, e, &e1, &e2);
+                break;
+            default:
+                compiler_error(c, node, "unknown bitwise operator %d\n", node->u.op);
+                ret = 1;
+        }
+    } else {
+        compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(&e1.v_type), node->u.op, lgx_type_to_string(&e2.v_type));
+        ret = 1;
+    }
+
+    e->v_type.type = T_LONG;
+
+    lgx_expr_result_cleanup(c, node, &e2);
+    lgx_expr_result_cleanup(c, node, &e1);
+
+    return ret;
 }
 
 static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
