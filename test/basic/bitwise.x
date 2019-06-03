@@ -8,7 +8,7 @@ function main() {
     echo(a << b); // 2048
     echo(a >> b); // 0
 
-    echo(~a);
-    echo(~b);
-    echo(c);
+    echo(~a); // -5
+    echo(~b); // -10
+    echo(c);  // -2
 }

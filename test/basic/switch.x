@@ -18,7 +18,7 @@ function main() {
         x = x + 1;
     } while (x <= 4);
 
-    array y = [
+    var y = [
         "test case 1",
         "test case 2",
         "test case 3",

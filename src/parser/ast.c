@@ -1005,7 +1005,7 @@ static int ast_parse_default_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     assert(ast->cur_token == TK_DEFAULT);
     ast_step(ast);
 
-    if (ast->cur_token != TK_SEMICOLON) {
+    if (ast->cur_token != TK_COLON) {
         ast_error(ast, "':' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
     }
@@ -1321,6 +1321,8 @@ static int ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     while(1) {
         switch (ast->cur_token) {
             case TK_RIGHT_BRACE:
+            case TK_CASE:
+            case TK_DEFAULT:
                 return 0;
             case TK_IF:
                 if (ast_parse_if_statement(ast, parent)) {
