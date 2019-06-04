@@ -26,6 +26,9 @@ typedef struct {
     // 存储值的类型
     lgx_type_t v_type;
 
+    // 如果结果为字面量，存储其字面量
+    lgx_str_t literal;
+
     // 如果结果为字面量或常量，存储其具体的值
     union {
         long long       l; // 64 位有符号整数

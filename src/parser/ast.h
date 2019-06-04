@@ -126,6 +126,7 @@ typedef struct lgx_ast {
 
     // 错误信息
     lgx_list_t errors; // lgx_ast_error_list_t
+    lgx_list_t warnings; // lgx_ast_error_list_t
 } lgx_ast_t;
 
 int lgx_ast_init(lgx_ast_t* ast, char* file);

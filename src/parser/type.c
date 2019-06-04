@@ -110,6 +110,29 @@ int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
     return 0;
 }
 
+static int check_unknown(lgx_type_t* type) {
+    switch (type->type) {
+        case T_UNKNOWN:
+            return 1;
+        case T_ARRAY:
+            return check_unknown(&type->u.arr->value);
+        case T_MAP:
+            if (check_unknown(&type->u.map->key)) {
+                return 1;
+            }
+            return check_unknown(&type->u.map->value);
+        default:
+            return 0;
+    }
+}
+
+int lgx_type_inference(lgx_type_t* src, lgx_type_t* dst) {
+    if (check_unknown(src)) {
+        return 1;
+    }
+    return lgx_type_dup(src, dst);
+}
+
 int lgx_type_init(lgx_type_t* type, lgx_val_type_t t) {
     memset(type, 0, sizeof(lgx_type_t));
 

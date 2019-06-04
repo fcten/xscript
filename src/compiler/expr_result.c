@@ -10,22 +10,61 @@ int lgx_expr_to_value(lgx_expr_result_t* e, lgx_value_t* v) {
     case T_DOUBLE:
         v->v.d = e->v.d;
         break;
+    case T_BOOL:
+        v->v.l = e->v.l;
+        break;
     case T_STRING:
         v->v.str = lgx_string_new();
         if (!v->v.str) {
             return 1;
         }
+        if (lgx_type_dup(&e->v_type, &v->v.str->gc.type)) {
+            xfree(v->v.str);
+            v->v.str = NULL;
+            return 1;
+        }
         if (lgx_str_init(&v->v.str->string, e->v.str.length)) {
+            lgx_type_cleanup(&v->v.str->gc.type);
             xfree(v->v.str);
             v->v.str = NULL;
             return 1;
         }
         lgx_str_dup(&e->v.str, &v->v.str->string);
         break;
-    case T_BOOL:
-        v->v.l = e->v.l;
+    case T_ARRAY: {
+        v->v.arr = lgx_array_new();
+        if (!v->v.arr) {
+            return 1;
+        }
+        if (lgx_type_dup(&e->v_type, &v->v.arr->gc.type)) {
+            xfree(v->v.arr);
+            v->v.arr = NULL;
+            return 1;
+        }
+        if (lgx_ht_init(&v->v.arr->table, e->v.arr.length)) {
+            lgx_type_cleanup(&v->v.arr->gc.type);
+            xfree(v->v.arr);
+            v->v.arr = NULL;
+            return 1;
+        }
+        lgx_ht_node_t* n;
+        for (n = lgx_ht_first(&e->v.arr); n; n = lgx_ht_next(n)) {
+            lgx_value_t* val = xcalloc(1, sizeof(lgx_value_t));
+            if (!val) {
+                return 1;
+            }
+            if (lgx_value_dup((lgx_value_t*)n->v, val)) {
+                xfree(v);
+                return 1;
+            }
+            if (lgx_ht_set(&v->v.arr->table, &n->k, val)) {
+                lgx_value_cleanup(v);
+                xfree(v);
+                return 1;
+            }
+        }
         break;
-    // case T_ARRAY:
+    }
     // TODO 其他类型
     default:
         break;

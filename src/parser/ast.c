@@ -435,6 +435,7 @@ static int ast_parse_array_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
         ast_error(ast, "']' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
     }
+    array_expression->length = ast->lex.offset - array_expression->offset;
     ast_step(ast);
 
     return 0;

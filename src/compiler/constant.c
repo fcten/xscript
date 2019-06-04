@@ -55,18 +55,16 @@ int const_key(lgx_str_t* key, lgx_expr_result_t* e) {
             lgx_str_concat(&e->v.str, key);
             return 0;
         }
-        // TODO: case T_ARRAY: 
-        /*
-        case T_FUNCTION: {
-            lgx_str_t prefix = lgx_str("function:");
-            if (lgx_str_init(key, prefix.length + e->v.str.length)) {
+        case T_ARRAY:  {
+            // TODO 如果字面量特别的大，这里可能会有性能问题
+            lgx_str_t prefix = lgx_str("array:");
+            if (lgx_str_init(key, prefix.length + e->literal.length)) {
                 return 1;
             }
             lgx_str_concat(&prefix, key);
-            lgx_str_concat(&e->v.str, key);
+            lgx_str_concat(&e->literal, key);
             return 0;
         }
-        */
         default:
             return 1;
     }

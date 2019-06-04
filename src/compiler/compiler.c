@@ -107,6 +107,10 @@ int lgx_expr_result_cleanup(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_re
             case T_STRING:
                 lgx_str_cleanup(&e->v.str);
                 break;
+            case T_ARRAY:
+                lgx_array_cleanup(&e->v.arr);
+                lgx_ht_cleanup(&e->v.arr);
+                break;
             default:
                 break;
         }
@@ -1548,7 +1552,101 @@ static int compiler_unary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
 }
 
 static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
-    return 0;
+    assert(node->type == ARRAY_EXPRESSION);
+
+    unsigned pos = c->bc.length;
+    unsigned is_const = 1;
+    int ret = 0;
+
+    e->type = EXPR_TEMP;
+    if (lgx_type_init(&e->v_type, T_ARRAY)) {
+        compiler_error(c, node, "out of memory\n");
+        return 1;
+    }
+    if (lgx_type_init(&e->v_type.u.arr->value, T_UNKNOWN)) {
+        compiler_error(c, node, "out of memory\n");
+        return 1;
+    }
+    if (lgx_ht_init(&e->v.arr, node->children)) {
+        compiler_error(c, node, "out of memory\n");
+        return 1;
+    }
+
+    e->u.local = reg_pop(c, node);
+    if (e->u.local < 0) {
+        ret = 1;
+    }
+
+    bc_array_new(c, e->u.local);
+
+    int i;
+    for(i = 0; i < node->children; i++) {
+        lgx_expr_result_t t;
+        lgx_expr_result_init(&t);
+        if (compiler_expression(c, node->child[i], &t)) {
+            ret = 1;
+        } else {
+            if (e->v_type.u.arr->value.type == T_UNKNOWN) {
+                lgx_type_dup(&t.v_type, &e->v_type.u.arr->value);
+            } else {
+                if (lgx_type_cmp(&t.v_type, &e->v_type.u.arr->value)) {
+                    compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e->v_type.u.arr->value), lgx_type_to_string(&t.v_type));
+                    ret = 1;
+                }
+            }
+
+            if (is_const && is_constant(&t)) {
+                lgx_value_t* v = xcalloc(1, sizeof(lgx_value_t));
+                if (v) {
+                    if (lgx_expr_to_value(&t, v)) {
+                        ret = 1;
+                    } else {
+                        lgx_str_t key;
+                        key.buffer = (char *)&i;
+                        key.length = sizeof(i);
+                        key.size = 0;
+                        if (lgx_ht_set(&e->v.arr, &key, v)) {
+                            lgx_value_cleanup(v);
+                            xfree(v);
+                            ret = 1;
+                        }
+                    }
+                } else {
+                    ret = 1;
+                }
+            } else {
+                is_const = 0;
+            }
+            if (is_temp(&t) || is_local(&t)) {
+                bc_array_add(c, e->u.local, t.u.local);
+            } else {
+                int r = load_to_reg(c, node, &t);
+                if (r < 0) {
+                    ret = 1;
+                }
+                bc_array_add(c, e->u.local, r);
+                reg_push(c, node, r);
+            }
+        }
+        lgx_expr_result_cleanup(c, node, &t);
+    }
+
+    // 如果是常量数组，则无需创建临时数组
+    if (is_const) {
+        // 丢弃之前生成的用于创建临时数组的字节码
+        c->bc.length = pos;
+
+        e->type = EXPR_LITERAL;
+        e->literal.buffer = c->ast->lex.source.content + node->offset;
+        e->literal.length = node->length;
+        e->literal.size = 0;
+    } else {
+        // 丢弃解析的常量数组
+        lgx_array_cleanup(&e->v.arr);
+        lgx_ht_cleanup(&e->v.arr);
+    }
+
+    return ret;
 }
 
 static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
@@ -2329,8 +2427,9 @@ static int compiler_global_variable_declaration(lgx_compiler_t* c, lgx_ast_node_
 
         // 类型检查
         if (check_type(&e1, T_UNKNOWN)) {
-            // 根据表达式初始化符号类型
-            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+            // 根据表达式进行类型推断
+            if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
+                compiler_error(c, node, "type inference failed\n");
                 ret = 1;
             }
         } else {
@@ -2386,8 +2485,9 @@ static int compiler_local_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t
 
         // 类型检查
         if (check_type(&e1, T_UNKNOWN)) {
-            // 根据表达式初始化符号类型
-            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+            // 根据表达式进行类型推断
+            if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
+                compiler_error(c, node, "type inference failed\n");
                 ret = 1;
             }
         } else {
@@ -2453,8 +2553,9 @@ static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     } else {
         // 类型检查
         if (check_type(&e1, T_UNKNOWN)) {
-            // 根据表达式初始化符号类型
-            if (lgx_type_dup(&e2.v_type, &e1.symbol->type)) {
+            // 根据表达式进行类型推断
+            if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
+                compiler_error(c, node, "type inference failed\n");
                 ret = 1;
             }
         } else {

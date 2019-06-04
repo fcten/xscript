@@ -1,11 +1,13 @@
 
 function main() {
-    var arr1 = [
-        "test",
-        123,
-    ];
+    var arr1 []int = [];
 
     echo(arr1);
+
+    var arr2 = [1];
+
+    echo(arr2);
+    /*
 
     var arr2 = (["test", 123, arr1])[2][0];
 
@@ -57,4 +59,5 @@ function main() {
     };
 
     echo(arr9);
+    */
 }
