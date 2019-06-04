@@ -585,7 +585,16 @@ static int op_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* 
     // TODO 允许更多类型作为键
     assert(check_constant(r, T_LONG) || check_constant(r, T_STRING));
 
-    lgx_ht_node_t *n = lgx_ht_get(&l->v.arr, &r->v.str);
+    lgx_ht_node_t *n = NULL;
+    if (check_type(r, T_STRING)) {
+        n = lgx_ht_get(&l->v.arr, &r->v.str);
+    } else {
+        lgx_str_t key;
+        key.buffer = (char *)&r->v.l;
+        key.length = sizeof(r->v.l);
+        key.size = 0;
+        n = lgx_ht_get(&l->v.arr, &key);
+    }
     if (!n) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_NULL;
@@ -1602,8 +1611,9 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
                         ret = 1;
                     } else {
                         lgx_str_t key;
-                        key.buffer = (char *)&i;
-                        key.length = sizeof(i);
+                        long long num = i;
+                        key.buffer = (char *)&num;
+                        key.length = sizeof(num);
                         key.size = 0;
                         if (lgx_ht_set(&e->v.arr, &key, v)) {
                             lgx_value_cleanup(v);

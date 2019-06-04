@@ -1,17 +1,18 @@
 
 function main() {
     var arr1 []int = [];
-
     echo(arr1);
 
     var arr2 = [1];
-
     echo(arr2);
+
+    var arr3 = ([[1,2,3],[4,5,6],[7,8,9]])[1][1];
+    echo(arr3);
+
     /*
+    var arr3 = ([[1,2,3], [4,5,6], arr2])[2][0];
 
-    var arr2 = (["test", 123, arr1])[2][0];
-
-    echo(arr2);
+    echo(arr3);
 
     var arr4 = ["test", 123, arr1];
 
