@@ -108,7 +108,7 @@ int lgx_expr_result_cleanup(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_re
                 lgx_str_cleanup(&e->v.str);
                 break;
             case T_ARRAY:
-                lgx_array_cleanup(&e->v.arr);
+                lgx_array_value_cleanup(&e->v.arr);
                 lgx_ht_cleanup(&e->v.arr);
                 break;
             default:
@@ -1620,6 +1620,7 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
                 lgx_value_t* v = xcalloc(1, sizeof(lgx_value_t));
                 if (v) {
                     if (lgx_expr_to_value(&t, v)) {
+                        xfree(v);
                         ret = 1;
                     } else {
                         lgx_str_t key;
@@ -1667,7 +1668,7 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
         e->literal.size = 0;
     } else {
         // 丢弃解析的常量数组
-        lgx_array_cleanup(&e->v.arr);
+        lgx_array_value_cleanup(&e->v.arr);
         lgx_ht_cleanup(&e->v.arr);
     }
 

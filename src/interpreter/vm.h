@@ -80,9 +80,11 @@ struct lgx_vm_s {
     } heap;
 
     // 常量
+    unsigned constant_length;
     lgx_value_t **constant;
 
     // 全局变量
+    unsigned global_length;
     lgx_value_t *global;
 
     // 异常

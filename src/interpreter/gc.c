@@ -1,4 +1,5 @@
 #include "../common/common.h"
+#include "value.h"
 #include "gc.h"
 
 void lgx_gc_enable(lgx_vm_t *vm) {
@@ -7,10 +8,6 @@ void lgx_gc_enable(lgx_vm_t *vm) {
 
 void lgx_gc_disable(lgx_vm_t *vm) {
     vm->gc_enable = 0;
-}
-
-void lgx_gc_free(lgx_value_t *v) {
-
 }
 
 static int gc_size(lgx_gc_t *gc) {
@@ -90,23 +87,34 @@ static int minor_gc(lgx_vm_t *vm) {
     return 0;
 }
 
-// 只需要跟踪可能存在循环引用的变量
 int lgx_gc_trace(lgx_vm_t *vm, lgx_value_t *v) {
     if (!IS_GC_VALUE(v)) {
         return 0;
     }
 
     // 每分配 4M 空间就尝试执行一次 GC
+    /*
     if (vm->heap.young_size >= 4 * 1024 * 1024) {
         if (minor_gc(vm)) {
             // Out Of Memory
             return 1;
         }
 
-    }
+    }*/
 
-    lgx_list_add_tail(&v->v.gc->head ,&vm->heap.young);
+    lgx_list_add_tail(&v->v.gc->head, &vm->heap.young);
     vm->heap.young_size += gc_size(v->v.gc);
 
     return 0;
+}
+
+void lgx_gc_cleanup(lgx_gc_t* gc) {
+    switch (gc->type.type) {
+        case T_ARRAY: 
+            lgx_array_cleanup((lgx_array_t*)gc);
+            break;
+        // TODO
+        default:
+            break;
+    }
 }

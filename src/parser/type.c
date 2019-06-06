@@ -200,18 +200,22 @@ int lgx_type_init(lgx_type_t* type, lgx_val_type_t t) {
 }
 
 void lgx_type_array_cleanup(lgx_type_array_t* arr) {
+    lgx_type_cleanup(&arr->value);
     memset(arr, 0, sizeof(lgx_type_array_t));
 }
 
 void lgx_type_map_cleanup(lgx_type_map_t* map) {
+    // TODO
     memset(map, 0, sizeof(lgx_type_map_t));
 }
 
 void lgx_type_struct_cleanup(lgx_type_struct_t* sru) {
+    // TODO
     memset(sru, 0, sizeof(lgx_type_struct_t));
 }
 
 void lgx_type_interface_cleanup(lgx_type_interface_t* itf) {
+    // TODO
     memset(itf, 0, sizeof(lgx_type_interface_t));
 }
 

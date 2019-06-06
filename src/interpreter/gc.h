@@ -17,40 +17,6 @@ void lgx_gc_disable(lgx_vm_t *vm);
 // 把一个变量加入 GC 跟踪
 int lgx_gc_trace(lgx_vm_t *vm, lgx_value_t *v);
 
-// 释放一个变量
-void lgx_gc_free(lgx_value_t *v);
-
-// 获取指定 val 的引用计数
-#define lgx_gc_ref_get(n, p) do {\
-    if (IS_GC_VALUE(p)) {\
-        n = (p)->v.gc->ref_cnt;\
-    } else {\
-        n = 0;\
-    }\
-} while(0)
-
-// 引用计数设置为指定值
-#define lgx_gc_ref_set(p, cnt) do {\
-    if (IS_GC_VALUE(p)) {\
-        (p)->v.gc->ref_cnt = cnt;\
-    }\
-} while(0)
-
-// 引用计数加一
-#define lgx_gc_ref_add(p) do {\
-    if (IS_GC_VALUE(p)) {\
-        (p)->v.gc->ref_cnt ++;\
-    }\
-} while(0)
-
-// 引用计数减一
-#define lgx_gc_ref_del(p) do {\
-    if (IS_GC_VALUE(p)) {\
-        (p)->v.gc->ref_cnt --;\
-        if ((p)->v.gc->ref_cnt == 0) {\
-            lgx_gc_free(p);\
-        }\
-    }\
-} while(0)
+void lgx_gc_cleanup(lgx_gc_t* gc);
 
 #endif // LGX_GC_H

@@ -33,8 +33,6 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     e.v.str->string.size = 128;
     e.v.str->string.buffer = buf;
 
-    lgx_gc_ref_add(&e);
-
     lgx_vm_throw(vm, &e);
 }
 
@@ -62,20 +60,20 @@ int lgx_vm_init(lgx_vm_t *vm, lgx_compiler_t *c) {
     vm->exception = &c->exception;
 
     // 初始化常量
-    vm->constant = xcalloc(c->constant.length, sizeof(lgx_value_t*));
+    vm->constant_length = c->constant.length;
+    vm->constant = xcalloc(vm->constant_length, sizeof(lgx_value_t*));
     lgx_ht_node_t* n;
     for (n = lgx_ht_first(&c->constant); n; n = lgx_ht_next(n)) {
         lgx_const_t* c = (lgx_const_t*)n->v;
         vm->constant[c->num] = &c->v;
-        lgx_gc_ref_add(vm->constant[c->num]);
     }
 
     // 初始化全局变量
-    vm->global = xcalloc(c->global.length, sizeof(lgx_value_t));
+    vm->global_length = c->global.length;
+    vm->global = xcalloc(vm->global_length, sizeof(lgx_value_t));
     for (n = lgx_ht_first(&c->global); n; n = lgx_ht_next(n)) {
         lgx_symbol_t* symbol = (lgx_symbol_t*)n->v;
         vm->global[symbol->r] = symbol->v;
-        lgx_gc_ref_add(&vm->global[symbol->r]);
     }
 
     vm->co_id = 0;
@@ -107,7 +105,6 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
     unsigned size = base + co->stack.buf[base].v.fun->stack_size;
     int n;
     for (n = 0; n < size; n ++) {
-        lgx_gc_ref_del(&co->stack.buf[n]);
         co->stack.buf[n].type = T_UNKNOWN;
     }
 
@@ -117,22 +114,27 @@ int lgx_vm_cleanup(lgx_vm_t *vm) {
 
     // TODO 释放消息队列
 
-    // 清理存在循环引用的变量
+    // TODO 回收所有内存
     lgx_list_t *list = vm->heap.young.next;
     while(list != &vm->heap.young) {
         lgx_list_t *next = list->next;
+        lgx_gc_cleanup((lgx_gc_t*)list);
         xfree(list);
         list = next;
     }
     list = vm->heap.old.next;
     while(list != &vm->heap.old) {
         lgx_list_t *next = list->next;
+        lgx_gc_cleanup((lgx_gc_t*)list);
         xfree(list);
         list = next;
     }
 
     // 释放常量表
     xfree(vm->constant);
+
+    // 释放全局变量
+    xfree(vm->global);
 
     memset(vm, 0, sizeof(lgx_vm_t));
 
@@ -175,24 +177,17 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
         switch(op) {
             case OP_MOV:{
-                lgx_gc_ref_add(&R(pb));
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = R(pb).type;
                 R(pa).v = R(pb).v;
 
                 break;
             }
             case OP_MOVI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_LONG;
                 R(pa).v.l = PD(i);
                 break;
             }
             case OP_ADD:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l + R(pc).v.l;
@@ -205,8 +200,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SUB:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l - R(pc).v.l;
@@ -219,8 +212,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_MUL:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l * R(pc).v.l;
@@ -233,8 +224,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_DIV:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
                     if (UNEXPECTED(R(pc).v.l == 0)) {
                         lgx_vm_throw_s(vm, "division by zero\n");
@@ -255,8 +244,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_ADDI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l + pc;
@@ -269,8 +256,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SUBI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l - pc;
@@ -283,8 +268,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_MULI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l * pc;
@@ -297,8 +280,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_DIVI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l / pc;
@@ -311,8 +292,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_NEG:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (R(pb).type == T_LONG) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = -R(pb).v.l;
@@ -325,8 +304,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHL:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG && R(pc).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << R(pc).v.l;
@@ -336,8 +313,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHR:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG && R(pc).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> R(pc).v.l;
@@ -347,8 +322,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHLI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << pc;
@@ -358,8 +331,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_SHRI:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> pc;
@@ -369,8 +340,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_AND:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG && R(pc).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l & R(pc).v.l;
@@ -380,8 +349,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_OR:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG && R(pc).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l | R(pc).v.l;
@@ -391,8 +358,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_XOR:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG && R(pc).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l ^ R(pc).v.l;
@@ -402,8 +367,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_NOT:{
-                lgx_gc_ref_del(&R(pa));
-
                 if (EXPECTED(R(pb).type == T_LONG)) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = ~R(pb).v.l;
@@ -413,8 +376,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_EQ:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
 
                 if (lgx_value_cmp(&R(pb), &R(pc))) {
@@ -425,8 +386,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LE:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
 
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
@@ -439,8 +398,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LT:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
 
                 if (R(pb).type == T_LONG && R(pc).type == T_LONG) {
@@ -453,8 +410,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_EQI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
 
                 if (R(pb).type == T_LONG) {
@@ -465,8 +420,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_GEI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
                 
                 if (R(pb).type == T_LONG) {
@@ -479,8 +432,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LEI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
                 
                 if (R(pb).type == T_LONG) {
@@ -493,8 +444,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_GTI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
                 
                 if (R(pb).type == T_LONG) {
@@ -507,8 +456,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LTI:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
                 
                 if (R(pb).type == T_LONG) {
@@ -521,8 +468,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_LNOT:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_BOOL;
 
                 if (EXPECTED(R(pb).type == T_BOOL)) {
@@ -568,8 +513,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_CALL_SET:{
-                lgx_gc_ref_add(&R(pb));
-                lgx_gc_ref_del(&R(R(0).v.fun->stack_size + pa));
                 R(R(0).v.fun->stack_size + pa) = R(pb);
                 break;
             }
@@ -578,14 +521,11 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     lgx_function_t *fun = R(pa).v.fun;
                     unsigned int base = R(0).v.fun->stack_size;
 
-                    lgx_gc_ref_add(&R(pa));
-                    lgx_gc_ref_del(&R(0));
                     R(0) = R(pa);
 
                     // 移动参数
                     int n;
                     for (n = 4; n < 4 + fun->type->arg_len + 1; n ++) {
-                        lgx_gc_ref_del(&R(n));
                         R(n) = R(base + n);
                         R(base + n).type = T_UNKNOWN;
                     }
@@ -605,7 +545,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     // 写入函数信息
                     R(base + 0) = R(pb);
-                    lgx_gc_ref_add(&R(base + 0));
 
                     // 写入返回值地址
                     R(base + 1).type = T_LONG;
@@ -673,7 +612,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 lgx_value_t ret_val;
                 if (has_ret) {
                     ret_val = R(pa);
-                    lgx_gc_ref_add(&ret_val);
                 }
 
                 // 释放所有局部变量和临时变量
@@ -682,7 +620,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else {
                     int n;
                     for (n = 0; n < R(0).v.fun->stack_size; n ++) {
-                        lgx_gc_ref_del(&R(n));
                         R(n).type = T_UNKNOWN;
                     }
                 }
@@ -692,7 +629,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
 
                 // 写入返回值
-                lgx_gc_ref_del(&R(ret_idx));
                 if (has_ret) {
                     R(ret_idx) = ret_val;
                 } else {
@@ -732,13 +668,17 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         break;
                     }
                     lgx_value_t* v = xcalloc(1, sizeof(lgx_value_t));
-                    memcpy(v, &R(pc), sizeof(lgx_value_t));
-                    if (lgx_ht_set(&R(pa).v.arr->table, &key, v)) {
+                    if (lgx_value_dup(&R(pc), v)) {
                         xfree(v);
                         lgx_vm_throw_s(vm, "out of memory");
                         break;
                     }
-                    lgx_gc_ref_add(v);
+                    if (lgx_ht_set(&R(pa).v.arr->table, &key, v)) {
+                        lgx_value_cleanup(v);
+                        xfree(v);
+                        lgx_vm_throw_s(vm, "out of memory");
+                        break;
+                    }
                 } else {
                     // runtime error
                     lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
@@ -746,12 +686,16 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_NEW:{
-                lgx_gc_ref_del(&R(pa));
-
                 R(pa).type = T_ARRAY;
                 R(pa).v.arr = lgx_array_new();
                 if (UNEXPECTED(!R(pa).v.arr)) {
                     R(pa).type = T_UNKNOWN;
+                    lgx_vm_throw_s(vm, "out of memory");
+                    break;
+                }
+                if (lgx_type_init(&R(pa).v.arr->gc.type, T_ARRAY)) {
+                    R(pa).type = T_UNKNOWN;
+                    xfree(R(pa).v.arr);
                     lgx_vm_throw_s(vm, "out of memory");
                     break;
                 }
@@ -762,8 +706,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     break;
                 }
 
-                lgx_gc_ref_add(&R(pa));
-                //lgx_gc_trace(vm, &R(pa));
+                lgx_gc_trace(vm, &R(pa));
                 break;
             }
             case OP_ARRAY_GET:{
@@ -779,12 +722,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         }
                         lgx_ht_node_t *n = lgx_ht_get(&R(pb).v.arr->table, &key);
                         if (n) {
-                            lgx_gc_ref_add((lgx_value_t*)n->v);
-                            lgx_gc_ref_del(&R(pa));
                             R(pa) = *(lgx_value_t*)n->v;
                         } else {
                             // TODO runtime warning
-                            lgx_gc_ref_del(&R(pa));
                             R(pa).type = T_NULL;
                         }
                     } else {
@@ -799,24 +739,18 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_LOAD:{
                 unsigned pd = PD(i);
 
-                lgx_gc_ref_add(vm->constant[pd]);
-                lgx_gc_ref_del(&R(pa));
                 R(pa) = *vm->constant[pd];
                 break;
             }
             case OP_GLOBAL_GET:{
                 unsigned pd = PD(i);
 
-                lgx_gc_ref_add(&vm->global[pd]);
-                lgx_gc_ref_del(&R(pa));
                 R(pa) = vm->global[pd];
                 break;
             }
             case OP_GLOBAL_SET:{
                 unsigned pd = PD(i);
 
-                lgx_gc_ref_add(&R(pa));
-                lgx_gc_ref_del(&vm->global[pd]);
                 vm->global[pd] = R(pa);
                 break;
             }
@@ -834,7 +768,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 // 释放所有局部变量和临时变量
                 int n;
                 for (n = 0; n < R(0).v.fun->stack_size; n ++) {
-                    lgx_gc_ref_del(&R(n));
                     R(n).type = T_UNKNOWN;
                 }
 
@@ -845,7 +778,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             }
             case OP_TYPEOF:{
                 /*
-                lgx_gc_ref_del(&R(pa));
                 lgx_op_typeof(&R(pa), &R(pb));
                 */
                 break;

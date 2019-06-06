@@ -144,12 +144,15 @@ int lgx_const_update_function(lgx_ht_t* ct, lgx_function_t* fun) {
 
     lgx_ht_node_t* n = lgx_ht_get(ct, &key);
     if (!n) {
+        lgx_str_cleanup(&key);
         return 1;
     }
     
     lgx_const_t* c = (lgx_const_t*)n->v;
     c->v.type = T_FUNCTION;
     c->v.v.fun = fun;
+
+    lgx_str_cleanup(&key);
 
     return 0;
 }
@@ -169,6 +172,7 @@ lgx_const_t* lgx_const_new(lgx_ht_t* ct, lgx_expr_result_t* e) {
 }
 
 void lgx_const_del(lgx_const_t* c) {
+    lgx_value_cleanup(&c->v);
     xfree(c);
 }
 

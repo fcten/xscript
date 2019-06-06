@@ -33,7 +33,6 @@ int lgx_co_set(lgx_co_t *co, unsigned pos, lgx_value_t *v) {
 
     co->stack.buf[pos].type = v->type;
     co->stack.buf[pos].v = v->v;
-    lgx_gc_ref_add(&co->stack.buf[pos]);
 
     return 0;
 }
@@ -282,15 +281,12 @@ int lgx_co_return(lgx_co_t *co, lgx_value_t *v) {
     int ret = co->stack.buf[base + 1].v.l;
 
     // 写入返回值
-    lgx_gc_ref_add(v);
-    lgx_gc_ref_del(&co->stack.buf[co->stack.base + ret]);
     co->stack.buf[co->stack.base + ret] = *v;    
 
     // 释放函数栈
     int n;
     int size = co->stack.buf[base].v.fun->stack_size;
     for (n = 0; n < size; n ++) {
-        lgx_gc_ref_del(&co->stack.buf[base + n]);
         co->stack.buf[base + n].type = T_UNKNOWN;
     }
 
@@ -421,7 +417,6 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
 
         // 把异常变量写入到 catch block 的参数中
         //printf("%d\n",block->e->u.symbol.reg_num);
-        lgx_gc_ref_del(&co->stack.buf[co->stack.base + block->reg]);
         co->stack.buf[co->stack.base + block->reg] = *e;
     } else {
         // 没有匹配的 catch 块，递归向上寻找
@@ -436,7 +431,6 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
             // 释放所有局部变量和临时变量
             int n;
             for (n = 0; n < regs[0].v.fun->stack_size; n ++) {
-                lgx_gc_ref_del(&regs[n]);
                 regs[n].type = T_UNKNOWN;
             }
 
@@ -452,7 +446,6 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
             lgx_value_print(e);
             printf("\n\nco_id = %llu, pc = %u\n", co->id, co->pc-1);
 
-            lgx_gc_ref_del(e);
             // TODO 写入到协程返回值中？
 
             lgx_co_backtrace(co);
@@ -475,8 +468,6 @@ void lgx_co_throw_s(lgx_co_t *co, const char *fmt, ...) {
     e.v.str->string.length = len;
     e.v.str->string.size = 128;
     e.v.str->string.buffer = buf;
-
-    lgx_gc_ref_add(&e);
 
     lgx_co_throw(co, &e);
 }

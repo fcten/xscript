@@ -76,7 +76,7 @@ struct lgx_gc_s {
     lgx_type_t type;
 
     // 引用计数
-    unsigned ref_cnt;
+    //unsigned ref_cnt;
 
     // GC 标记
     unsigned char color;
