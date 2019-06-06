@@ -1235,8 +1235,65 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
             ret = 1;
         }
     } else if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_LEFT_BRACK) {
-        // TODO 数组&图赋值
+        assert(node->child[0]->children == 1 || node->child[0]->children == 2);
 
+        // 数组&图赋值
+        if (compiler_expression(c, node->child[0]->child[0], &e1)) {
+            ret = 1;
+        }
+
+        if (check_variable(&e1, T_ARRAY)) {
+            if (lgx_type_cmp(&e1.v_type.u.arr->value, &e2.v_type)) {
+                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type.u.arr->value), lgx_type_to_string(&e2.v_type));
+                ret = 1;
+            }
+
+            int index = 0;
+            lgx_expr_result_t k;
+            lgx_expr_result_init(&k);
+            if (node->child[0]->children == 2) {
+                if (compiler_expression(c, node->child[0]->child[1], &k)) {
+                    ret = 1;
+                }
+
+                if (is_local(&k) || is_temp(&k)) {
+                    index = k.u.local;
+                } else {
+                    index = load_to_reg(c, node, &k);
+                    if (index < 0) {
+                        ret = 1;
+                    }
+                }
+            }
+
+            int reg;
+            if (is_local(&e1) || is_temp(&e1)) {
+                reg = e1.u.local;
+            } else {
+                reg = load_to_reg(c, node, &e1);
+                if (reg < 0) {
+                    ret = 1;
+                }
+            }
+
+            bc_array_set(c, reg, index, r);
+
+            if (!is_local(&e1) && !is_temp(&e1)) {
+                reg_push(c, node, reg);
+            }
+
+            if (node->child[0]->children == 2) {
+                if (!is_local(&k) && !is_temp(&k)) {
+                    reg_push(c, node, index);
+                }
+            }
+            lgx_expr_result_cleanup(c, node, &k);
+        } else if (check_variable(&e1, T_MAP)) {
+            // TODO
+        } else {
+            compiler_error(c, node, "left variable should be array or map\n");
+            ret = 1;
+        }
     } else if (node->child[0]->type == BINARY_EXPRESSION &&
         (node->child[0]->u.op == TK_DOT || node->child[0]->u.op == TK_ARROW)) {
         // TODO 结构体赋值

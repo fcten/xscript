@@ -20,8 +20,10 @@ function main() {
 
     var arr7 []int = [];
     arr7[] = 3;
-    arr7[] = [4,5,6];
-    arr7[4] = arr4;
-    arr7[3] = arr2;
+    arr7[] = 4;
+    arr7[] = 5;
+    arr7[4] = 6;
+    arr7[arr2[0]] = 7;
     echo(arr7);
+    echo(arr7[3]);
 }

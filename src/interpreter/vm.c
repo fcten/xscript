@@ -673,11 +673,18 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         lgx_vm_throw_s(vm, "out of memory");
                         break;
                     }
-                    if (lgx_ht_set(&R(pa).v.arr->table, &key, v)) {
-                        lgx_value_cleanup(v);
-                        xfree(v);
-                        lgx_vm_throw_s(vm, "out of memory");
-                        break;
+                    lgx_ht_node_t* n = lgx_ht_get(&R(pa).v.arr->table, &key);
+                    if (n) {
+                        lgx_value_cleanup((lgx_value_t*)n->v);
+                        xfree(n->v);
+                        n->v = v;
+                    } else {
+                        if (lgx_ht_set(&R(pa).v.arr->table, &key, v)) {
+                            lgx_value_cleanup(v);
+                            xfree(v);
+                            lgx_vm_throw_s(vm, "out of memory");
+                            break;
+                        }
                     }
                 } else {
                     // runtime error

@@ -112,6 +112,9 @@ void lgx_value_print(lgx_value_t* v) {
         case T_ARRAY:
             lgx_array_print(v->v.arr);
             break;
+        case T_NULL:
+            printf("null");
+            break;
         default:
             printf("unknwon");
             break;
