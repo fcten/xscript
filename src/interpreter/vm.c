@@ -711,56 +711,82 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 break;
             }
             case OP_ARRAY_SET:{
-                /*
                 if (EXPECTED(R(pa).type == T_ARRAY)) {
-                    if (pb == 0) {
-                        lgx_ht_add(R(pa).v.arr, &R(pc));
-                    } else if (R(pb).type == T_LONG || R(pb).type == T_STRING) {
-                        lgx_ht_node_t n;
-                        n.k = R(pb);
-                        n.v = R(pc);
-                        lgx_ht_set(R(pa).v.arr, &n);
+                    lgx_str_t key;
+                    long long num = pb;
+                    if (num == 0) {
+                        num = R(pa).v.arr->table.length;
+                        key.buffer = (char*)&num;
+                        key.length = sizeof(num);
+                        key.size = 0;
+                    } else if (R(pb).type == T_LONG) {
+                        num = R(pb).v.l;
+                        key.buffer = (char*)&num;
+                        key.length = sizeof(num);
+                        key.size = 0;
+                    } else if (R(pb).type == T_STRING) {
+                        key = R(pb).v.str->string;
                     } else {
                         // runtime warning
                         lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_value_typeof(&R(pa)));
+                        break;
                     }
+                    lgx_value_t* v = xcalloc(1, sizeof(lgx_value_t));
+                    memcpy(v, &R(pc), sizeof(lgx_value_t));
+                    if (lgx_ht_set(&R(pa).v.arr->table, &key, v)) {
+                        xfree(v);
+                        lgx_vm_throw_s(vm, "out of memory");
+                        break;
+                    }
+                    lgx_gc_ref_add(v);
                 } else {
                     // runtime error
                     lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
                 }
-                */
                 break;
             }
             case OP_ARRAY_NEW:{
-                /*
                 lgx_gc_ref_del(&R(pa));
 
                 R(pa).type = T_ARRAY;
-                R(pa).v.arr = lgx_hash_new(0);
+                R(pa).v.arr = lgx_array_new();
                 if (UNEXPECTED(!R(pa).v.arr)) {
                     R(pa).type = T_UNKNOWN;
                     lgx_vm_throw_s(vm, "out of memory");
                     break;
                 }
+                if (lgx_ht_init(&R(pa).v.arr->table, 0)) {
+                    R(pa).type = T_UNKNOWN;
+                    xfree(R(pa).v.arr);
+                    lgx_vm_throw_s(vm, "out of memory");
+                    break;
+                }
+
                 lgx_gc_ref_add(&R(pa));
-                lgx_gc_trace(vm, &R(pa));
-                */
+                //lgx_gc_trace(vm, &R(pa));
                 break;
             }
             case OP_ARRAY_GET:{
-                /*
                 if (EXPECTED(R(pb).type == T_ARRAY)) {
                     if (EXPECTED(R(pc).type == T_LONG || R(pc).type == T_STRING)) {
-                        lgx_ht_node_t *n = lgx_hash_get(R(pb).v.arr, &R(pc));
-                        lgx_value_t v = R(pa);
+                        lgx_str_t key;
+                        if (R(pc).type == T_STRING) {
+                            key = R(pc).v.str->string;
+                        } else {
+                            key.buffer = (char*)&R(pc).v.l;
+                            key.length = sizeof(R(pc).v.l);
+                            key.size = 0;
+                        }
+                        lgx_ht_node_t *n = lgx_ht_get(&R(pb).v.arr->table, &key);
                         if (n) {
+                            lgx_gc_ref_add((lgx_value_t*)n->v);
+                            lgx_gc_ref_del(&R(pa));
                             R(pa) = *(lgx_value_t*)n->v;
                         } else {
-                            // runtime warning
-                            R(pa).type = T_UNKNOWN;
+                            // TODO runtime warning
+                            lgx_gc_ref_del(&R(pa));
+                            R(pa).type = T_NULL;
                         }
-                        lgx_gc_ref_del(&v);
-                        lgx_gc_ref_add(&R(pa));
                     } else {
                         // runtime warning
                         lgx_vm_throw_s(vm, "attempt to index a %s key, integer or string expected", lgx_value_typeof(&R(pc)));
@@ -768,7 +794,6 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else {
                     lgx_vm_throw_s(vm, "attempt to index a %s value, array expected", lgx_value_typeof(&R(pb)));
                 }
-                */
                 break;
             }
             case OP_LOAD:{

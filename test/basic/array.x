@@ -9,56 +9,19 @@ function main() {
     var arr3 = ([[1,2,3],[4,5,6],[7,8,9]])[1][1];
     echo(arr3);
 
-    /*
-    var arr3 = ([[1,2,3], [4,5,6], arr2])[2][0];
-
-    echo(arr3);
-
-    var arr4 = ["test", 123, arr1];
-
+    var arr4 = [123, 456, arr2[0]];
     echo(arr4);
 
-    var arr5 = ["test", 123, arr1, [], [1, 2, 3]];
+    var arr5 = ([[1,2,3],[4,5,6],arr2])[2][0];
+    echo(arr5);
 
-    echo(arr5[4][0]);
+    var arr6 = [["123","456"],["789"],["321","654"]];
+    echo(arr6[0][1]);
 
-    var arr6 = [];
-
-    arr6[] = 3;
-
-    arr6[] = [4,5,6];
-
-    arr6[4] = arr4;
-
-    arr6[3] = arr2;
-
-    arr6[1][] = 7;
-
-    echo(arr6);
-
-    var arr7 = [];
-
-    arr7["k-a"] = "v-a";
-    arr7["k-b"] = "v-b";
-    arr7[] = "v-c";
-
+    var arr7 []int = [];
+    arr7[] = 3;
+    arr7[] = [4,5,6];
+    arr7[4] = arr4;
+    arr7[3] = arr2;
     echo(arr7);
-
-    var arr8 = {
-        "#": arr1,
-        123: arr2,
-        arr2: arr7["k-a"],
-    };
-
-    echo(arr8);
-
-    var arr9 = {
-        "name": "Colin",
-        "age": 20,
-        "sex": "male",
-        "verified": true,
-    };
-
-    echo(arr9);
-    */
 }

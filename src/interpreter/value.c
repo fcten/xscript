@@ -98,6 +98,8 @@ char* lgx_value_typeof(lgx_value_t* v) {
     switch (v->type) {
         case T_UNKNOWN:
             return "unknown";
+        case T_NULL:
+            return "null";
         case T_LONG:
             return "integer";
         case T_DOUBLE:
@@ -128,7 +130,36 @@ int lgx_value_dup(lgx_value_t* src, lgx_value_t* dst) {
     // TODO
     switch (src->type) {
         case T_ARRAY:
-
+            dst->v.arr = lgx_array_new();
+            if (!dst->v.arr) {
+                return 1;
+            }
+            if (lgx_type_dup(&src->v.arr->gc.type, &dst->v.arr->gc.type)) {
+                xfree(dst->v.arr);
+                dst->v.arr = NULL;
+                return 1;
+            }
+            if (lgx_ht_init(&dst->v.arr->table, src->v.arr->table.length)) {
+                lgx_type_cleanup(&dst->v.arr->gc.type);
+                xfree(dst->v.arr);
+                dst->v.arr = NULL;
+                return 1;
+            }
+            lgx_ht_node_t* n;
+            for (n = lgx_ht_first(&src->v.arr->table); n; n = lgx_ht_next(n)) {
+                lgx_value_t* val = xcalloc(1, sizeof(lgx_value_t));
+                if (lgx_value_dup((lgx_value_t*)n->v, val)) {
+                    xfree(val);
+                    lgx_value_cleanup(dst);
+                    return 1;
+                }
+                if (lgx_ht_set(&dst->v.arr->table, &n->k, val)) {
+                    lgx_value_cleanup(val);
+                    xfree(val);
+                    lgx_value_cleanup(dst);
+                    return 1;
+                }
+            }
             break;
         default:
             break;

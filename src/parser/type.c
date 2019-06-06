@@ -14,6 +14,8 @@ char* lgx_type_to_string(lgx_type_t* type) {
     switch (type->type) {
         case T_UNKNOWN:
             return "unknown";
+        case T_NULL:
+            return "null";
         case T_LONG:
             return "integer";
         case T_DOUBLE:
@@ -89,6 +91,14 @@ int lgx_type_function_dup(lgx_type_function_t* src, lgx_type_function_t* dst) {
     return 0;
 }
 
+int lgx_type_array_dup(lgx_type_array_t* src, lgx_type_array_t* dst) {
+    if (lgx_type_dup(&src->value, &dst->value)) {
+        return 1;
+    }
+
+    return 0;
+}
+
 int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
     assert(dst->type == T_UNKNOWN);
     assert(dst->u.arr == NULL);
@@ -102,7 +112,12 @@ int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
             if (lgx_type_function_dup(src->u.fun, dst->u.fun)) {
                 return 1;
             }
-            break;            
+            break; 
+        case T_ARRAY:
+            if (lgx_type_array_dup(src->u.arr, dst->u.arr)) {
+                return 1;
+            }
+            break;        
         default:
             break;
     }

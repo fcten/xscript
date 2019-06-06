@@ -63,5 +63,6 @@ typedef struct {
 #define check_variable(e, t) (is_variable(e) && check_type(e, t))
 
 int lgx_expr_to_value(lgx_expr_result_t* e, lgx_value_t* v);
+int lgx_value_to_expr(lgx_value_t* v, lgx_expr_result_t* e);
 
 #endif // LGX_EXPRESSION_H

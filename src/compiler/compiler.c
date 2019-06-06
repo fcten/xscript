@@ -595,15 +595,17 @@ static int op_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* 
         key.size = 0;
         n = lgx_ht_get(&l->v.arr, &key);
     }
+
     if (!n) {
         e->type = EXPR_LITERAL;
         e->v_type.type = T_NULL;
         return 0;
     }
 
-    // TODO 读取具体的值
+    // 读取具体的值
+    lgx_value_t* v = (lgx_value_t*)n->v;
 
-    return 0;
+    return lgx_value_to_expr(v, e);
 }
 
 static int op_concat(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, lgx_expr_result_t* l, lgx_expr_result_t* r) {
@@ -1400,6 +1402,16 @@ static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *n
         ret = 1;
     }
 
+    if (e->v_type.type == T_UNKNOWN) {
+        if (lgx_type_dup(&e1.v_type.u.arr->value, &e->v_type)) {
+            ret = 1;
+        }
+    } else {
+        if (lgx_type_cmp(&e1.v_type.u.arr->value, &e->v_type)) {
+            ret = 1;
+        }
+    }
+
     lgx_expr_result_cleanup(c, node, &e2);
     lgx_expr_result_cleanup(c, node, &e1);
 
@@ -1645,6 +1657,9 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
     if (is_const) {
         // 丢弃之前生成的用于创建临时数组的字节码
         c->bc.length = pos;
+
+        reg_push(c, node, e->u.local);
+        e->u.local = 0;
 
         e->type = EXPR_LITERAL;
         e->literal.buffer = c->ast->lex.source.content + node->offset;
