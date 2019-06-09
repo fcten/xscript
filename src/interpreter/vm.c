@@ -746,7 +746,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
             case OP_LOAD:{
                 unsigned pd = PD(i);
 
-                R(pa) = *vm->constant[pd];
+                lgx_value_dup(vm->constant[pd], &R(pa));
+                lgx_gc_trace(vm, &R(pa));
                 break;
             }
             case OP_GLOBAL_GET:{

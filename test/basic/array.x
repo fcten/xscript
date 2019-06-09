@@ -26,4 +26,9 @@ function main() {
     arr7[arr2[0]] = 7;
     echo(arr7);
     echo(arr7[3]);
+
+    var arr8 [][]int = [];
+    arr8[] = arr1;
+    arr8[] = arr6;
+    echo(arr8);
 }

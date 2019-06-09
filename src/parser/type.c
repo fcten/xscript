@@ -46,8 +46,7 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
 
     switch (t1->type) {
         case T_ARRAY:
-            // TODO
-            break;
+            return lgx_type_cmp(&t1->u.arr->value, &t2->u.arr->value);
         case T_MAP:
             // TODO
             break;
