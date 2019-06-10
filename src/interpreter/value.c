@@ -121,20 +121,27 @@ void lgx_value_print(lgx_value_t* v) {
     }
 }
 
-char* lgx_value_typeof(lgx_value_t* v) {
+int lgx_value_typeof(lgx_value_t* v, lgx_str_t* str) {
+    lgx_str_t append;
+
     switch (v->type) {
         case T_UNKNOWN:
-            return "unknown";
+            lgx_str_set(append, "unknown");
+            return lgx_str_append(&append, str);
         case T_NULL:
-            return "null";
+            lgx_str_set(append, "null");
+            return lgx_str_append(&append, str);
         case T_LONG:
-            return "integer";
+            lgx_str_set(append, "int");
+            return lgx_str_append(&append, str);
         case T_DOUBLE:
-            return "float";
+            lgx_str_set(append, "float");
+            return lgx_str_append(&append, str);
         case T_BOOL:
-            return "boolean";
+            lgx_str_set(append, "bool");
+            return lgx_str_append(&append, str);
         default:
-            return lgx_type_to_string(&v->v.gc->type);
+            return lgx_type_to_string(&v->v.gc->type, str);
     }
 }
 

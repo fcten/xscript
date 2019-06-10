@@ -190,7 +190,7 @@ struct lgx_function_s {
     int (*buildin)(struct lgx_vm_s *vm);
 };
 
-char* lgx_type_to_string(lgx_type_t* type);
+int lgx_type_to_string(lgx_type_t* type, lgx_str_t* str);
 
 int lgx_type_init(lgx_type_t* type, lgx_val_type_t t);
 void lgx_type_cleanup(lgx_type_t* type);

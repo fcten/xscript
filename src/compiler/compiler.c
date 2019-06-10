@@ -820,6 +820,20 @@ static int unary_operator(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_resu
     }
 }
 
+static void compiler_type_error(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_type_t* type1, lgx_type_t* type2) {
+    lgx_str_t t1, t2;
+    lgx_str_set_null(t1);
+    lgx_str_set_null(t2);
+
+    lgx_type_to_string(type1, &t1);
+    lgx_type_to_string(type2, &t2);
+
+    compiler_error(c, node, "makes %.*s from %.*s without a cast\n", t1.length, t1.buffer, t2.length, t2.buffer);
+
+    lgx_str_cleanup(&t1);
+    lgx_str_cleanup(&t2);
+}
+
 static int compiler_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e);
 
 static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
@@ -863,7 +877,9 @@ static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_
             }
 
             if (!check_type(&e2, T_BOOL)) {
-                compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+                lgx_type_t t;
+                lgx_type_init(&t, T_BOOL);
+                compiler_type_error(c, node, &t, &e2.v_type);
                 ret = 1;
             }
 
@@ -899,7 +915,9 @@ static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_
         }
 
         if (!check_type(&e2, T_BOOL)) {
-            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+            lgx_type_t t;
+            lgx_type_init(&t, T_BOOL);
+            compiler_type_error(c, node, &t, &e2.v_type);
             ret = 1;
         }
 
@@ -933,7 +951,9 @@ static int compiler_binary_expression_logic_and(lgx_compiler_t* c, lgx_ast_node_
 
         lgx_expr_result_cleanup(c, node, &e2);
     } else {
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_BOOL);
+        compiler_type_error(c, node, &t, &e1.v_type);
         ret = 1;
     }
 
@@ -981,7 +1001,9 @@ static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t
             }
 
             if (!check_type(&e2, T_BOOL)) {
-                compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+                lgx_type_t t;
+                lgx_type_init(&t, T_BOOL);
+                compiler_type_error(c, node, &t, &e2.v_type);
                 ret = 1;
             }
 
@@ -1032,7 +1054,9 @@ static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t
         }
 
         if (!check_type(&e2, T_BOOL)) {
-            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e2.v_type));
+            lgx_type_t t;
+            lgx_type_init(&t, T_BOOL);
+            compiler_type_error(c, node, &t, &e2.v_type);
             ret = 1;
         }
 
@@ -1051,7 +1075,9 @@ static int compiler_binary_expression_logic_or(lgx_compiler_t* c, lgx_ast_node_t
 
         lgx_expr_result_cleanup(c, node, &e2);
     } else {
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_BOOL);
+        compiler_type_error(c, node, &t, &e1.v_type);
         ret = 1;
     }
 
@@ -1095,7 +1121,7 @@ static int compiler_binary_expression_math(lgx_compiler_t* c, lgx_ast_node_t *no
                 ret = 1;
         }
     } else {
-        compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(&e1.v_type), node->u.op, lgx_type_to_string(&e2.v_type));
+        compiler_error(c, node, "invalid math expression\n");
         ret = 1;
     }
 
@@ -1140,7 +1166,7 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
                 ret = 1;
         }
     } else {
-        compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(&e1.v_type), node->u.op, lgx_type_to_string(&e2.v_type));
+        compiler_error(c, node, "invalid relation expression\n");
         ret = 1;
     }
 
@@ -1180,7 +1206,7 @@ static int compiler_binary_expression_bitwise(lgx_compiler_t* c, lgx_ast_node_t 
                 ret = 1;
         }
     } else {
-        compiler_error(c, node, "invalid expression %s %d %s\n", lgx_type_to_string(&e1.v_type), node->u.op, lgx_type_to_string(&e2.v_type));
+        compiler_error(c, node, "invalid bitwise expression\n");
         ret = 1;
     }
 
@@ -1222,7 +1248,7 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
         }
 
         if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+            compiler_type_error(c, node, &e1.v_type, &e2.v_type);
             ret = 1;
         }
 
@@ -1244,7 +1270,7 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
 
         if (check_variable(&e1, T_ARRAY)) {
             if (lgx_type_cmp(&e1.v_type.u.arr->value, &e2.v_type)) {
-                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type.u.arr->value), lgx_type_to_string(&e2.v_type));
+                compiler_type_error(c, node, &e1.v_type.u.arr->value, &e2.v_type);
                 ret = 1;
             }
 
@@ -1335,7 +1361,7 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
     }
 
     if (!check_type(&e1, T_FUNCTION)) {
-        compiler_error(c, node, "makes function from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        compiler_error(c, node, "`cannot call a non-function\n");
         return 1;
     }
 
@@ -1377,7 +1403,7 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
     int base = 4;
     for(i = 0; i < node->child[1]->children; i++) {
         if (lgx_type_cmp(&fun->args[i], &expr[i].v_type)) {
-            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&fun->args[i]), lgx_type_to_string(&expr[i].v_type));
+            compiler_type_error(c, node, &fun->args[i], &expr[i].v_type);
             ret = 1;
         }
 
@@ -1441,7 +1467,7 @@ static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *n
     }
 
     if (!check_type(&e1, T_ARRAY)) {
-        compiler_error(c, node, "makes array from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        compiler_error(c, node, "cannot index into non-array\n");
         return 1;
     }
 
@@ -1451,7 +1477,7 @@ static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *n
 
     // TODO 这里应该也能够接受任意实现了 toString 方法的类型
     if (!check_type(&e2, T_LONG) && !!check_type(&e1, T_STRING)) {
-        compiler_error(c, node, "attempt to index a %s key, integer or string expected\n", lgx_type_to_string(&e2.v_type));
+        compiler_error(c, node, "key of array should be integer or string\n");
         ret = 1;
     }
 
@@ -1543,7 +1569,9 @@ static int compiler_unary_expression_logic_not(lgx_compiler_t* c, lgx_ast_node_t
             ret = 1;
         }
     } else {
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_BOOL);
+        compiler_type_error(c, node, &t, &e1.v_type);
         ret = 1;
     }
 
@@ -1570,7 +1598,9 @@ static int compiler_unary_expression_bitwise_not(lgx_compiler_t* c, lgx_ast_node
             ret = 1;
         }
     } else {
-        compiler_error(c, node, "makes integer from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_LONG);
+        compiler_type_error(c, node, &t, &e1.v_type);
         ret = 1;
     }
 
@@ -1597,7 +1627,9 @@ static int compiler_unary_expression_math_negative(lgx_compiler_t* c, lgx_ast_no
             ret = 1;
         }
     } else {
-        compiler_error(c, node, "makes number from %s without a cast\n", lgx_type_to_string(&e1.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_LONG); // TODO 也可以是浮点数
+        compiler_type_error(c, node, &t, &e1.v_type);
         ret = 1;
     }
 
@@ -1668,7 +1700,7 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
                 lgx_type_dup(&t.v_type, &e->v_type.u.arr->value);
             } else {
                 if (lgx_type_cmp(&t.v_type, &e->v_type.u.arr->value)) {
-                    compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e->v_type.u.arr->value), lgx_type_to_string(&t.v_type));
+                    compiler_type_error(c, node, &e->v_type.u.arr->value, &t.v_type);
                     ret = 1;
                 }
             }
@@ -1816,7 +1848,11 @@ static int compiler_if_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     lgx_expr_result_cleanup(c, node, &e);
-    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v_type));
+
+    lgx_type_t t;
+    lgx_type_init(&t, T_BOOL);
+    compiler_type_error(c, node, &t, &e.v_type);
+
     return 1;
 }
 
@@ -1889,7 +1925,11 @@ static int compiler_if_else_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     lgx_expr_result_cleanup(c, node, &e);
-    compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v_type));
+
+    lgx_type_t t;
+    lgx_type_init(&t, T_BOOL);
+    compiler_type_error(c, node, &t, &e.v_type);
+
     return 1;
 }
 
@@ -1951,7 +1991,9 @@ static int compiler_for_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
             }
             lgx_expr_result_cleanup(c, node, &e);
         } else {
-            compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v_type));
+            lgx_type_t t;
+            lgx_type_init(&t, T_BOOL);
+            compiler_type_error(c, node, &t, &e.v_type);
             return 1;
         }
     }
@@ -2038,7 +2080,9 @@ static int compiler_while_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
         lgx_expr_result_cleanup(c, node, &e);
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_BOOL);
+        compiler_type_error(c, node, &t, &e.v_type);
         return 1;
     }
 
@@ -2095,7 +2139,9 @@ static int compiler_do_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
         bc_set_param_d(c, pos, c->bc.length - pos - 1);
     } else {
-        compiler_error(c, node, "makes boolean from %s without a cast\n", lgx_type_to_string(&e.v_type));
+        lgx_type_t t;
+        lgx_type_init(&t, T_BOOL);
+        compiler_type_error(c, node, &t, &e.v_type);
         return 1;
     }
 
@@ -2148,7 +2194,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     }
 
     if (!check_type(&e, T_LONG) && check_type(&e, T_STRING)) {
-        compiler_error(c, node, "makes integer or string from %s without a cast\n", lgx_type_to_string(&e.v_type));
+        compiler_error(c, node, "switch condition should be integer or string\n");
         return 1;
     }
 
@@ -2401,7 +2447,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         }
 
         if (lgx_type_cmp(&fun->ret, &e.v_type) != 0) {
-            compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&fun->ret), lgx_type_to_string(&e.v_type));
+            compiler_type_error(c, node, &fun->ret, &e.v_type);
             ret = 1;
         }
     } else {
@@ -2517,7 +2563,7 @@ static int compiler_global_variable_declaration(lgx_compiler_t* c, lgx_ast_node_
             }
         } else {
             if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
                 ret = 1;
             }
         }
@@ -2575,7 +2621,7 @@ static int compiler_local_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t
             }
         } else {
             if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
                 ret = 1;
             }
         }
@@ -2643,7 +2689,7 @@ static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
             }
         } else {
             if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_error(c, node, "makes %s from %s without a cast\n", lgx_type_to_string(&e1.v_type), lgx_type_to_string(&e2.v_type));
+                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
                 ret = 1;
             }
         }

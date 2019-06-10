@@ -10,32 +10,49 @@ const lgx_type_t lgx_type_basic[] = {
     {T_STRING,  lgx_str("string")}
 };
 
-char* lgx_type_to_string(lgx_type_t* type) {
+int lgx_type_to_string(lgx_type_t* type, lgx_str_t* str) {
+    lgx_str_t append;
+
     switch (type->type) {
         case T_UNKNOWN:
-            return "unknown";
+            lgx_str_set(append, "unknown");
+            return lgx_str_append(&append, str);
         case T_NULL:
-            return "null";
+            lgx_str_set(append, "null");
+            return lgx_str_append(&append, str);
         case T_LONG:
-            return "integer";
+            lgx_str_set(append, "int");
+            return lgx_str_append(&append, str);
         case T_DOUBLE:
-            return "float";
+            lgx_str_set(append, "float");
+            return lgx_str_append(&append, str);
         case T_BOOL:
-            return "boolean";
+            lgx_str_set(append, "bool");
+            return lgx_str_append(&append, str);
         case T_STRING:
-            return "string";
+            lgx_str_set(append, "string");
+            return lgx_str_append(&append, str);
         case T_ARRAY:
-            return "array";
+            lgx_str_set(append, "[]");
+            if (lgx_str_append(&append, str)) {
+                return 1;
+            }
+            return lgx_type_to_string(&type->u.arr->value, str);
         case T_MAP:
-            return "map";
+            lgx_str_set(append, "map");
+            return lgx_str_append(&append, str);
         case T_STRUCT:
-            return "struct";
+            lgx_str_set(append, "struct");
+            return lgx_str_append(&append, str);
         case T_INTERFACE:
-            return "interface";
+            lgx_str_set(append, "interface");
+            return lgx_str_append(&append, str);
         case T_FUNCTION:
-            return "function";
+            lgx_str_set(append, "function");
+            return lgx_str_append(&append, str);
         default:
-            return "invalid";
+            lgx_str_set(append, "invalid");
+            return lgx_str_append(&append, str);
     }
 }
 

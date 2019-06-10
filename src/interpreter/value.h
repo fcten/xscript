@@ -11,7 +11,7 @@ int lgx_value_cmp(lgx_value_t* v1, lgx_value_t* v2);
 void lgx_array_print(lgx_array_t* arr);
 void lgx_value_print(lgx_value_t* v);
 
-char* lgx_value_typeof(lgx_value_t* v);
+int lgx_value_typeof(lgx_value_t* v, lgx_str_t* str);
 
 lgx_string_t* lgx_string_new();
 void lgx_string_cleanup(lgx_string_t* str);

@@ -29,6 +29,6 @@ function main() {
 
     var arr8 [][]int = [];
     arr8[] = arr1;
-    arr8[] = arr6;
+    arr8[] = [];
     echo(arr8);
 }

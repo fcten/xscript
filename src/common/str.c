@@ -97,6 +97,25 @@ void lgx_str_concat(lgx_str_t *src, lgx_str_t *dst) {
     dst->length += src->length;
 }
 
+int lgx_str_append(lgx_str_t *src, lgx_str_t *dst) {
+    int size = dst->size;
+    if (size == 0) {
+        size = 16;
+    }
+
+    while (size < src->length + dst->length) {
+        size *= 2;
+    }
+
+    if (lgx_str_resize(dst, size)) {
+        return 1;
+    }
+
+    lgx_str_concat(src, dst);
+
+    return 0;
+}
+
 void lgx_str_print(lgx_str_t *str) {
     printf("%.*s", str->length, str->buffer);
 }

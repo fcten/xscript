@@ -195,8 +195,9 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d + R(pc).v.d;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "+", lgx_value_typeof(&R(pc)));
-                }
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "+", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
+;                }
                 break;
             }
             case OP_SUB:{
@@ -207,7 +208,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d - R(pc).v.d;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "-", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "-", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -219,7 +221,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d * R(pc).v.d;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "*", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "*", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -239,7 +242,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         R(pa).v.d = R(pb).v.d / R(pc).v.d;
                     }
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "/", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "/", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -251,7 +255,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d + pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -263,7 +268,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d - pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -275,7 +281,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d * pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -287,7 +294,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_DOUBLE;
                     R(pa).v.d = R(pb).v.d / pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -299,7 +307,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.d = -R(pb).v.d;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -308,7 +317,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "<<", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "<<", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -317,7 +327,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), ">>", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), ">>", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -326,7 +337,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l << pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -335,7 +347,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l >> pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -344,7 +357,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l & R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "&", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "&", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -353,7 +367,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l | R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "|", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "|", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -362,7 +377,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = R(pb).v.l ^ R(pc).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "^", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "^", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -371,7 +387,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     R(pa).type = T_LONG;
                     R(pa).v.l = ~R(pb).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "~", lgx_value_typeof(&R(pc)));
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "~", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -427,7 +444,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d >= pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -439,7 +457,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d <= pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -451,7 +470,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d > pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -463,7 +483,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 } else if (R(pb).type == T_DOUBLE) {
                     R(pa).v.l = R(pb).v.d < pc;
                 } else {
-                    lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes number from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -473,7 +494,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (EXPECTED(R(pb).type == T_BOOL)) {
                     R(pa).v.l = !R(pb).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -483,7 +505,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         vm->co_running->pc += PD(i);
                     }
                 } else {
-                    lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pa)));
+                    //lgx_vm_throw_s(vm, "makes boolean from %s without a cast", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -491,7 +514,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 if (R(pa).type == T_LONG) {
                     vm->co_running->pc = R(pa).v.l;
                 } else {
-                    lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pa)));
+                    //lgx_vm_throw_s(vm, "makes integer from %s without a cast", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -508,7 +532,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
+                    //lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -534,7 +559,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     vm->co_running->pc = fun->addr;
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
+                    //lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -598,7 +624,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -664,7 +691,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         key = R(pb).v.str->string;
                     } else {
                         // runtime warning
-                        lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_value_typeof(&R(pa)));
+                        //lgx_vm_throw_s(vm, "attempt to set a %s key, integer or string expected", lgx_value_typeof(&R(pa)));
+                        lgx_vm_throw_s(vm, "runtime error");
                         break;
                     }
                     lgx_value_t* v = xcalloc(1, sizeof(lgx_value_t));
@@ -688,7 +716,8 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                     }
                 } else {
                     // runtime error
-                    lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
+                    //lgx_vm_throw_s(vm, "attempt to set a %s value, array expected", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
@@ -736,10 +765,12 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         }
                     } else {
                         // runtime warning
-                        lgx_vm_throw_s(vm, "attempt to index a %s key, integer or string expected", lgx_value_typeof(&R(pc)));
+                        //lgx_vm_throw_s(vm, "attempt to index a %s key, integer or string expected", lgx_value_typeof(&R(pc)));
+                        lgx_vm_throw_s(vm, "runtime error");
                     }
                 } else {
-                    lgx_vm_throw_s(vm, "attempt to index a %s value, array expected", lgx_value_typeof(&R(pb)));
+                    //lgx_vm_throw_s(vm, "attempt to index a %s value, array expected", lgx_value_typeof(&R(pb)));
+                    lgx_vm_throw_s(vm, "runtime error");
                 }
                 break;
             }
