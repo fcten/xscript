@@ -97,7 +97,7 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {
     // 写入返回地址
     lgx_co_set_long(co, 2, -1);
     // 写入堆栈地址
-    lgx_co_set_long(co, 3, 0);
+    lgx_co_set_long(co, 3, -1);
 
     co->id = ++vm->co_id;
     vm->co_count ++;
@@ -108,11 +108,6 @@ lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {
 int lgx_co_delete(lgx_vm_t *vm, lgx_co_t *co) {
     if (!lgx_list_empty(&co->head)) {
         lgx_list_del(&co->head);
-    }
-
-    // 主协程不能删除，必须和虚拟机一起销毁
-    if (co == vm->co_main) {
-        return 0;
     }
 
     lgx_co_stack_cleanup(&co->stack);
@@ -350,20 +345,17 @@ int lgx_co_return_array(lgx_co_t *co, lgx_array_t *arr) {
 
 // 输出协程的当前调用栈
 int lgx_co_backtrace(lgx_co_t *co) {
-    unsigned int base = co->stack.base;
-    lgx_function_t* fun = co->stack.buf[base].v.fun;
+    long long base = co->stack.base;
     int i = 0;
 
-    while (1) {
+    while (base >= 0) {
+        lgx_function_t* fun = co->stack.buf[base].v.fun;
+
         printf("#%d %.*s()\n", i, fun->name.length, fun->name.buffer);
 
         ++i;
 
-        if (base != 0) {
-            base = co->stack.buf[base+3].v.l;
-        } else {
-            break;
-        }
+        base = co->stack.buf[base+3].v.l;
     }
 
     return 0;
@@ -371,86 +363,94 @@ int lgx_co_backtrace(lgx_co_t *co) {
 
 void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
     unsigned pc = co->pc - 1;
+    long long base = co->stack.base;
 
-    // 匹配最接近的 try-catch 块
-    unsigned long long int key = ((unsigned long long int)pc + 1) << 32;
+    while (1) {
+        // 匹配最接近的 try-catch 块
+        unsigned long long int key = ((unsigned long long int)pc + 1) << 32;
 
-    lgx_str_t k;
-    k.buffer = (char *)&key;
-    k.length = sizeof(key);
+        lgx_str_t k;
+        k.buffer = (char *)&key;
+        k.length = sizeof(key);
 
-    lgx_exception_t *exception;
-    lgx_exception_block_t *block = NULL;
-    lgx_rb_node_t *n = lgx_rb_get_lesser(co->vm->exception, &k);
-    if (n) {
-        exception = (lgx_exception_t *)n->value;
-        if (pc >= exception->try_block.start && pc <= exception->try_block.end) {
-            // 匹配参数类型符合的 catch block
-            lgx_exception_block_t *b;
-            lgx_list_for_each_entry(b, lgx_exception_block_t, &exception->catch_blocks, head) {
-                if (b->e.type == e->type) {
-                    switch (e->type) {
-                        case T_LONG:
-                        case T_DOUBLE:
-                        case T_BOOL:
-                        case T_STRING:
-                            block = b;
-                            break;
-                        case T_ARRAY:
-                        case T_MAP:
-                        case T_STRUCT:
-                        case T_INTERFACE:
-                        case T_FUNCTION:
-                            // TODO
-                            break;
-                        default:
-                            break;
+        lgx_exception_t *exception;
+        lgx_exception_block_t *block = NULL;
+        lgx_rb_node_t *n = lgx_rb_get_lesser(co->vm->exception, &k);
+        if (n) {
+            exception = (lgx_exception_t *)n->value;
+            if (pc >= exception->try_block.start && pc <= exception->try_block.end) {
+                // 匹配参数类型符合的 catch block
+                lgx_exception_block_t *b;
+                lgx_list_for_each_entry(b, lgx_exception_block_t, &exception->catch_blocks, head) {
+                    if (b->e.type == e->type) {
+                        switch (e->type) {
+                            case T_LONG:
+                            case T_DOUBLE:
+                            case T_BOOL:
+                            case T_STRING:
+                                block = b;
+                                break;
+                            case T_ARRAY:
+                            case T_MAP:
+                            case T_STRUCT:
+                            case T_INTERFACE:
+                            case T_FUNCTION:
+                                // TODO
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (block) {
-        // 跳转到指定的 catch block
-        co->pc = block->start;
+        if (block) {
+            // 跳转到指定的 catch block
+            co->pc = block->start;
 
-        // 把异常变量写入到 catch block 的参数中
-        //printf("%d\n",block->e->u.symbol.reg_num);
-        co->stack.buf[co->stack.base + block->reg] = *e;
-    } else {
-        // 没有匹配的 catch 块，递归向上寻找
-        unsigned base = co->stack.base;
-        lgx_value_t *regs = co->stack.buf + base;
+            // 把异常变量写入到 catch block 的参数中
+            //printf("%d\n",block->e->u.symbol.reg_num);
+            co->stack.base = base;
+            co->stack.buf[co->stack.base + block->reg] = *e;
 
-        assert(check_type(&regs[0], T_FUNCTION));
-        assert(check_type(&regs[2], T_LONG));
-        assert(check_type(&regs[3], T_LONG));
-
-        if (regs[2].v.l >= 0) {
-            // 释放所有局部变量和临时变量
-            int n;
-            for (n = 0; n < regs[0].v.fun->stack_size; n ++) {
-                regs[n].type = T_UNKNOWN;
-            }
-
-            // 切换执行堆栈
-            co->stack.base = regs[3].v.l;
-
-            // 在函数调用点重新抛出异常
-            co->pc = regs[2].v.l;
-            lgx_co_throw(co, e);
+            return;
         } else {
-            // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
-            printf("[uncaught exception] ");
-            lgx_value_print(e);
-            printf("\n\nco_id = %llu, pc = %u\n", co->id, co->pc-1);
+            // 没有匹配的 catch 块
+            lgx_value_t *regs = co->stack.buf + base;
 
-            // TODO 写入到协程返回值中？
+            assert(check_type(&regs[0], T_FUNCTION));
+            assert(check_type(&regs[2], T_LONG));
+            assert(check_type(&regs[3], T_LONG));
 
-            lgx_co_backtrace(co);
+            if (regs[2].v.l >= 0) {
+                // 释放所有局部变量和临时变量
+                int n;
+                for (n = 0; n < regs[0].v.fun->stack_size; n ++) {
+                    regs[n].type = T_UNKNOWN;
+                }
 
-            co->pc = regs[0].v.fun->end;
+                // 切换执行堆栈
+                base = regs[3].v.l;
+
+                // 在函数调用点重新抛出异常
+                pc = regs[2].v.l;
+            } else {
+                // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
+                printf("[uncaught exception] ");
+                lgx_value_print(e);
+                lgx_value_cleanup(e);
+                printf("\n\nco_id = %llu, pc = %u\n", co->id, co->pc-1);
+
+                // TODO 写入到协程返回值中？
+
+                lgx_co_backtrace(co);
+
+                co->pc = regs[0].v.fun->end;
+                co->stack.base = base;
+
+                return;
+            }
         }
     }
 }

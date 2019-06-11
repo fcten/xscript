@@ -97,21 +97,6 @@ int lgx_vm_call(lgx_vm_t *vm, lgx_function_t *fun) {
 }
 
 int lgx_vm_cleanup(lgx_vm_t *vm) {
-    // 释放主协程堆栈
-    assert(vm->co_main);
-    lgx_co_t *co = vm->co_main;
-    unsigned base = co->stack.base;
-    assert(co->stack.buf[base].type == T_FUNCTION);
-    unsigned size = base + co->stack.buf[base].v.fun->stack_size;
-    int n;
-    for (n = 0; n < size; n ++) {
-        co->stack.buf[n].type = T_UNKNOWN;
-    }
-
-    // 释放主协程
-    vm->co_main = NULL;
-    lgx_co_delete(vm, co);
-
     // TODO 释放消息队列
 
     // TODO 回收所有内存
@@ -642,18 +627,16 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 }
 
                 // 释放所有局部变量和临时变量
-                if (UNEXPECTED(pc < 0 && vm->co_running == vm->co_main)) {
-                    // 主协程退出时保留堆栈，以保证全局变量可以访问
-                } else {
-                    int n;
-                    for (n = 0; n < R(0).v.fun->stack_size; n ++) {
-                        R(n).type = T_UNKNOWN;
-                    }
+                int n;
+                for (n = 0; n < R(0).v.fun->stack_size; n ++) {
+                    R(n).type = T_UNKNOWN;
                 }
 
                 // 切换执行堆栈
-                vm->co_running->stack.base = R(3).v.l;
-                vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
+                if (EXPECTED(pc >= 0)) {
+                    vm->co_running->stack.base = R(3).v.l;
+                    vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
+                }
 
                 // 写入返回值
                 if (has_ret) {
