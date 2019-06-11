@@ -181,7 +181,9 @@ void lgx_const_print(lgx_ht_t* ct) {
     printf("[\n");
     for (n = lgx_ht_first(ct); n; n = lgx_ht_next(n)) {
         lgx_str_print(&n->k);
-        printf(":\n\t");
+        printf("\n\t<");
+        lgx_value_type_print(&((lgx_const_t*)n->v)->v);
+        printf("> ");
         lgx_value_print(&((lgx_const_t*)n->v)->v);
         printf(",\n");
     }

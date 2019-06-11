@@ -10,6 +10,7 @@ int lgx_value_cmp(lgx_value_t* v1, lgx_value_t* v2);
 
 void lgx_array_print(lgx_array_t* arr);
 void lgx_value_print(lgx_value_t* v);
+void lgx_value_type_print(lgx_value_t* v);
 
 int lgx_value_typeof(lgx_value_t* v, lgx_str_t* str);
 

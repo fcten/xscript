@@ -85,6 +85,45 @@ void lgx_array_print(lgx_array_t* arr) {
     }
 }
 
+void lgx_value_type_print(lgx_value_t* v) {
+    switch (v->type) {
+        case T_UNKNOWN:
+            printf("unknown");
+            break;
+        case T_LONG:
+            printf("int");
+            break;
+        case T_DOUBLE:
+            printf("float");
+            break;
+        case T_BOOL:
+            printf("bool");
+            break;
+        case T_STRING:
+            printf("string");
+            break;
+        case T_NULL:
+            printf("null");
+            break;
+        case T_ARRAY:{
+            lgx_str_t type;
+            lgx_str_set_null(type);
+            lgx_type_to_string(&v->v.arr->gc.type, &type);
+            printf("%.*s", type.length, type.buffer);
+            lgx_str_cleanup(&type);
+            break;
+        }
+        case T_CUSTOM:
+        case T_MAP:
+        case T_STRUCT:
+        case T_INTERFACE:
+        case T_FUNCTION:
+            // TODO
+            break;
+        
+    }
+}
+
 void lgx_value_print(lgx_value_t* v) {
    switch (v->type) {
         case T_LONG:
@@ -115,8 +154,14 @@ void lgx_value_print(lgx_value_t* v) {
         case T_NULL:
             printf("null");
             break;
-        default:
+        case T_UNKNOWN:
             printf("unknwon");
+            break;
+        case T_MAP:
+        case T_STRUCT:
+        case T_INTERFACE:
+        case T_CUSTOM:
+            // TODO
             break;
     }
 }
