@@ -2214,7 +2214,7 @@ static int compiler_switch_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         return 1;
     }
 
-    if (!check_type(&e, T_LONG) && check_type(&e, T_STRING)) {
+    if (!check_type(&e, T_LONG) && !check_type(&e, T_STRING)) {
         compiler_error(c, node, "switch condition should be integer or string\n");
         return 1;
     }
