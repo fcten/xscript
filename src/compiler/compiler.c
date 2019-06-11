@@ -1354,7 +1354,7 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
     return ret;
 }
 
-static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
+static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, unsigned is_tail) {
     assert(node->type == BINARY_EXPRESSION);
     assert(node->u.op == TK_LEFT_PAREN);
     assert(node->children == 2);
@@ -1438,7 +1438,11 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
 
     e->type = EXPR_TEMP;
     e->u.local = reg_pop(c, node);
-    bc_call(c, r, e->u.local);
+    if (is_tail) {
+        bc_tail_call(c, r);
+    } else {
+        bc_call(c, r, e->u.local);
+    }
     
     if (!is_local(&e1) && !is_temp(&e1) && r >= 0) {
         reg_push(c, node, r);
@@ -1452,17 +1456,6 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
     lgx_expr_result_cleanup(c, node, &e1);
 
     return ret;
-}
-
-static int compiler_binary_expression_tail_call(lgx_compiler_t* c, lgx_ast_node_t* node, lgx_expr_result_t* e, unsigned* is_tail) {
-    assert(node->type == BINARY_EXPRESSION);
-    assert(node->u.op == TK_LEFT_PAREN);
-    assert(node->children == 2);
-    assert(node->child[1]->type == FUNCTION_CALL_PARAMETER);
-
-    // TODO
-
-    return 0;
 }
 
 static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e) {
@@ -1549,7 +1542,7 @@ static int compiler_binary_expression(lgx_compiler_t* c, lgx_ast_node_t *node, l
             ret = compiler_binary_expression_assignment(c, node, e);
             break;
         case TK_LEFT_PAREN:
-            ret = compiler_binary_expression_call(c, node, e);
+            ret = compiler_binary_expression_call(c, node, e, 0);
             break;
         case TK_LEFT_BRACK:
             ret = compiler_binary_expression_index(c, node, e);
@@ -2457,8 +2450,7 @@ static int compiler_return_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     if (node->child[0]) {
         if (node->child[0]->type == BINARY_EXPRESSION && node->child[0]->u.op == TK_LEFT_PAREN) {
             // 尾调用
-            // 这里也可能生成一个普通调用
-            if (compiler_binary_expression_tail_call(c, node->child[0], &e, &is_tail)) {
+            if (compiler_binary_expression_call(c, node->child[0], &e, 1)) {
                 ret = 1;
             }
         } else {
