@@ -1247,9 +1247,16 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
             ret = 1;
         }
 
-        if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-            compiler_type_error(c, node, &e1.v_type, &e2.v_type);
-            ret = 1;
+        if (e2.type == EXPR_LITERAL) {
+            if (!lgx_type_is_fit(&e2.v_type, &e1.v_type)) {
+                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                ret = 1;
+            }
+        } else {
+            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                ret = 1;
+            }
         }
 
         if (is_global(&e1)) {
@@ -1269,9 +1276,16 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
         }
 
         if (check_variable(&e1, T_ARRAY)) {
-            if (lgx_type_cmp(&e1.v_type.u.arr->value, &e2.v_type)) {
-                compiler_type_error(c, node, &e1.v_type.u.arr->value, &e2.v_type);
-                ret = 1;
+            if (e2.type == EXPR_LITERAL) {
+                if (!lgx_type_is_fit(&e2.v_type, &e1.v_type.u.arr->value)) {
+                    compiler_type_error(c, node, &e1.v_type.u.arr->value, &e2.v_type);
+                    ret = 1;
+                }
+            } else {
+                if (lgx_type_cmp(&e1.v_type.u.arr->value, &e2.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type.u.arr->value, &e2.v_type);
+                    ret = 1;
+                }
             }
 
             int index = 0;
@@ -1485,12 +1499,9 @@ static int compiler_binary_expression_index(lgx_compiler_t* c, lgx_ast_node_t *n
         ret = 1;
     }
 
+    // 设置返回值类型
     if (e->v_type.type == T_UNKNOWN) {
         if (lgx_type_dup(&e1.v_type.u.arr->value, &e->v_type)) {
-            ret = 1;
-        }
-    } else {
-        if (lgx_type_cmp(&e1.v_type.u.arr->value, &e->v_type)) {
             ret = 1;
         }
     }
@@ -1696,10 +1707,20 @@ static int compiler_array_expression(lgx_compiler_t* c, lgx_ast_node_t *node, lg
         if (compiler_expression(c, node->child[i], &t)) {
             ret = 1;
         } else {
-            if (e->v_type.u.arr->value.type == T_UNKNOWN) {
-                lgx_type_dup(&t.v_type, &e->v_type.u.arr->value);
+            if (lgx_type_is_definite(&e->v_type.u.arr->value)) {
+                if (t.type == EXPR_LITERAL) {
+                    if (!lgx_type_is_fit(&t.v_type, &e->v_type.u.arr->value)) {
+                        compiler_type_error(c, node, &t.v_type, &e->v_type.u.arr->value);
+                        ret = 1;
+                    }
+                } else {
+                    if (lgx_type_cmp(&t.v_type, &e->v_type.u.arr->value)) {
+                        compiler_type_error(c, node, &t.v_type, &e->v_type.u.arr->value);
+                        ret = 1;
+                    }
+                }
             } else {
-                if (lgx_type_cmp(&t.v_type, &e->v_type.u.arr->value)) {
+                if (lgx_type_inference(&t.v_type, &e->v_type.u.arr->value)) {
                     compiler_type_error(c, node, &e->v_type.u.arr->value, &t.v_type);
                     ret = 1;
                 }
@@ -2558,13 +2579,24 @@ static int compiler_global_variable_declaration(lgx_compiler_t* c, lgx_ast_node_
         if (check_type(&e1, T_UNKNOWN)) {
             // 根据表达式进行类型推断
             if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
-                compiler_error(c, node, "type inference failed\n");
+                compiler_type_error(c, node, &e1.symbol->type, &e2.v_type);
+                ret = 1;
+            }
+            if (!lgx_type_is_definite(&e1.symbol->type)) {
+                compiler_error(c, node, "global variable `%.*s` has unknown type\n", name.length, name.buffer);
                 ret = 1;
             }
         } else {
-            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
-                ret = 1;
+            if (e2.type == EXPR_LITERAL) {
+                if (!lgx_type_is_fit(&e2.v_type, &e1.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
+            } else {
+                if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
             }
         }
 
@@ -2616,13 +2648,24 @@ static int compiler_local_variable_declaration(lgx_compiler_t* c, lgx_ast_node_t
         if (check_type(&e1, T_UNKNOWN)) {
             // 根据表达式进行类型推断
             if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
-                compiler_error(c, node, "type inference failed\n");
+                compiler_type_error(c, node, &e1.symbol->type, &e2.v_type);
+                ret = 1;
+            }
+            if (!lgx_type_is_definite(&e1.symbol->type)) {
+                compiler_error(c, node, "local variable `%.*s` has unknown type\n", name.length, name.buffer);
                 ret = 1;
             }
         } else {
-            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
-                ret = 1;
+            if (e2.type == EXPR_LITERAL) {
+                if (!lgx_type_is_fit(&e2.v_type, &e1.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
+            } else {
+                if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
             }
         }
 
@@ -2684,13 +2727,24 @@ static int compiler_constant_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
         if (check_type(&e1, T_UNKNOWN)) {
             // 根据表达式进行类型推断
             if (lgx_type_inference(&e2.v_type, &e1.symbol->type)) {
-                compiler_error(c, node, "type inference failed\n");
+                compiler_type_error(c, node, &e1.symbol->type, &e2.v_type);
+                ret = 1;
+            }
+            if (!lgx_type_is_definite(&e1.symbol->type)) {
+                compiler_error(c, node, "constant `%.*s` has unknown type\n", name.length, name.buffer);
                 ret = 1;
             }
         } else {
-            if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
-                compiler_type_error(c, node, &e1.v_type, &e2.v_type);
-                ret = 1;
+            if (e2.type == EXPR_LITERAL) {
+                if (!lgx_type_is_fit(&e2.v_type, &e1.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
+            } else {
+                if (lgx_type_cmp(&e1.v_type, &e2.v_type)) {
+                    compiler_type_error(c, node, &e1.v_type, &e2.v_type);
+                    ret = 1;
+                }
             }
         }
 
@@ -2825,7 +2879,7 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     bc_ret(c, 0);
 
     symbol->v.v.fun->end = c->bc.length - 1;
-    symbol->v.v.fun->stack_size = node->u.regs->max;
+    symbol->v.v.fun->stack_size = node->u.regs->max + 1;
 
     return ret;
 }

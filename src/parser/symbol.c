@@ -135,7 +135,16 @@ static int symbol_parse_type_function_receiver(lgx_ast_t* ast, lgx_ast_node_t* n
     assert(node->child[0]->child[0]->children == 2);
     assert(node->child[0]->child[0]->child[1]->type == TYPE_EXPRESSION);
 
-    return symbol_parse_type(ast, node->child[0]->child[0]->child[1], &fun->receiver);
+    if (symbol_parse_type(ast, node->child[0]->child[0]->child[1], &fun->receiver)) {
+        return 1;
+    }
+
+    if (fun->receiver.type != T_UNKNOWN && !lgx_type_is_definite(&fun->receiver)) {
+        symbol_error(ast, node, "receiver has incomplete type\n");
+        return 1;
+    }
+
+    return 0;
 }
 
 static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
@@ -159,6 +168,11 @@ static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* 
         if (symbol_parse_type(ast, node->child[i]->child[1], &fun->args[i])) {
             ret = 1;
         }
+
+        if (fun->args[i].type != T_UNKNOWN && !lgx_type_is_definite(&fun->args[i])) {
+            symbol_error(ast, node, "parameter has incomplete type\n");
+            ret = 1;
+        }
     }
 
     return ret;
@@ -167,7 +181,16 @@ static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* 
 static int symbol_parse_type_function_return(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
     assert(node->type == TYPE_EXPRESSION);
 
-    return symbol_parse_type(ast, node, &fun->ret);
+    if (symbol_parse_type(ast, node, &fun->ret)) {
+        return 1;
+    }
+
+    if (fun->ret.type != T_UNKNOWN && !lgx_type_is_definite(&fun->ret)) {
+        symbol_error(ast, node, "return value has incomplete type\n");
+        return 1;
+    }
+
+    return 0;
 }
 
 static int symbol_parse_type_function(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
@@ -305,7 +328,12 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
         return 1;
     }
 
-    // 注意：这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
+    if (symbol->type.type != T_UNKNOWN && !lgx_type_is_definite(&symbol->type)) {
+        symbol_error(ast, node, "variable %.*s has incomplete type\n", name.length, name.buffer);
+        return 1;
+    }
+
+    // 这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
 
     return 0;
 }
@@ -351,7 +379,12 @@ static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
         return 1;
     }
 
-    // 注意：这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
+    if (symbol->type.type != T_UNKNOWN && !lgx_type_is_definite(&symbol->type)) {
+        symbol_error(ast, node, "constant %.*s has incomplete type\n", name.length, name.buffer);
+        return 1;
+    }
+
+    // 这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
 
     return 0;
 }

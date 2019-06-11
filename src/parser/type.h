@@ -199,4 +199,7 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2);
 int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst);
 int lgx_type_inference(lgx_type_t* src, lgx_type_t* dst);
 
+int lgx_type_is_definite(lgx_type_t* type);
+int lgx_type_is_fit(lgx_type_t* src, lgx_type_t* dst);
+
 #endif // LGX_TYPE_H

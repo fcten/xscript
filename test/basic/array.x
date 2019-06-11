@@ -31,4 +31,10 @@ function main() {
     arr8[] = arr1;
     arr8[] = [];
     echo(arr8);
+
+    var arr9 = [[1],[2],[]];
+    echo(arr9);
+
+    var arr10 = [[],[2],[3]];
+    echo(arr10);
 }

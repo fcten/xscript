@@ -62,6 +62,9 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
     }
 
     switch (t1->type) {
+        case T_UNKNOWN:
+            // unknown != unknown
+            return 1;
         case T_ARRAY:
             return lgx_type_cmp(&t1->u.arr->value, &t2->u.arr->value);
         case T_MAP:
@@ -141,27 +144,61 @@ int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
     return 0;
 }
 
-static int check_unknown(lgx_type_t* type) {
+// 检查类型是否已经完全确定
+int lgx_type_is_definite(lgx_type_t* type) {
     switch (type->type) {
         case T_UNKNOWN:
-            return 1;
-        case T_ARRAY:
-            return check_unknown(&type->u.arr->value);
-        case T_MAP:
-            if (check_unknown(&type->u.map->key)) {
-                return 1;
-            }
-            return check_unknown(&type->u.map->value);
-        default:
             return 0;
+        case T_ARRAY:
+            return lgx_type_is_definite(&type->u.arr->value);
+        case T_MAP:
+            if (lgx_type_is_definite(&type->u.map->key)) {
+                return 0;
+            }
+            return lgx_type_is_definite(&type->u.map->value);
+        default:
+            return 1;
     }
 }
 
+// 根据 src 推断 dst 的类型。
 int lgx_type_inference(lgx_type_t* src, lgx_type_t* dst) {
-    if (check_unknown(src)) {
-        return 1;
+    switch (dst->type) {
+        case T_UNKNOWN:
+            return lgx_type_dup(src, dst);
+        case T_ARRAY:
+            if (src->type != T_ARRAY) {
+                return 1;
+            }
+            return lgx_type_inference(&src->u.arr->value, &dst->u.arr->value);
+        case T_MAP:
+        case T_STRUCT:
+        case T_INTERFACE:
+        case T_FUNCTION:
+            // TODO
+            return 1;
+        default:
+            return lgx_type_cmp(src, dst);
     }
-    return lgx_type_dup(src, dst);
+}
+
+// 判断类型 src 是否可以被用于赋值给类型 dst
+// 注意：src 只能是字面量。如果 src 是变量或常量，应该使用 lgx_type_cmp 判断。
+int lgx_type_is_fit(lgx_type_t* src, lgx_type_t* dst) {
+    switch (src->type) {
+        case T_UNKNOWN:
+            return 1;
+        case T_ARRAY:
+            return lgx_type_is_fit(&src->u.arr->value, &dst->u.arr->value);
+        case T_MAP:
+        case T_STRUCT:
+        case T_INTERFACE:
+        case T_FUNCTION:
+            // TODO
+            return 0;
+        default:
+            return !lgx_type_cmp(src, dst);
+    }
 }
 
 int lgx_type_init(lgx_type_t* type, lgx_val_type_t t) {
