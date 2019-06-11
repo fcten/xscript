@@ -1081,7 +1081,12 @@ static int ast_parse_try_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             return 1;
         }
 
-        catch_statement->child[catch_statement->children-1]->type = EXCEPTION_DECL_PARAMETER;
+        catch_statement->child[0]->type = EXCEPTION_DECL_PARAMETER;
+
+        if (catch_statement->child[0]->children != 1) {
+            ast_error(ast, "there must be one and only one parameter for catch block\n", ast->cur_length, ast->cur_start);
+            return 1;
+        }
 
         if (ast_parse_block_statement_with_braces(ast, catch_statement)) {
             return 1;

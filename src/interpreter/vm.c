@@ -29,9 +29,12 @@ void lgx_vm_throw_s(lgx_vm_t *vm, const char *fmt, ...) {
     lgx_value_t e;
     e.type = T_STRING;
     e.v.str = xcalloc(1, sizeof(lgx_string_t));
+    e.v.str->gc.type.type = T_STRING;
     e.v.str->string.length = len;
     e.v.str->string.size = 128;
     e.v.str->string.buffer = buf;
+
+    lgx_gc_trace(vm, &e);
 
     lgx_vm_throw(vm, &e);
 }

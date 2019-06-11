@@ -37,5 +37,6 @@ lgx_exception_block_t* lgx_exception_block_new() {
 }
 
 void lgx_exception_block_del(lgx_exception_block_t *block) {
+    lgx_type_cleanup(&block->e);
     xfree(block);
 }

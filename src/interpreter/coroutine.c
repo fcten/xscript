@@ -434,12 +434,11 @@ void lgx_co_throw(lgx_co_t *co, lgx_value_t *e) {
                 base = regs[3].v.l;
 
                 // 在函数调用点重新抛出异常
-                pc = regs[2].v.l;
+                pc = regs[2].v.l - 1;
             } else {
                 // 遍历调用栈依然未能找到匹配的 catch 块，退出当前协程
                 printf("[uncaught exception] ");
                 lgx_value_print(e);
-                lgx_value_cleanup(e);
                 printf("\n\nco_id = %llu, pc = %u\n", co->id, co->pc-1);
 
                 // TODO 写入到协程返回值中？
@@ -465,9 +464,13 @@ void lgx_co_throw_s(lgx_co_t *co, const char *fmt, ...) {
 
     lgx_value_t e;
     e.type = T_STRING;
+    e.v.str = xcalloc(1, sizeof(lgx_string_t));
+    e.v.str->gc.type.type = T_STRING;
     e.v.str->string.length = len;
     e.v.str->string.size = 128;
     e.v.str->string.buffer = buf;
+
+    lgx_gc_trace(co->vm, &e);
 
     lgx_co_throw(co, &e);
 }

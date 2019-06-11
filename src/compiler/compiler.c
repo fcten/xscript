@@ -2348,8 +2348,6 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         unsigned pos = c->bc.length;
         bc_jmpi(c, 0);
 
-        // TODO 处理参数
-
         // 编译 catch block
         block->start = c->bc.length;
         if (compiler_block_statement(c, n->child[1])) {
@@ -2367,7 +2365,22 @@ static int compiler_try_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
 
         lgx_list_add_tail(&block->head, &exception->catch_blocks);
 
-        // TODO 保存该 catch block 的参数
+        // 保存该 catch block 的参数
+
+        // 处理参数
+        lgx_str_t param;
+        param.buffer = c->ast->lex.source.content + n->child[0]->child[0]->offset;
+        param.length = n->child[0]->child[0]->length;
+        param.size = 0;
+
+        lgx_symbol_t* symbol = lgx_symbol_get(n->child[1], &param, n->child[1]->offset);
+        assert(symbol);
+
+        if (lgx_type_dup(&symbol->type, &block->e)) {
+            ret = 1;
+        }
+
+        block->reg = symbol->r;
     }
 
     if (lgx_list_empty(&exception->catch_blocks)) {
