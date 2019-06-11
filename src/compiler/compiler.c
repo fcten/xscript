@@ -2854,8 +2854,15 @@ static int compiler_function_declaration(lgx_compiler_t* c, lgx_ast_node_t *node
     if (!symbol->v.v.fun) {
         return 1;
     }
-    symbol->v.v.fun->type = symbol->type.u.fun;
-    lgx_str_init(&symbol->v.v.fun->name, name.length);
+    if (lgx_type_dup(&symbol->type, &symbol->v.v.fun->gc.type)) {
+        xfree(symbol->v.v.fun);
+        return 1;
+    }
+    if (lgx_str_init(&symbol->v.v.fun->name, name.length)) {
+        lgx_type_cleanup(&symbol->v.v.fun->gc.type);
+        xfree(symbol->v.v.fun);
+        return 1;
+    }
     lgx_str_dup(&name, &symbol->v.v.fun->name);
 
     int ret = 0;

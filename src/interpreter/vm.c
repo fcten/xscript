@@ -550,7 +550,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
 
                     // 移动参数
                     int n;
-                    for (n = 4; n < 4 + fun->type->arg_len + 1; n ++) {
+                    for (n = 4; n < 4 + fun->gc.type.u.fun->arg_len + 1; n ++) {
                         R(n) = R(base + n);
                         R(base + n).type = T_UNKNOWN;
                     }

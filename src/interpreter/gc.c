@@ -110,10 +110,15 @@ int lgx_gc_trace(lgx_vm_t *vm, lgx_value_t *v) {
 
 void lgx_gc_cleanup(lgx_gc_t* gc) {
     switch (gc->type.type) {
+        case T_STRING:
+            lgx_string_cleanup((lgx_string_t*)gc);
+            break;
         case T_ARRAY: 
             lgx_array_cleanup((lgx_array_t*)gc);
             break;
-        // TODO
+        case T_FUNCTION:
+            lgx_function_cleanup((lgx_function_t*)gc);
+            break;
         default:
             break;
     }

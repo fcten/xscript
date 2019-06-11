@@ -258,6 +258,28 @@ int lgx_value_dup(lgx_value_t* src, lgx_value_t* dst) {
                 }
             }
             break;
+        case T_FUNCTION:
+            dst->v.fun = xcalloc(1, sizeof(lgx_function_t));
+            if (!dst->v.fun) {
+                return 1;
+            }
+            if (lgx_type_dup(&src->v.fun->gc.type, &dst->v.fun->gc.type)) {
+                xfree(dst->v.fun);
+                dst->v.fun = NULL;
+                return 1;
+            }
+            if (lgx_str_init(&dst->v.fun->name, src->v.fun->name.length)) {
+                lgx_type_cleanup(&dst->v.fun->gc.type);
+                xfree(dst->v.fun);
+                dst->v.fun = NULL;
+                return 1;
+            }
+            lgx_str_dup(&src->v.fun->name, &dst->v.fun->name);
+            dst->v.fun->addr = src->v.fun->addr;
+            dst->v.fun->end = src->v.fun->end;
+            dst->v.fun->buildin = src->v.fun->buildin;
+            dst->v.fun->stack_size = src->v.fun->stack_size;
+            break;
         default:
             break;
     }

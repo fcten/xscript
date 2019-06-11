@@ -158,9 +158,6 @@ struct lgx_interface_s {
     // GC 信息
     lgx_gc_t gc;
 
-    // 类型
-    lgx_type_interface_t* type;
-
     // 方法
     lgx_ht_t methods;
 };
@@ -173,9 +170,6 @@ struct lgx_function_s {
 
     // 名字
     lgx_str_t name;
-
-    // 类型
-    lgx_type_function_t* type;
 
     // 需求的堆栈空间
     unsigned stack_size;
