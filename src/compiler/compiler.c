@@ -1154,6 +1154,9 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
         (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE))) {
         switch (node->u.op) {
             case TK_EQUAL:
+                if (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE)) {
+                    // TODO warning: 对浮点数使用 == 操作符可能不会得到预期结果
+                }
             case TK_NOT_EQUAL:
             case TK_GREATER:
             case TK_GREATER_EQUAL:
