@@ -1,6 +1,6 @@
 #include "../common/common.h"
 #include "../common/str.h"
-#include "../compiler/exception.h"
+#include "../runtime/exception.h"
 #include "coroutine.h"
 #include "value.h"
 #include "gc.h"

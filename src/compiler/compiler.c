@@ -1,11 +1,11 @@
 #include "../common/common.h"
 #include "../common/escape.h"
 #include "../parser/symbol.h"
+#include "../runtime/exception.h"
 #include "register.h"
 #include "compiler.h"
 #include "bytecode.h"
 #include "constant.h"
-#include "exception.h"
 #include "expr_result.h"
 
 // 追加一条错误信息
@@ -2552,6 +2552,7 @@ static int compiler_co_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     lgx_expr_result_t e;
     lgx_expr_result_init(&e);
 
+    // TODO 内建函数不能使用 co
     if (compiler_binary_expression_call(c, node->child[0], &e, 2)) {
         return 1;
     }
