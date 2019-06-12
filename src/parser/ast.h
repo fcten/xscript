@@ -26,6 +26,7 @@ typedef enum {
     CATCH_STATEMENT,
     THROW_STATEMENT,
     ECHO_STATEMENT,
+    CO_STATEMENT,
     // Declaration
     PACKAGE_DECLARATION,
     IMPORT_DECLARATION,

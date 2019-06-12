@@ -552,6 +552,37 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 }
                 break;
             }
+            case OP_CO_CALL:{
+                if (EXPECTED(R(pa).type == T_FUNCTION)) {
+                    lgx_function_t *fun = R(pa).v.fun;
+                    unsigned int base = R(0).v.fun->stack_size;
+
+                    if (fun->buildin) {
+                        fun->buildin(vm);
+                        // 如果触发了协程切换，则返回
+                        if (vm->co_running == NULL) {
+                            return 0;
+                        }
+                    } else {
+                        lgx_co_t *co = lgx_co_create(vm, fun);
+                        if (!co) {
+                            lgx_vm_throw_s(vm, "out of memory");
+                        } else {
+                            // 复制参数到新的 coroutine 中
+                            int n;
+                            for (n = 4; n < 4 + fun->gc.type.u.fun->arg_len; n ++) {
+                                co->stack.buf[n] = R(base + n);
+                                R(base + n).type = T_UNKNOWN;
+                            }
+                        }
+                    }
+                } else {
+                    // runtime error
+                    //lgx_vm_throw_s(vm, "attempt to call a %s value, function expected", lgx_value_typeof(&R(pa)));
+                    lgx_vm_throw_s(vm, "runtime error");
+                }
+                break;
+            }
             case OP_CALL:{
                 if (EXPECTED(R(pb).type == T_FUNCTION)) {
                     lgx_function_t *fun = R(pb).v.fun;
@@ -578,31 +609,7 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                         if (vm->co_running == NULL) {
                             return 0;
                         }
-                    }/* else if (fun->is_async) {
-                        lgx_co_t *co = lgx_co_create(vm, fun);
-                        if (!co) {
-                            lgx_vm_throw_s(vm, "out of memory");
-                        } else {
-                            // 复制参数到新的 coroutine 中
-                            // 由于类方法有隐藏参数 this，所以这里复制的参数数量为 fun->args_num + 1
-                            int n;
-                            for (n = 4; n < 4 + fun->args_num + 1; n ++) {
-                                co->stack.buf[n] = R(base + n);
-                                R(base + n).type = T_UNKNOWN;
-                            }
-
-                            lgx_value_t ret;
-                            ret.type = T_OBJECT;
-                            ret.v.obj = lgx_co_obj_new(vm, co);
-                            if (!ret.v.obj) {
-                                lgx_vm_throw_s(vm, "out of memory");
-                            } else {
-                                co->on_yield = lgx_co_await;
-
-                                lgx_co_return_object(vm->co_running, ret.v.obj);
-                            }
-                        }
-                    }*/ else {
+                    } else {
                         // 切换执行堆栈
                         vm->co_running->stack.base += R(0).v.fun->stack_size;
                         vm->regs = vm->co_running->stack.buf + vm->co_running->stack.base;
