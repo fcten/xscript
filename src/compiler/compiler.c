@@ -1576,6 +1576,7 @@ static int compiler_unary_expression_logic_not(lgx_compiler_t* c, lgx_ast_node_t
     }
 
     if (check_type(&e1, T_BOOL)) {
+        e->v_type.type = T_BOOL;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }
@@ -1605,6 +1606,7 @@ static int compiler_unary_expression_bitwise_not(lgx_compiler_t* c, lgx_ast_node
     }
 
     if (check_type(&e1, T_LONG)) {
+        e->v_type.type = T_LONG;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }
@@ -1634,6 +1636,7 @@ static int compiler_unary_expression_math_negative(lgx_compiler_t* c, lgx_ast_no
     }
 
     if (check_type(&e1, T_LONG) || check_type(&e1, T_DOUBLE)) {
+        e->v_type.type = e1.v_type.type;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }

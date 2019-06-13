@@ -814,6 +814,28 @@ int lgx_vm_execute(lgx_vm_t *vm) {
                 */
                 break;
             }
+            case OP_CONCAT:{
+                if (R(pb).type == T_STRING && R(pc).type == T_STRING) {
+                    R(pa).type = T_STRING;
+                    R(pa).v.str = xcalloc(1, sizeof(lgx_string_t));
+                    if (R(pa).v.str) {
+                        if (lgx_str_init(&R(pa).v.str->string, R(pb).v.str->string.length + R(pc).v.str->string.length)) {
+                            xfree(R(pa).v.str);
+                            lgx_vm_throw_s(vm, "out of memory");
+                            break;
+                        }
+                        lgx_str_concat(&R(pb).v.str->string, &R(pa).v.str->string);
+                        lgx_str_concat(&R(pc).v.str->string, &R(pa).v.str->string);
+                        lgx_gc_trace(vm, &R(pa));
+                    } else {
+                        lgx_vm_throw_s(vm, "out of memory");
+                    }
+                } else {
+                    //lgx_vm_throw_s(vm, "error operation: %s %s %s", lgx_value_typeof(&R(pb)), "-", lgx_value_typeof(&R(pc)));
+                    lgx_vm_throw_s(vm, "runtime error");
+                }
+                break;
+            }
             default:
                 lgx_vm_throw_s(vm, "unknown op %d @ %d", OP(i), vm->co_running->pc - 1);
         }
