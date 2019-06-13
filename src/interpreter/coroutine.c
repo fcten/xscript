@@ -58,6 +58,12 @@ int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_string_t *str) {
     return lgx_co_set(co, pos, &v);
 }
 
+lgx_value_t *lgx_co_get(lgx_co_t *co, unsigned pos) {
+    assert(pos < co->stack.size);
+
+    return &co->stack.buf[pos];
+}
+
 lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {
     if (vm->co_count > LGX_MAX_CO_LIMIT) {
         return NULL;

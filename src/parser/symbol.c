@@ -329,7 +329,7 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
     }
 
     if (!symbol) {
-        return ret;
+        return 1;
     }
 
     if (symbol_parse_type(ast, node->child[1], &symbol->type)) {
@@ -343,7 +343,7 @@ static int symbol_add_variable(lgx_ast_t* ast, lgx_ast_node_t* node) {
 
     // 这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
 
-    return 0;
+    return ret;
 }
 
 static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
@@ -380,7 +380,7 @@ static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
     }
 
     if (!symbol) {
-        return ret;
+        return 1;
     }
 
     if (symbol_parse_type(ast, node->child[1], &symbol->type)) {
@@ -394,7 +394,7 @@ static int symbol_add_constant(lgx_ast_t* ast, lgx_ast_node_t* node) {
 
     // 这里解析完毕后，类型可能为未知，需要在编译阶段进行类型推断
 
-    return 0;
+    return ret;
 }
 
 static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
@@ -436,7 +436,7 @@ static int symbol_add_function(lgx_ast_t* ast, lgx_ast_node_t* node) {
     }
 
     if (!symbol) {
-        return ret;
+        return 1;
     }
 
     if (lgx_type_init(&symbol->type, T_FUNCTION)) {
@@ -501,8 +501,12 @@ static int symbol_generate(lgx_ast_t* ast, lgx_ast_node_t* node) {
     return ret;
 }
 
-// 遍历语法树生成符号信息
+// 初始化符号信息
 int lgx_symbol_init(lgx_ast_t* ast) {
+    // TODO 导入内建函数
+
+
+    // 遍历语法树生成符号信息
     return symbol_generate(ast, ast->root);
 }
 

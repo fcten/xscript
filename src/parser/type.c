@@ -47,9 +47,48 @@ int lgx_type_to_string(lgx_type_t* type, lgx_str_t* str) {
         case T_INTERFACE:
             lgx_str_set(append, "interface");
             return lgx_str_append(&append, str);
-        case T_FUNCTION:
-            lgx_str_set(append, "function");
-            return lgx_str_append(&append, str);
+        case T_FUNCTION:{
+            if (type->u.fun->receiver.type != T_UNKNOWN) {
+                lgx_str_set(append, "(");
+                if (lgx_str_append(&append, str)) {
+                    return 1;
+                }
+                if (lgx_type_to_string(&type->u.fun->receiver, str)) {
+                    return 1;
+                }
+                lgx_str_set(append, ") ");
+                if (lgx_str_append(&append, str)) {
+                    return 1;
+                }
+            }
+            lgx_str_set(append, "function(");
+            if (lgx_str_append(&append, str)) {
+                return 1;
+            }
+            int i;
+            for (i = 0; i < type->u.fun->arg_len; ++i) {
+                if (lgx_type_to_string(&type->u.fun->args[i], str)) {
+                    return 1;
+                }
+                lgx_str_set(append, ",");
+                if (lgx_str_append(&append, str)) {
+                    return 1;
+                }
+            }
+            if (type->u.fun->arg_len) {
+                str->length --;
+            }
+            lgx_str_set(append, ")");
+            if (lgx_str_append(&append, str)) {
+                return 1;
+            }
+            if (type->u.fun->ret.type != T_UNKNOWN) {
+                if (lgx_type_to_string(&type->u.fun->ret, str)) {
+                    return 1;
+                }
+            }
+            return 0;
+        }
         default:
             lgx_str_set(append, "invalid");
             return lgx_str_append(&append, str);
