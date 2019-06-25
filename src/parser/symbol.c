@@ -147,6 +147,35 @@ static int symbol_parse_type_function_receiver(lgx_ast_t* ast, lgx_ast_node_t* n
     return 0;
 }
 
+static int symbol_parse_type_function_decl_parameter(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
+    assert(node->type == FUNCTION_TYPE_DECL_PARAMETER);
+
+    if (node->children) {
+        fun->args = xcalloc(node->children, sizeof(lgx_type_t));
+        if (!fun->args) {
+            symbol_error(ast, node, "out of memory\n");
+            return 1;
+        }
+    }
+    fun->arg_len = node->children;
+
+    int i, ret = 0;
+    for (i = 0; i < node->children; ++i) {
+        assert(node->child[i]->type == TYPE_EXPRESSION);
+
+        if (symbol_parse_type(ast, node->child[i], &fun->args[i])) {
+            ret = 1;
+        }
+
+        if (fun->args[i].type != T_UNKNOWN && !lgx_type_is_definite(&fun->args[i])) {
+            symbol_error(ast, node, "parameter has incomplete type\n");
+            ret = 1;
+        }
+    }
+
+    return ret;
+}
+
 static int symbol_parse_type_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_type_function_t* fun) {
     assert(node->type == FUNCTION_DECL_PARAMETER);
 
@@ -197,10 +226,10 @@ static int symbol_parse_type_function(lgx_ast_t* ast, lgx_ast_node_t* node, lgx_
     assert(node->type == TYPE_EXPRESSION);
     assert(node->u.type == T_FUNCTION);
     assert(node->children == 2);
-    assert(node->child[0]->type == FUNCTION_DECL_PARAMETER);
+    assert(node->child[0]->type == FUNCTION_TYPE_DECL_PARAMETER);
     assert(node->child[1]->type == TYPE_EXPRESSION);
 
-    if (symbol_parse_type_function_parameter(ast, node->child[0], fun)) {
+    if (symbol_parse_type_function_decl_parameter(ast, node->child[0], fun)) {
         return 1;
     }
 

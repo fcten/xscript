@@ -105,6 +105,43 @@ int lgx_type_to_string(lgx_type_t* type, lgx_str_t* str) {
     }
 }
 
+// 相同返回 0，不同返回 1
+int lgx_type_cmp_function(lgx_type_function_t* t1, lgx_type_function_t* t2) {
+    if (t1->receiver.type == T_UNKNOWN) {
+        if (t2->receiver.type != T_UNKNOWN) {
+            return 1;
+        }
+    } else {
+        if (lgx_type_cmp(&t1->receiver, &t2->receiver)) {
+            return 1;
+        }
+    }
+
+    if (t1->ret.type == T_UNKNOWN) {
+        if (t2->ret.type != T_UNKNOWN) {
+            return 1;
+        }
+    } else {
+        if (lgx_type_cmp(&t1->ret, &t2->ret)) {
+            return 1;
+        }
+    }
+
+    if (t1->arg_len != t2->arg_len) {
+        return 1;
+    }
+
+    int i;
+    for (i = 0; i < t1->arg_len; ++i) {
+        if (lgx_type_cmp(&t1->args[i], &t2->args[i])) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+// 相同返回 0，不同返回 1
 int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
     if (t1->type != t2->type) {
         return 1;
@@ -128,8 +165,7 @@ int lgx_type_cmp(lgx_type_t* t1, lgx_type_t* t2) {
             // TODO
             break;
         case T_FUNCTION:
-            // TODO
-            break;
+            return lgx_type_cmp_function(t1->u.fun, t2->u.fun);
         default:
             break;
     }

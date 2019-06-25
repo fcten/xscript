@@ -312,6 +312,36 @@ static int ast_parse_call_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
 
 static int ast_parse_block_statement_with_braces(lgx_ast_t* ast, lgx_ast_node_t* parent);
 
+static int ast_parse_type_expression_function_parameter(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    lgx_ast_node_t* function_parameter = ast_node_new(ast, FUNCTION_TYPE_DECL_PARAMETER);
+    ast_node_append_child(parent, function_parameter);
+
+    if (ast->cur_token != TK_LEFT_PAREN) {
+        ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+    ast_step(ast);
+
+    while (1) {
+        if (ast_parse_type_expression(ast, function_parameter)) {
+            return 1;
+        }
+
+        if (ast->cur_token != TK_COMMA) {
+            break;
+        }
+        ast_step(ast);
+    }
+
+    if (ast->cur_token != TK_RIGHT_PAREN) {
+        ast_error(ast, "')' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+    ast_step(ast);
+
+    return 0;
+}
+
 static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* type_expression = ast_node_new(ast, TYPE_EXPRESSION);
     ast_node_append_child(parent, type_expression);
@@ -389,7 +419,7 @@ static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             type_expression->u.type = T_FUNCTION;
             ast_step(ast);
 
-            if (ast_parse_decl_parameter_with_parentheses(ast, type_expression)) {
+            if (ast_parse_type_expression_function_parameter(ast, type_expression)) {
                 return 1;
             }
 
