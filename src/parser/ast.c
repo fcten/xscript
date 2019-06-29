@@ -342,6 +342,14 @@ static int ast_parse_type_expression_function_parameter(lgx_ast_t* ast, lgx_ast_
     return 0;
 }
 
+static int ast_parse_type_expression_struct(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+
+}
+
+static int ast_parse_type_expression_interface(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+
+}
+
 static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* type_expression = ast_node_new(ast, TYPE_EXPRESSION);
     ast_node_append_child(parent, type_expression);
@@ -403,7 +411,7 @@ static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
             type_expression->u.type = T_STRUCT;
             ast_step(ast);
 
-            if (ast_parse_block_statement_with_braces(ast, type_expression)) {
+            if (ast_parse_type_expression_struct(ast, type_expression)) {
                 return 1;
             }
             break;

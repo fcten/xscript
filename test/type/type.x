@@ -1,8 +1,12 @@
 function main() {
     type user struct{
-        var id int;
-        var name string;
+        id int;
+        name string;
     }
 
     var j user;
+    j.id = 1;
+    j.name = "name";
+
+    echo(j);
 }

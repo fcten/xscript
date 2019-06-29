@@ -233,6 +233,10 @@ int lgx_type_dup(lgx_type_t* src, lgx_type_t* dst) {
                 return 1;
             }
             break;
+        case T_STRUCT:
+        case T_INTERFACE:
+            // TODO
+            break;
         default:
             break;
     }
@@ -258,6 +262,7 @@ int lgx_type_is_definite(lgx_type_t* type) {
 }
 
 // 根据 src 推断 dst 的类型。
+// 只有未确定的类型才需要进行类型推断，确定的类型则进行类型比较
 int lgx_type_inference(lgx_type_t* src, lgx_type_t* dst) {
     switch (dst->type) {
         case T_UNKNOWN:
@@ -275,17 +280,13 @@ int lgx_type_inference(lgx_type_t* src, lgx_type_t* dst) {
                 return 1;
             }
             return lgx_type_inference(&src->u.map->value, &dst->u.map->value);
-        case T_STRUCT:
-        case T_INTERFACE:
-        case T_FUNCTION:
-            // TODO
-            return 1;
         default:
             return lgx_type_cmp(src, dst);
     }
 }
 
 // 判断类型 src 是否可以被用于赋值给类型 dst
+// 能则返回 1，不能则返回 0
 // 注意：src 只能是字面量。如果 src 是变量或常量，应该使用 lgx_type_cmp 判断。
 int lgx_type_is_fit(lgx_type_t* src, lgx_type_t* dst) {
     switch (src->type) {
