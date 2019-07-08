@@ -2,7 +2,7 @@
 2
 */
 
-function main() {
+func main() {
     var i = 0;
 
     do {

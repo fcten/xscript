@@ -2,7 +2,7 @@
 18
 */
 
-function main() {
+func main() {
     var a = 0, b = 0;
 
     while (a < 10) {

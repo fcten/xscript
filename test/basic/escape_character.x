@@ -1,4 +1,4 @@
-function main() {
+func main() {
     echo("\\|\"|\'");
 
     echo('\r');

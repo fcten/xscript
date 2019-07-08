@@ -1,13 +1,13 @@
-function add(x int, y int) int {
+func add(x int, y int) int {
     return x + y;
 }
 
-function sub(x int, y int) int {
+func sub(x int, y int) int {
     return x - y;
 }
 
-function main() {
-    var f1 function(int, int) int;
+func main() {
+    var f1 func(int, int) int;
 
     f1 = add;
     echo(f1(1, 2));

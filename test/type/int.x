@@ -1,4 +1,4 @@
-function main() {
+func main() {
     var a int;
     var b int;
 

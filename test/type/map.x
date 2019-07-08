@@ -1,4 +1,4 @@
-function main() {
+func main() {
     var a [int]string = [];
     var b [string]string = [];
 

@@ -1,4 +1,4 @@
-function main() {
+func main() {
     type user struct{
         id int;
         name string;

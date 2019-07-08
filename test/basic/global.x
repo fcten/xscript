@@ -5,11 +5,11 @@
 
 var a = 1;
 
-function add(b int) int {
+func add(b int) int {
     return a + b;
 }
 
-function main() {
+func main() {
     echo(add(2));
 
     a = 3;

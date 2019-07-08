@@ -1,4 +1,4 @@
-function main() {
+func main() {
     try {
         throw 1;
     } catch (e int) {
@@ -24,6 +24,6 @@ function main() {
     throw "uncaught exception";
 }
 
-function test() {
+func test() {
     throw "test exception";
 }

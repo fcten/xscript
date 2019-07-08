@@ -1,14 +1,14 @@
-function test1() bool {
+func test1() bool {
     echo("test false");
     return false;
 }
 
-function test2() bool {
+func test2() bool {
     echo("test true");
     return true;
 }
 
-function main() {
+func main() {
     // true
     echo(true || test2() || test1());
 

@@ -1,13 +1,13 @@
 class MyServer extends Server {
-    protected function onAccept() {
+    protected func onAccept() {
 
     }
 
-    protected function onReceive() {
+    protected func onReceive() {
 
     }
 
-    protected function onRequest(string req) {
+    protected func onRequest(string req) {
         //return req;
         try {
             Client cli = new Client;
@@ -17,11 +17,11 @@ class MyServer extends Server {
         }
     }
 
-    protected function onClose() {
+    protected func onClose() {
 
     }
 
-    public function run() {
+    public func run() {
         this->listen(8888);
         this->start(0);
     }

@@ -71,7 +71,7 @@ int lgx_type_to_string(lgx_type_t* type, lgx_str_t* str) {
                     return 1;
                 }
             }
-            lgx_str_set(append, "function(");
+            lgx_str_set(append, "func(");
             if (lgx_str_append(&append, str)) {
                 return 1;
             }

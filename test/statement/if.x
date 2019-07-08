@@ -1,4 +1,4 @@
-function main () {
+func main () {
     /* EXPECT
     109
     */
