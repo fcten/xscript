@@ -16,7 +16,7 @@
 #define rb_set_black(r)  do { (r)->parent_color |= 1; } while (0)
 
 static lgx_inline void rb_set_parent(lgx_rb_node_t *node, lgx_rb_node_t *parent) {  
-    node->parent_color = (node->parent_color & 3) | (unsigned long int)parent;  
+    node->parent_color = (node->parent_color & 3) | (uintptr_t)parent;  
 }
 
 static lgx_inline void rb_set_color(lgx_rb_node_t *node, lgx_rb_color_t color) {
@@ -24,7 +24,7 @@ static lgx_inline void rb_set_color(lgx_rb_node_t *node, lgx_rb_color_t color) {
 }
 
 //static lgx_inline void rb_set_parent_color(lgx_rb_node_t *node, lgx_rb_node_t *parent, lgx_rb_color_t color) {
-//    node->parent_color = (unsigned long int)parent | color;
+//    node->parent_color = (uintptr_t)parent | color;
 //}
 
 static long long rb_compare(lgx_rb_t *rbt, lgx_str_t *key1, lgx_str_t *key2) {

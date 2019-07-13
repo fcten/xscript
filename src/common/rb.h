@@ -2,6 +2,7 @@
 #define	LGX_RB_H
 
 #include "str.h"
+#include <stdint.h>
 
 /* 定义红黑树结点颜色颜色类型 */
 typedef enum { 
@@ -17,7 +18,7 @@ typedef enum {
 typedef struct lgx_rb_node_s {
     struct lgx_rb_node_s * left;
     struct lgx_rb_node_s * right;
-    unsigned long long parent_color;
+    uintptr_t parent_color;
     lgx_str_t key;
     void* value;
 } lgx_rb_node_t;
