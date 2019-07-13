@@ -113,11 +113,18 @@ void lgx_value_type_print(lgx_value_t* v) {
             lgx_str_cleanup(&type);
             break;
         }
+        case T_FUNCTION:{
+            lgx_str_t type;
+            lgx_str_set_null(type);
+            lgx_type_to_string(&v->v.fun->gc.type, &type);
+            printf("%.*s", type.length, type.buffer);
+            lgx_str_cleanup(&type);
+            break;
+        }
         case T_CUSTOM:
         case T_MAP:
         case T_STRUCT:
         case T_INTERFACE:
-        case T_FUNCTION:
             // TODO
             break;
         

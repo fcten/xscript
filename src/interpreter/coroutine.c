@@ -1,6 +1,6 @@
 #include "../common/common.h"
 #include "../common/str.h"
-#include "../compiler/exception.h"
+#include "../runtime/exception.h"
 #include "coroutine.h"
 #include "value.h"
 #include "gc.h"
@@ -56,6 +56,12 @@ int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_string_t *str) {
     v.type = T_STRING;
     v.v.str = str;
     return lgx_co_set(co, pos, &v);
+}
+
+lgx_value_t *lgx_co_get(lgx_co_t *co, unsigned pos) {
+    assert(pos < co->stack.size);
+
+    return &co->stack.buf[pos];
 }
 
 lgx_co_t* lgx_co_create(lgx_vm_t *vm, lgx_function_t *fun) {

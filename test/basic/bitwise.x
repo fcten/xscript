@@ -1,4 +1,4 @@
-function main() {
+func main() {
     var a = 1 << 2;  // 4
     var b = 37 >> 2; // 9
     var c = ~1;

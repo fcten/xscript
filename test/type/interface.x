@@ -1,32 +1,32 @@
 type A interface {
-    function m1();
+    func m1();
 }
 
 type B interface {
-    function m2();
+    func m2();
 }
 
 type C int;
 
-function (c C) m1() {
+func (c C) m1() {
     echo "m1";
 }
 
-function (c C) m2() {
+func (c C) m2() {
     echo "m2";
 }
 
 var obj C;
 
-function testA(obj A) {
+func testA(obj A) {
     obj.m1();
 }
 
-function testB(obj B) {
+func testB(obj B) {
     obj.m2();
 }
 
-function main() {
+func main() {
     testA(obj);
     testB(obj);
 }

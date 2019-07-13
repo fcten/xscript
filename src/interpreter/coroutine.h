@@ -34,6 +34,8 @@ int lgx_co_set_long(lgx_co_t *co, unsigned pos, long long l);
 int lgx_co_set_function(lgx_co_t *co, unsigned pos, lgx_function_t *fun);
 int lgx_co_set_string(lgx_co_t *co, unsigned pos, lgx_string_t *str);
 
+lgx_value_t *lgx_co_get(lgx_co_t *co, unsigned pos);
+
 int lgx_co_backtrace(lgx_co_t *co);
 
 void lgx_co_throw(lgx_co_t *co, lgx_value_t *e);

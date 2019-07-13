@@ -69,6 +69,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_XOR:
         case OP_ARRAY_GET:
         case OP_ARRAY_SET:
+        case OP_CONCAT:
             printf("%4d %11s R[%d] R[%d] R[%d]\n", n, op_name[OP(i)], PA(i), PB(i), PC(i));
             break;
         case OP_ADDI:
@@ -110,6 +111,7 @@ void lgx_bc_echo(unsigned n, unsigned i) {
         case OP_CALL_NEW:
         case OP_THROW:
         case OP_TAIL_CALL:
+        case OP_CO_CALL:
         case OP_ECHO:
             printf("%4d %11s R[%d]\n", n, op_name[OP(i)], PA(i));
             break;
@@ -351,9 +353,9 @@ int bc_lnot(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2) {
 }
 
 // 创建函数调用，函数信息存储于常量表中
-int bc_call_new(lgx_compiler_t* c, unsigned constant) {
-    assert(constant <= 65535);
-    return bc_append(c, I1(OP_CALL_NEW, constant));
+int bc_call_new(lgx_compiler_t* c, unsigned reg) {
+    assert(reg <= 255);
+    return bc_append(c, I1(OP_CALL_NEW, reg));
 }
 
 // 设置函数参数，其中 reg2 位于当前栈上，reg1 位于被调用函数栈上
@@ -362,9 +364,9 @@ int bc_call_set(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2) {
 }
 
 // 执行函数调用，函数信息存储于常量表中，函数返回值写入寄存器 reg 中
-int bc_call(lgx_compiler_t* c, unsigned constant, unsigned char reg) {
-    assert(constant <= 65535);
-    return bc_append(c, I2(OP_CALL, reg, constant));
+int bc_call(lgx_compiler_t* c, unsigned reg1, unsigned char reg2) {
+    assert(reg1 <= 255);
+    return bc_append(c, I2(OP_CALL, reg2, reg1));
 }
 
 // 把寄存器 reg 的值写入函数返回值中
@@ -373,9 +375,15 @@ int bc_ret(lgx_compiler_t* c, unsigned char reg) {
 }
 
 // 复用当前函数栈执行函数调用
-int bc_tail_call(lgx_compiler_t* c, unsigned constant) {
-    assert(constant <= 65535);
-    return bc_append(c, I1(OP_TAIL_CALL, constant));
+int bc_tail_call(lgx_compiler_t* c, unsigned reg) {
+    assert(reg <= 255);
+    return bc_append(c, I1(OP_TAIL_CALL, reg));
+}
+
+// 创建新的调用栈执行函数调用
+int bc_co_call(lgx_compiler_t* c, unsigned reg) {
+    assert(reg <= 255);
+    return bc_append(c, I1(OP_CO_CALL, reg));
 }
 
 // 如果 寄存器 == TRUE，跳过后续 distance 条指令

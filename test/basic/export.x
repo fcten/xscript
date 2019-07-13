@@ -1,4 +1,4 @@
-function export_test() {
+func export_test() {
     echo("export_test");
 }
 

@@ -19,7 +19,7 @@ const lgx_token_str_t reserved_words[LGX_RESERVED_WORDS] = {
     {TK_STRING, "string"},
     {TK_STRUCT, "struct"},
     {TK_INTERFACE, "interface"},
-    {TK_FUNCTION, "function"},
+    {TK_FUNCTION, "func"},
 
     {TK_TYPE, "type"},
 

@@ -2,7 +2,7 @@
 5050
 */
 
-function main() {
+func main() {
     var a = 100, b = 0;
 
     while (a > 0) {

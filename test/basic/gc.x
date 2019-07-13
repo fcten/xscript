@@ -1,4 +1,4 @@
-function main() {
+func main() {
     var i = 10000;
 
     while (i > 0) {

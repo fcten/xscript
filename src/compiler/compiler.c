@@ -1,11 +1,11 @@
 #include "../common/common.h"
 #include "../common/escape.h"
 #include "../parser/symbol.h"
+#include "../runtime/exception.h"
 #include "register.h"
 #include "compiler.h"
 #include "bytecode.h"
 #include "constant.h"
-#include "exception.h"
 #include "expr_result.h"
 
 // 追加一条错误信息
@@ -1154,6 +1154,9 @@ static int compiler_binary_expression_relation(lgx_compiler_t* c, lgx_ast_node_t
         (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE))) {
         switch (node->u.op) {
             case TK_EQUAL:
+                if (check_type(&e1, T_DOUBLE) && check_type(&e2, T_DOUBLE)) {
+                    // TODO warning: 对浮点数使用 == 操作符可能不会得到预期结果
+                }
             case TK_NOT_EQUAL:
             case TK_GREATER:
             case TK_GREATER_EQUAL:
@@ -1354,7 +1357,7 @@ static int compiler_binary_expression_assignment(lgx_compiler_t* c, lgx_ast_node
     return ret;
 }
 
-static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, unsigned is_tail) {
+static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *node, lgx_expr_result_t* e, unsigned type) {
     assert(node->type == BINARY_EXPRESSION);
     assert(node->u.op == TK_LEFT_PAREN);
     assert(node->children == 2);
@@ -1438,10 +1441,14 @@ static int compiler_binary_expression_call(lgx_compiler_t* c, lgx_ast_node_t *no
 
     e->type = EXPR_TEMP;
     e->u.local = reg_pop(c, node);
-    if (is_tail) {
-        bc_tail_call(c, r);
-    } else {
+    if (type == 0) {
         bc_call(c, r, e->u.local);
+    } else if (type == 1) {
+        bc_tail_call(c, r);
+    } else if (type == 2) {
+        bc_co_call(c, r);
+    } else {
+        assert(0);
     }
     
     if (!is_local(&e1) && !is_temp(&e1) && r >= 0) {
@@ -1569,6 +1576,7 @@ static int compiler_unary_expression_logic_not(lgx_compiler_t* c, lgx_ast_node_t
     }
 
     if (check_type(&e1, T_BOOL)) {
+        e->v_type.type = T_BOOL;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }
@@ -1598,6 +1606,7 @@ static int compiler_unary_expression_bitwise_not(lgx_compiler_t* c, lgx_ast_node
     }
 
     if (check_type(&e1, T_LONG)) {
+        e->v_type.type = T_LONG;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }
@@ -1627,6 +1636,7 @@ static int compiler_unary_expression_math_negative(lgx_compiler_t* c, lgx_ast_no
     }
 
     if (check_type(&e1, T_LONG) || check_type(&e1, T_DOUBLE)) {
+        e->v_type.type = e1.v_type.type;
         if (unary_operator(c, node, e, &e1)) {
             ret = 1;
         }
@@ -2533,6 +2543,28 @@ static int compiler_echo_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     return ret;
 }
 
+static int compiler_co_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
+    assert(node->type == CO_STATEMENT);
+    assert(node->children == 1);
+
+    if (node->child[0]->type != BINARY_EXPRESSION || node->child[0]->u.op != TK_LEFT_PAREN) {
+        compiler_error(c, node, " expression in co statement must be function call\n");
+        return 1;
+    }
+
+    lgx_expr_result_t e;
+    lgx_expr_result_init(&e);
+
+    // TODO 内建函数不能使用 co
+    if (compiler_binary_expression_call(c, node->child[0], &e, 2)) {
+        return 1;
+    }
+
+    lgx_expr_result_cleanup(c, node, &e);
+
+    return 0;
+}
+
 static int compiler_expression_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
     assert(node->type == EXPRESSION_STATEMENT);
     assert(node->children == 1);
@@ -2779,6 +2811,7 @@ static int compiler_statement(lgx_compiler_t* c, lgx_ast_node_t *node) {
         case THROW_STATEMENT: return compiler_throw_statement(c, node);
         case RETURN_STATEMENT: return compiler_return_statement(c, node);
         case ECHO_STATEMENT: return compiler_echo_statement(c, node);
+        case CO_STATEMENT: return compiler_co_statement(c, node);
         case EXPRESSION_STATEMENT: return compiler_expression_statement(c, node);
         case VARIABLE_DECLARATION: return compiler_local_variable_declaration(c, node);
         case CONSTANT_DECLARATION: return compiler_constant_declaration(c, node);

@@ -6,7 +6,7 @@ while (true) {
     handleConnection(socket->accept());
 }
 
-async function handleConnection (Socket conn) {
+async func handleConnection (Socket conn) {
     try {
         while (true) {
             string data = conn->recv(1024);

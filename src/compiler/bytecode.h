@@ -151,12 +151,13 @@ int bc_ge(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned ch
 int bc_gei(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2, unsigned char num);
 int bc_lnot(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
 
-int bc_call_new(lgx_compiler_t* c, unsigned constant);
+int bc_call_new(lgx_compiler_t* c, unsigned reg);
 int bc_call_set(lgx_compiler_t* c, unsigned char reg1, unsigned char reg2);
-int bc_call(lgx_compiler_t* c, unsigned constant, unsigned char reg);
+int bc_call(lgx_compiler_t* c, unsigned reg1, unsigned char reg2);
 int bc_ret(lgx_compiler_t* c, unsigned char reg);
 
-int bc_tail_call(lgx_compiler_t* c, unsigned constant);
+int bc_tail_call(lgx_compiler_t* c, unsigned reg);
+int bc_co_call(lgx_compiler_t* c, unsigned reg);
 
 int bc_test(lgx_compiler_t* c, unsigned char reg, unsigned distance);
 int bc_jmp(lgx_compiler_t* c, unsigned char reg);

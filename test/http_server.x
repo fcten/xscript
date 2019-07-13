@@ -6,7 +6,7 @@ while (true) {
     handleConnection(socket->accept());
 }
 
-async function handleConnection (Socket conn) {
+async func handleConnection (Socket conn) {
     try {
         Http http = new Http(conn);
         while (true) {

@@ -1,12 +1,12 @@
-function test(from int, to int) {
+func test(from int, to int) {
     var i int;
     for (i = from; i <= to; i = i + 1) {
         echo(i);
-        co_sleep(10);
+        //co_sleep(10);
     }
 }
 
-function main() {
+func main() {
     echo("main start");
 
     co test(100, 110);

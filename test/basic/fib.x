@@ -1,10 +1,10 @@
-function fib(n int) int {
+func fib(n int) int {
     if (n < 2) {
         return n;
     }
     return fib(n-1) + fib(n-2);
 }
 
-function main() {
+func main() {
     echo(fib(20));
 }
