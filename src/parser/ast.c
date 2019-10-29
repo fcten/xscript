@@ -343,11 +343,11 @@ static int ast_parse_type_expression_function_parameter(lgx_ast_t* ast, lgx_ast_
 }
 
 static int ast_parse_type_expression_struct(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-
+    return 0;
 }
 
 static int ast_parse_type_expression_interface(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-
+    return 0;
 }
 
 static int ast_parse_type_expression(lgx_ast_t* ast, lgx_ast_node_t* parent) {
@@ -1181,16 +1181,6 @@ static int ast_parse_expression_statement(lgx_ast_t* ast, lgx_ast_node_t* parent
     return ast_parse_expression(ast, expression_statement);
 }
 
-static int ast_parse_package_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
-    lgx_ast_node_t* package_declaration = ast_node_new(ast, PACKAGE_DECLARATION);
-    ast_node_append_child(parent, package_declaration);
-
-    assert(ast->cur_token == TK_PACKAGE);
-    ast_step(ast);
-
-    return ast_parse_identifier_token(ast, package_declaration);
-}
-
 static int ast_parse_import_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     lgx_ast_node_t* import_declaration = ast_node_new(ast, IMPORT_DECLARATION);
     ast_node_append_child(parent, import_declaration);
@@ -1472,18 +1462,13 @@ static int ast_parse_statement(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
-static int ast_parse(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+static int ast_parse_declaration(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    // 解析语句
     while (1) {
-        // 解析语句
         switch (ast->cur_token) {
             case TK_EOF:
                 // 读取到文件末尾，解析结束
                 return 0;
-            case TK_PACKAGE:
-                if (ast_parse_package_declaration(ast, parent)) {
-                    return 1;
-                }
-                break;
             case TK_IMPORT:
                 if (ast_parse_import_declaration(ast, parent)) {
                     return 1;
@@ -1531,6 +1516,35 @@ static int ast_parse(lgx_ast_t* ast, lgx_ast_node_t* parent) {
     }
 }
 
+static int ast_parse_package(lgx_ast_t* ast, lgx_ast_node_t* parent) {
+    // 当前作用域应该是顶层作用域
+    assert(parent->parent == NULL);
+
+    // 始终应该在源代码文件头部声明 package
+    if (ast->cur_token != TK_PACKAGE) {
+        ast_error(ast, "`package` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+
+    // ast->cur_token == TK_PACKAGE
+    ast_step(ast);
+
+    // 解析包名
+    if (ast->cur_token != TK_IDENTIFIER) {
+        ast_error(ast, "`<identifier>` expected before '%.*s'\n", ast->cur_length, ast->cur_start);
+        return 1;
+    }
+
+    ast->package.buffer = ast->cur_start;
+    ast->package.length = ast->cur_length;
+    ast->package.size = 0;
+
+    // ast->cur_token == TK_IDENTIFIER
+    ast_step(ast);
+
+    return ast_parse_declaration(ast, parent);
+}
+
 int lgx_ast_init(lgx_ast_t* ast, char* file) {
     // 初始化
     memset(ast, 0, sizeof(lgx_ast_t));
@@ -1541,7 +1555,7 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
         return 1;
     }
 
-    // 初始化根节点
+    // 初始化根节点(包作用域)
     ast->root = ast_node_new(ast, BLOCK_STATEMENT);
     if (!ast->root) {
         return 2;
@@ -1550,7 +1564,7 @@ int lgx_ast_init(lgx_ast_t* ast, char* file) {
     // 读取一个 token
     ast_step(ast);
 
-    if (ast_parse(ast, ast->root)) {
+    if (ast_parse_package(ast, ast->root)) {
         return 3;
     }
 

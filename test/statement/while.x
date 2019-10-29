@@ -2,6 +2,8 @@
 5050
 */
 
+package main;
+
 func main() {
     var a = 100, b = 0;
 

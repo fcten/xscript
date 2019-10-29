@@ -126,6 +126,9 @@ typedef struct lgx_ast {
     // 抽象语法树
     lgx_ast_node_t *root;
 
+    // 包名
+    lgx_str_t package;
+
     // 错误信息
     lgx_list_t errors; // lgx_ast_error_list_t
     lgx_list_t warnings; // lgx_ast_error_list_t

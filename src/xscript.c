@@ -30,9 +30,14 @@ int main(int argc, char* argv[]) {
             // 寻找 main 函数
             lgx_str_t mainfunc = lgx_str("main");
             lgx_symbol_t* symbol = lgx_symbol_get(ast.root, &mainfunc, -1);
-            lgx_function_t* fun  = symbol->v.v.fun;
 
-            lgx_vm_call(&vm, fun);
+            if (symbol) {
+                lgx_function_t* fun  = symbol->v.v.fun;
+                lgx_vm_call(&vm, fun);
+            } else {
+                // TODO
+                // can't find main func
+            }
 
             lgx_vm_cleanup(&vm);
         }
