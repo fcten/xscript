@@ -1,3 +1,5 @@
+package main;
+
 func main() {
     echo(1010);
     echo(0b1010);

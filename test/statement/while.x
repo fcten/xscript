@@ -4,6 +4,8 @@
 
 package main;
 
+import "io";
+
 func main() {
     var a = 100, b = 0;
 
@@ -12,5 +14,5 @@ func main() {
         a = a - 1;
     }
 
-    echo(b);
+    io.print(b);
 }

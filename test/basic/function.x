@@ -1,3 +1,5 @@
+package main;
+
 func test() {
     echo("hello world");
 }

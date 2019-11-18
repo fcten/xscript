@@ -1,3 +1,5 @@
+package main;
+
 func test1() bool {
     echo("test false");
     return false;

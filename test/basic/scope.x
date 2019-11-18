@@ -2,6 +2,8 @@
 3
 */
 
+package main;
+
 func main() {
     var a = 1;
     var b int, c int;

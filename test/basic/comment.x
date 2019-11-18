@@ -4,6 +4,8 @@
 
 // 测试用例
 
+package main;
+
 var a = 1;
 
 /*

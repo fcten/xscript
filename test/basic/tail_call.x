@@ -1,3 +1,5 @@
+package main;
+
 func tail_call(n int) int {
     if (n <= 1) {
         return n;

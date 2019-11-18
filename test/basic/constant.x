@@ -1,3 +1,5 @@
+package main;
+
 const WELCOME = "Hello" + " " + "World";
 
 const MAX_NUMBER = 100 * 100;

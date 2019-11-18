@@ -2,6 +2,8 @@
 2
 */
 
+package main;
+
 func main() {
     var i = 0;
 

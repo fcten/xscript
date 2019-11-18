@@ -1,3 +1,5 @@
+package main;
+
 func main() {
     try {
         throw 1;

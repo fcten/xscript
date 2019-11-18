@@ -1,3 +1,5 @@
+package main;
+
 type A interface {
     func m1();
 }

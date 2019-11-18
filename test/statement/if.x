@@ -1,3 +1,5 @@
+package main;
+
 func main () {
     /* EXPECT
     109

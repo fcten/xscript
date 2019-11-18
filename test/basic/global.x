@@ -3,6 +3,8 @@
 5
 */
 
+package main;
+
 var a = 1;
 
 func add(b int) int {

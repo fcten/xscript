@@ -1,3 +1,5 @@
+package main;
+
 func test(from int, to int) {
     var i int;
     for (i = from; i <= to; i = i + 1) {

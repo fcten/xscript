@@ -1,15 +1,19 @@
-var a auto = 1
+package main;
 
-echo typeof a
+func main() {
+    var a auto = 1;
 
-a = "1"
+    echo typeof a;
 
-echo typeof a
+    a = "1";
 
-echo typeof 1.2
+    echo typeof a;
 
-echo typeof typeof a
+    echo typeof 1.2;
 
-echo typeof a == 1
+    echo typeof typeof a;
 
-echo typeof(a == 1)
+    echo typeof a == 1;
+
+    echo typeof(a == 1);
+}
