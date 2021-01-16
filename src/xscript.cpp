@@ -1,11 +1,18 @@
+/*
 #include "./tokenizer/lex.h"
 #include "./parser/ast.h"
 #include "./compiler/compiler.h"
 #include "./compiler/bytecode.h"
 #include "./compiler/constant.h"
 #include "./interpreter/vm.h"
+*/
+
+#include "xscript.hpp"
+
+using xscript::tokenizer::scanner;
 
 int main(int argc, char* argv[]) {
+    /*
     lgx_token_init();
 
     lgx_ast_t ast;
@@ -48,5 +55,14 @@ int main(int argc, char* argv[]) {
     lgx_ast_cleanup(&ast);
 
     lgx_token_cleanup();
+    */
+
+    if (argc < 2) {
+        return 1;
+    }
+
+    scanner s(argv[1]);
+    s.print();
+    
     return 0;
 }

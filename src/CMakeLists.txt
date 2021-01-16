@@ -1,4 +1,4 @@
-set(XSCRIPT_SRCS xscript.c)
+set(XSCRIPT_SRCS xscript.cpp)
 
 # Add block directories
 aux_source_directory(common XSCRIPT_SRCS)

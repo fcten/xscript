@@ -1,0 +1,6 @@
+#ifndef _XSCRIPT_UTIL_ENV_HPP_
+#define _XSCRIPT_UTIL_ENV_HPP_
+
+#define X_ENV_PROJECT_HOME "HOME"
+
+#endif // _XSCRIPT_UTIL_ENV_HPP_

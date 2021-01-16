@@ -1,0 +1,126 @@
+/*
+内置终止符：
+$identifier 标识符
+
+$number 数字
+$string 字符串
+$boolean 布尔
+
+
+约定：规则名大写，其余小写
+
+1、规则唯一性：不允许存在名字不同而规则相同的规则
+
+2、最长匹配原则：当输入满足多条规则时，长的规则优先匹配
+
+R1 <- abcde
+R2 <- abc
+
+输入：abcdeabc
+输出：abcde abc
+
+3、规则重叠：前面的规则优先匹配
+
+R <- R a R
+R <- R b R
+R <- c
+
+输入：cbcac
+输出：R1 
+
+*/
+
+// 
+
+compilation_unit := package_declaration? import_declarations? type_declarations?
+
+// declaration
+
+package_declaration := package package_name ;
+
+import_declaration := import package_name ;
+
+type_declaration := function_declaration | variable_declaration
+
+function_declaration := function_modifiers? func $identifier ( function_decl_parameter? ) type? block
+
+variable_declaration := variable_modifiers? var $identifier type? = expression | variable_modifiers? var $identifier type?
+
+// statement
+
+statement := if_statement | while_statement | do_statement | for_statement | continue_statement | break_statement | switch_statement | return_statement | try_statement | co_statement | expression_statement | empty_statement
+
+block_statement := variable_declaration | statement
+
+if_statement := if ( expression ) block else block | if ( expression ) block
+
+while_statement := while ( expression ) block
+
+do_statement := do block while ( expression ) ;
+
+for_statement := 
+
+continue_statement := continue ;
+
+break_statement := break ;
+
+switch_statement :=
+
+return_statement := return expression ; | return ;
+
+try_statement :=
+
+throw_statement := throw expression ;
+
+co_statement := co expression ;
+
+expression_statement := statement_expression ;
+
+empty_statement := ;
+
+// expression
+
+expression := ( expression ) | assignment_expression
+
+statement_expression := assignment_expression
+
+assignment_expression := $identifier assignment_operator expression
+
+lambda_expression ::= func ( function_call_parameter ) type? block
+
+call_expression := 
+
+array_access_expression = $identifier [ expression ]
+
+// type
+
+type := 
+
+// modifier
+
+function_modifiers := 
+
+variable_modifiers :=
+
+// other
+
+package_name := $identifier . package_name | $identifier
+
+import_declarations := import_declaration import_declarations | import_declaration
+
+type_declarations := type_declaration type_declarations | type_declaration
+
+function_decl_parameter := variable_declaration , function_decl_parameter | variable_declaration
+
+function_call_parameter :=
+
+block = { block_statements? }
+
+block_statements := block_statement block_statements | block_statement
+
+case_label := case : 
+
+default_label := default :
+
+assignment_operator = = | *= | /= | %= | += | -= | <<= | >>= | &= | ^= | |=
+
