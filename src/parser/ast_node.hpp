@@ -57,6 +57,7 @@ typedef enum {
     NULL_TOKEN,
     // Other
     PACKAGE_NAME,
+    PACKAGE_RENAME,
     FOR_CONDITION,
     FUNCTION_RECEIVER
 } type_t;

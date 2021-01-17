@@ -112,7 +112,7 @@ void ast::print() {
     }
 }
 
-// ast_root <- package_declaration import_declarations? parse_global_declarations?
+// ast_root <- package_declaration import_declarations? global_declarations?
 bool ast::parse() {
     if (parsed) {
         return false;
@@ -129,7 +129,8 @@ bool ast::parse() {
 
         if (cur_token.type == tokenizer::TK_VAR ||
             cur_token.type == tokenizer::TK_FUNCTION ||
-            cur_token.type == tokenizer::TK_CONST) {
+            cur_token.type == tokenizer::TK_CONST ||
+            cur_token.type == tokenizer::TK_TYPE) {
             parse_global_declarations(root);
         }
 
@@ -146,19 +147,19 @@ bool ast::parse() {
 
 // package_declaration <- TK_PACKAGE package_name ;
 bool ast::parse_package_declaration(ast_node& parent) {
-    assert(root.get_type() == AST_ROOT);
+    ast_node& node = parent.add_child(PACKAGE_DECLARATION);
 
     if (cur_token != tokenizer::TK_PACKAGE) {
         return failover({"<package declaration> expected"});
     }
     next();
 
-    if (!parse_package_name(parent)) {
+    if (!parse_package_name(node)) {
         return false;
     }
 
     if (cur_token != tokenizer::TK_SEMICOLON) {
-        syntax_error({"expected ';' after declaration"});
+        syntax_error({"expected ';' after package declaration"});
         return false;
     }
     next();
@@ -166,7 +167,7 @@ bool ast::parse_package_declaration(ast_node& parent) {
     return true;
 }
 
-// package_name <- TK_IDENTIFIER . package_name | TK_IDENTIFIER
+// package_name <- TK_IDENTIFIER [ . TK_IDENTIFIER ]*
 bool ast::parse_package_name(ast_node& parent) {
     ast_node& node = parent.add_child(PACKAGE_NAME);
 
@@ -175,19 +176,233 @@ bool ast::parse_package_name(ast_node& parent) {
     }
     next();
 
-    if (cur_token != tokenizer::TK_DOT) {
-        return true;
+    while (cur_token == tokenizer::TK_DOT) {
+        next();
+
+        if (cur_token != tokenizer::TK_IDENTIFIER) {
+            return failover({"illegal <package name>"});
+        }
+        next();
     }
-    next();
 
-    return parse_package_name(node);
-}
-
-bool ast::parse_import_declarations(ast_node& parent) {
     return true;
 }
 
+// import_declarations <- import_declaration*
+bool ast::parse_import_declarations(ast_node& parent) {
+    while (cur_token == tokenizer::TK_IMPORT) {
+        parse_import_declaration(parent);
+    }
+
+    return true;
+}
+
+// import_declaration <- TK_IMPORT package_name package_rename? ;
+bool ast::parse_import_declaration(ast_node& parent) {
+    ast_node& node = parent.add_child(IMPORT_DECLARATION);
+
+    if (cur_token != tokenizer::TK_IMPORT) {
+        return failover({"<import declaration> expected"});
+    }
+    next();
+
+    if (!parse_package_name(node)) {
+        return false;
+    }
+
+    if (cur_token == tokenizer::TK_AS) {
+        parse_package_rename(node);
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        syntax_error({"expected ';' after import declaration"});
+        return false;
+    }
+    next();
+
+    return true;
+}
+
+// package_rename <- TK_AS TK_IDENTIFIER
+bool ast::parse_package_rename(ast_node& parent) {
+    ast_node& node = parent.add_child(PACKAGE_RENAME);
+
+    if (cur_token != tokenizer::TK_AS) {
+        return failover({"'as' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_IDENTIFIER) {
+        return failover({"<identifier> expected"});
+    }
+    next();
+
+    return true;
+}
+
+// global_declarations <- [ variable_declaration | function_declaration | constant_declaration | type_declaration ]*
 bool ast::parse_global_declarations(ast_node& parent) {
+    while (cur_token.type == tokenizer::TK_VAR ||
+        cur_token.type == tokenizer::TK_FUNCTION ||
+        cur_token.type == tokenizer::TK_CONST ||
+        cur_token.type == tokenizer::TK_TYPE) {
+        switch (cur_token.type) {
+            case tokenizer::TK_VAR: parse_variable_declaration(parent); break;
+            case tokenizer::TK_FUNCTION: parse_function_declaration(parent); break;
+            case tokenizer::TK_CONST: parse_constant_declaration(parent); break;
+            case tokenizer::TK_TYPE: parse_type_declaration(parent); break;
+            default:
+                syntax_error({"assertion: parse_global_declarations"});
+                return false;
+        }
+    }
+
+    return true;
+}
+
+// variable_declaration <- TK_VAR TK_IDENTIFIER type_declarator? variable_initializer? ;
+bool ast::parse_variable_declaration(ast_node& parent) {
+    ast_node& node = parent.add_child(VARIABLE_DECLARATION);
+/*
+    assert(ast->cur_token == TK_VAR);
+    ast_step(ast);
+
+    while (1) {
+        if (!variable_declaration) {
+            variable_declaration = ast_node_new(ast, VARIABLE_DECLARATION);
+            ast_node_append_child(parent, variable_declaration);
+        }
+
+        if (parse_identifier_token(ast, variable_declaration)) {
+            return 1;
+        }
+
+        if (parse_type_expression(ast, variable_declaration)) {
+            return 1;
+        }
+
+        if (ast->cur_token == TK_ASSIGN) {
+            ast_step(ast);
+
+            if (parse_expression(ast, variable_declaration)) {
+                return 1;
+            }
+        }
+
+        variable_declaration = NULL;
+
+        switch (ast->cur_token) {
+            case TK_COMMA:
+                ast_step(ast);
+                break;
+            default:
+                return 0;
+        }
+    }
+*/
+    return true;
+}
+
+// function_declaration <- TK_FUNCTION TK_IDENTIFIER function_decl_parameter type_declarator? block_statements
+bool ast::parse_function_declaration(ast_node& parent) {
+    ast_node& node = parent.add_child(FUNCTION_DECLARATION);
+
+    /*
+    assert(ast->cur_token == TK_FUNCTION);
+    ast_step(ast);
+
+    // 接收者
+    if (parse_function_receiver(ast, function_declaration)) {
+        return 1;
+    }
+
+    // 函数名
+    if (parse_identifier_token(ast, function_declaration)) {
+        return 1;
+    }
+
+    // 参数
+    if (parse_decl_parameter_with_parentheses(ast, function_declaration)) {
+        return 1;
+    }
+
+    // 返回值
+    if (parse_type_expression(ast, function_declaration)) {
+        return 1;
+    }
+
+    // 函数体
+    if (parse_block_statement_with_braces(ast, function_declaration)) {
+        return 1;
+    }
+    */
+
+    return true;
+}
+
+// constant_declaration <- TK_CONST TK_IDENTIFIER type_declarator? variable_initializer? ;
+bool ast::parse_constant_declaration(ast_node& parent) {
+    ast_node& node = parent.add_child(CONSTANT_DECLARATION);
+
+/*
+    assert(ast->cur_token == TK_CONST);
+    ast_step(ast);
+
+    while (1) {
+        if (!constant_declaration) {
+            constant_declaration = ast_node_new(ast, CONSTANT_DECLARATION);
+            ast_node_append_child(parent, constant_declaration);
+        }
+
+        if (parse_identifier_token(ast, constant_declaration)) {
+            return 1;
+        }
+
+        if (parse_type_expression(ast, constant_declaration)) {
+            return 1;
+        }
+
+        if (ast->cur_token != TK_ASSIGN) {
+            ast_error(ast, "`=` expected, constant must be initialized\n");
+            return 1;
+        }
+        ast_step(ast);
+
+        if (parse_expression(ast, constant_declaration)) {
+            return 1;
+        }
+
+        constant_declaration = NULL;
+
+        switch (ast->cur_token) {
+            case TK_COMMA:
+                ast_step(ast);
+                break;
+            default:
+                return 0;
+        }
+    }
+*/
+    return true;
+}
+
+// type_declaration <- TK_TYPE TK_IDENTIFIER type_declarator ;
+bool ast::parse_type_declaration(ast_node& parent) {
+    ast_node& node = parent.add_child(TYPE_DECLARATION);
+
+/*
+    assert(ast->cur_token == TK_TYPE);
+    ast_step(ast);
+
+    if (parse_identifier_token(ast, type_declaration)) {
+        return 1;
+    }
+
+    if (parse_type_expression(ast, type_declaration)) {
+        return 1;
+    }
+*/
+
     return true;
 }
 
@@ -1153,22 +1368,6 @@ bool parse_expression_statement(ast_node& parent) {
     return parse_expression(ast, expression_statement);
 }
 
-bool parse_import_declaration(ast_node& parent) {
-    lgx_ast_node_t* import_declaration = ast_node_new(ast, IMPORT_DECLARATION);
-    ast_node_append_child(parent, import_declaration);
-
-    assert(ast->cur_token == TK_IMPORT);
-    ast_step(ast);
-
-    if (ast->cur_token == TK_IDENTIFIER) {
-        if (parse_identifier_token(ast, import_declaration)) {
-            return 1;
-        }
-    }
-
-    return parse_string_token(ast, import_declaration);
-}
-
 bool parse_export_declaration(ast_node& parent) {
     lgx_ast_node_t* export_declaration = ast_node_new(ast, EXPORT_DECLARATION);
     ast_node_append_child(parent, export_declaration);
@@ -1177,94 +1376,6 @@ bool parse_export_declaration(ast_node& parent) {
     ast_step(ast);
 
     // TODO 指定被导出的方法
-
-    return 0;
-}
-
-bool parse_variable_declaration(ast_node& parent) {
-    lgx_ast_node_t* variable_declaration = ast_node_new(ast, VARIABLE_DECLARATION);
-    ast_node_append_child(parent, variable_declaration);
-
-    assert(ast->cur_token == TK_VAR);
-    ast_step(ast);
-
-    while (1) {
-        if (!variable_declaration) {
-            variable_declaration = ast_node_new(ast, VARIABLE_DECLARATION);
-            ast_node_append_child(parent, variable_declaration);
-        }
-
-        if (parse_identifier_token(ast, variable_declaration)) {
-            return 1;
-        }
-
-        if (parse_type_expression(ast, variable_declaration)) {
-            return 1;
-        }
-
-        if (ast->cur_token == TK_ASSIGN) {
-            ast_step(ast);
-
-            if (parse_expression(ast, variable_declaration)) {
-                return 1;
-            }
-        }
-
-        variable_declaration = NULL;
-
-        switch (ast->cur_token) {
-            case TK_COMMA:
-                ast_step(ast);
-                break;
-            default:
-                return 0;
-        }
-    }
-
-    return 0;
-}
-
-bool parse_constant_declaration(ast_node& parent) {
-    lgx_ast_node_t* constant_declaration = ast_node_new(ast, CONSTANT_DECLARATION);
-    ast_node_append_child(parent, constant_declaration);
-
-    assert(ast->cur_token == TK_CONST);
-    ast_step(ast);
-
-    while (1) {
-        if (!constant_declaration) {
-            constant_declaration = ast_node_new(ast, CONSTANT_DECLARATION);
-            ast_node_append_child(parent, constant_declaration);
-        }
-
-        if (parse_identifier_token(ast, constant_declaration)) {
-            return 1;
-        }
-
-        if (parse_type_expression(ast, constant_declaration)) {
-            return 1;
-        }
-
-        if (ast->cur_token != TK_ASSIGN) {
-            ast_error(ast, "`=` expected, constant must be initialized\n");
-            return 1;
-        }
-        ast_step(ast);
-
-        if (parse_expression(ast, constant_declaration)) {
-            return 1;
-        }
-
-        constant_declaration = NULL;
-
-        switch (ast->cur_token) {
-            case TK_COMMA:
-                ast_step(ast);
-                break;
-            default:
-                return 0;
-        }
-    }
 
     return 0;
 }
@@ -1280,58 +1391,6 @@ bool parse_function_receiver(ast_node& parent) {
     return parse_decl_parameter_with_parentheses(ast, function_receiver);
 }
 
-bool parse_function_declaration(ast_node& parent) {
-    lgx_ast_node_t* function_declaration = ast_node_new(ast, FUNCTION_DECLARATION);
-    ast_node_append_child(parent, function_declaration);
-
-    assert(ast->cur_token == TK_FUNCTION);
-    ast_step(ast);
-
-    // 接收者
-    if (parse_function_receiver(ast, function_declaration)) {
-        return 1;
-    }
-
-    // 函数名
-    if (parse_identifier_token(ast, function_declaration)) {
-        return 1;
-    }
-
-    // 参数
-    if (parse_decl_parameter_with_parentheses(ast, function_declaration)) {
-        return 1;
-    }
-
-    // 返回值
-    if (parse_type_expression(ast, function_declaration)) {
-        return 1;
-    }
-
-    // 函数体
-    if (parse_block_statement_with_braces(ast, function_declaration)) {
-        return 1;
-    }
-
-    return 0;
-}
-
-bool parse_type_declaration(ast_node& parent) {
-    lgx_ast_node_t* type_declaration = ast_node_new(ast, TYPE_DECLARATION);
-    ast_node_append_child(parent, type_declaration);
-
-    assert(ast->cur_token == TK_TYPE);
-    ast_step(ast);
-
-    if (parse_identifier_token(ast, type_declaration)) {
-        return 1;
-    }
-
-    if (parse_type_expression(ast, type_declaration)) {
-        return 1;
-    }
-
-    return 0;
-}
 */
 
 /*

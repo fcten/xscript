@@ -61,14 +61,15 @@ private:
     bool parse_statement(ast_node& parent);
 
     bool parse_package_name(ast_node& parent);
+    bool parse_package_rename(ast_node& parent);
     bool parse_import_declarations(ast_node& parent);
     bool parse_global_declarations(ast_node& parent);
-
+    
 public:
     ast(std::string s);
 
     bool parse();
-    
+
     void print();
 };
 

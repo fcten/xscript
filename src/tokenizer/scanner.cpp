@@ -129,6 +129,7 @@ std::unordered_map<std::string_view, token_t> reserved_words = {
     {"export",      TK_EXPORT},
     {"package",     TK_PACKAGE},
 
+    {"as",          TK_AS},
     {"echo",        TK_ECHO}
 };
 

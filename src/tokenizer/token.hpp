@@ -132,6 +132,7 @@ typedef enum {
     TK_EXPORT,
     TK_PACKAGE,
 
+    TK_AS,
     TK_ECHO,
 
     TK_LENGTH
