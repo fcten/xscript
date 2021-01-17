@@ -1,4 +1,12 @@
 language: cpp
+dist: bionic
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - libstdc++-7-dev
 
 compiler:
   - clang
