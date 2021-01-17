@@ -5,7 +5,8 @@
 namespace xscript::parser {
 
 ast::ast(std::string path) :
-    scanner(path)
+    scanner(path),
+    line(1)
 {
 
 }
@@ -23,29 +24,31 @@ void ast::next() {
                 // 跳过单行注释
                 while (token != tokenizer::TK_EOF && token != tokenizer::TK_EOL) {
                     token = scanner.next();
+                    if (token == tokenizer::TK_EOL) {
+                        line++;
+                    }
                 }
                 break;
             case tokenizer::TK_COMMENT_BEGIN:
                 // 跳过多行注释
                 while (token != tokenizer::TK_EOF && token != tokenizer::TK_COMMENT_END) {
                     token = scanner.next();
+                    if (token == tokenizer::TK_EOL) {
+                        line++;
+                    }
                 }
                 break;
-            case tokenizer::TK_EOF:
             case tokenizer::TK_EOL:
-                // TODO 完善自动插入分号的规则
-                if (cur_token == tokenizer::TK_RIGHT_BRACE) {
-                    // 符合规则，自动转换为分号
-                    token = tokenizer::TK_SEMICOLON;
-                } else {
-                    if (token == tokenizer::TK_EOL) {
-                        // 不符合规则的换行被忽略
-                        break;
-                    }
+                // 忽略换行
+                line++;
+                break;
+            case tokenizer::TK_EOF:
+                // 扫描结束
+                if (cur_token == tokenizer::TK_EOF) {
+                    return;
                 }
             default:
                 prev_token = cur_token;
-
                 cur_token = token;
                 return;
         }
@@ -56,7 +59,7 @@ void ast::next() {
 void ast::syntax_error(std::initializer_list<std::string_view> args) {
     std::stringstream ss;
     
-    ss << "[SYNTAX ERROR] [main.x:0:0] ";
+    ss << "[syntax error] [main.x:" << line << ":0] ";
 
     std::initializer_list<std::string_view>::iterator it;
     for (it = args.begin(); it != args.end(); ++it) {
@@ -73,7 +76,7 @@ bool ast::parse_string_token(std::shared_ptr<ast_node> parent) {
     parent->add_child(string_token);
 
     if (cur_token != tokenizer::TK_LITERAL_STRING) {
-        syntax_error({"`<string>` expected before '",cur_token.literal,"'"});
+        syntax_error({"`<string>` expected before `",cur_token.literal,"`"});
         return false;
     }
 

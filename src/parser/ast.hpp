@@ -18,9 +18,11 @@ private:
 
     std::shared_ptr<ast_node> ast_root;
 
-        // 词法分析相关数据
+    // 词法分析相关数据
     tokenizer::token prev_token;
     tokenizer::token cur_token;
+
+    size_t line;
 
     void syntax_error(std::initializer_list<std::string_view> args);
     void next();

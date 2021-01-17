@@ -10,6 +10,7 @@
 #include "xscript.hpp"
 
 using xscript::tokenizer::scanner;
+using xscript::parser::syntax;
 
 int main(int argc, char* argv[]) {
     /*
@@ -61,8 +62,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    scanner s(argv[1]);
-    s.print();
+    syntax s(argv[1]);
+    s.parse();
     
     return 0;
 }

@@ -3,9 +3,11 @@
 
 #include <string>
 #include "token.hpp"
-#include "trie.hpp"
+#include "../util/trie.hpp"
 
 namespace xscript::tokenizer {
+
+typedef util::trie<token_t, char> trie;
 
 class scanner {
 private:
