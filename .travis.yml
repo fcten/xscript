@@ -81,8 +81,9 @@ matrix:
     - env: COMPILER=g++-4.8 BUILD=Debug STANDARD=11
       compiler: gcc
 
-#before_install:
-#  - sudo apt-get install cmake
+before_script:
+  - if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then export CXX=${COMPILER}; fi
+  - if [[ "${BUILD}" != "Doc" ]]; then ${CXX} --version; fi
 
 script:
   - mkdir build
