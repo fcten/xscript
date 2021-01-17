@@ -1,38 +1,7 @@
 os: linux
-dist: trusty
+dist: bionic
 
 language: cpp
-
-matrix:
-  include:
-    - compiler: gcc
-      os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - cmake-data
-            - cmake
-      env:
-        - COMPILER=g++-7
-    - compiler: clang
-      os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-5.0
-            - george-edison55-precise-backports
-          packages:
-            - clang-5.0
-            - g++-5
-            - cmake-data
-            - cmake
-      env:
-        - COMPILER=clang++-5.0
 
 compiler:
   - clang
