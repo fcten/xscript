@@ -27,9 +27,15 @@ bool syntax::load(std::string path) {
 
     packages[path] = std::make_unique<ast>(buffer.str());
     if (!packages[path]->parse()) {
+        // TODO remove debug code
+        packages[path]->print();
+
         packages.erase(path);
         return false;
     }
+
+    // TODO remove debug code
+    packages[path]->print();
 
     return true;
 }

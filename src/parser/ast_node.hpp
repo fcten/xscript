@@ -7,8 +7,9 @@
 namespace xscript::parser {
 
 typedef enum {
+    AST_ROOT = 1,
     // Declaration
-    PACKAGE_DECLARATION = 1,
+    PACKAGE_DECLARATION,
     IMPORT_DECLARATION,
     EXPORT_DECLARATION,
     VARIABLE_DECLARATION,
@@ -55,6 +56,7 @@ typedef enum {
     FALSE_TOKEN,
     NULL_TOKEN,
     // Other
+    PACKAGE_NAME,
     FOR_CONDITION,
     FUNCTION_RECEIVER
 } type_t;
@@ -75,9 +77,10 @@ private:
 public:
     ast_node();
     ast_node(ast_node& p, type_t t);
-
+    
     ast_node* get_parent();
-    void add_child(ast_node& child);
+    type_t get_type();
+    ast_node& add_child(type_t t);
 };
 
 }

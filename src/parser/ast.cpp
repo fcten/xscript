@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <exception>
 #include "ast.hpp"
 
 namespace xscript::parser {
@@ -11,9 +12,9 @@ ast::ast(std::string s) :
     scanner(source),
     parsed(false)
 {
-    // TODO
-    scanner.print();
-    scanner.reset();
+    // TODO remove debug code
+    //scanner.print();
+    //scanner.reset();
 }
 
 // 解析下一个 token
@@ -60,40 +61,139 @@ void ast::next() {
     }
 }
 
+class syntax_error_exception : public std::exception
+{
+public:
+	syntax_error_exception(const std::string &s) throw(): m_s(s) {}
+	~syntax_error_exception() throw() = default;
+
+	virtual const char * what() const throw()
+	{
+		return m_s.c_str();
+	}
+protected:
+	std::string m_s;
+};
+
 // 追加一条错误信息
 void ast::syntax_error(std::initializer_list<std::string_view> args) {
     std::stringstream ss;
     
     ss << "[syntax error] [main.x:" << line << ":0] ";
 
-    std::initializer_list<std::string_view>::iterator it;
-    for (it = args.begin(); it != args.end(); ++it) {
+    for (auto it = args.begin(); it != args.end(); ++it) {
         ss << *it;
     }
-
-    ss << '\n';
     
     errors.push_back(ss.str());
+
+    if (errors.size() > 9) {
+        throw syntax_error_exception("to many errors");
+    }
 }
 
-// compilation_unit <- package_declaration? import_declarations? type_expression_declarations?
+bool ast::failover(std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens) {
+    syntax_error(args);
+    while (cur_token != tokenizer::TK_EOF && tokens.find(cur_token.type) == tokens.end()) {
+        next();
+    }
+    return false;
+}
+
+bool ast::failover(std::initializer_list<std::string_view> args) {
+    return failover(args, {tokenizer::TK_SEMICOLON});
+}
+
+void ast::print() {
+    // TODO print ast
+
+    for (auto it = errors.begin() ; it != errors.end() ; it++) {
+        std::cout << *it << std::endl;
+    }
+}
+
+// ast_root <- package_declaration import_declarations? parse_global_declarations?
 bool ast::parse() {
     if (parsed) {
         return false;
     }
 
-    // 读取一个 token
-    next();
+    try {
+        next();
 
-    // TODO
+        parse_package_declaration(root);
+
+        if (cur_token.type == tokenizer::TK_IMPORT) {
+            parse_import_declarations(root);
+        }
+
+        if (cur_token.type == tokenizer::TK_VAR ||
+            cur_token.type == tokenizer::TK_FUNCTION ||
+            cur_token.type == tokenizer::TK_CONST) {
+            parse_global_declarations(root);
+        }
+
+        if (errors.size() == 0 && cur_token.type != tokenizer::TK_EOF) {
+            syntax_error({"<global declarations> expected"});
+        }
+    } catch (syntax_error_exception& e) {
+        errors.push_back(e.what());
+    }
 
     parsed = true;
+    return errors.size() == 0;
+}
+
+// package_declaration <- TK_PACKAGE package_name ;
+bool ast::parse_package_declaration(ast_node& parent) {
+    assert(root.get_type() == AST_ROOT);
+
+    if (cur_token != tokenizer::TK_PACKAGE) {
+        return failover({"<package declaration> expected"});
+    }
+    next();
+
+    if (!parse_package_name(parent)) {
+        return false;
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        syntax_error({"expected ';' after declaration"});
+        return false;
+    }
+    next();
+
+    return true;
+}
+
+// package_name <- TK_IDENTIFIER . package_name | TK_IDENTIFIER
+bool ast::parse_package_name(ast_node& parent) {
+    ast_node& node = parent.add_child(PACKAGE_NAME);
+
+    if (cur_token != tokenizer::TK_IDENTIFIER) {
+        return failover({"<package declaration> expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_DOT) {
+        return true;
+    }
+    next();
+
+    return parse_package_name(node);
+}
+
+bool ast::parse_import_declarations(ast_node& parent) {
+    return true;
+}
+
+bool ast::parse_global_declarations(ast_node& parent) {
     return true;
 }
 
 /*
-bool ast::parse_string_token(std::shared_ptr<ast_node> parent) {
-    std::shared_ptr<ast_node> string_token = std::make_shared<ast_node>(STRING_TOKEN);
+bool ast::parse_string_token(ast_node& parent) {
+    ast_node& string_token = std::make_shared<ast_node>(STRING_TOKEN);
     parent->add_child(string_token);
 
     if (cur_token != tokenizer::TK_LITERAL_STRING) {
@@ -107,7 +207,7 @@ bool ast::parse_string_token(std::shared_ptr<ast_node> parent) {
     return true;
 }
 
-bool parse_decl_parameter(std::shared_ptr<ast_node> parent) {
+bool parse_decl_parameter(ast_node& parent) {
     lgx_ast_node_t* param_list = ast_node_new(ast, FUNCTION_DECL_PARAMETER);
     ast_node_append_child(parent, param_list);
 
@@ -143,7 +243,7 @@ bool parse_decl_parameter(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool parse_decl_parameter_with_parentheses(std::shared_ptr<ast_node> parent) {
+bool parse_decl_parameter_with_parentheses(ast_node& parent) {
     if (ast->cur_token != TK_LEFT_PAREN) {
         ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
@@ -163,7 +263,7 @@ bool parse_decl_parameter_with_parentheses(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_call_parameter(std::shared_ptr<ast_node> parent) {
+bool parse_call_parameter(ast_node& parent) {
     lgx_ast_node_t* param_list = ast_node_new(ast, FUNCTION_CALL_PARAMETER);
     ast_node_append_child(parent, param_list);
 
@@ -184,9 +284,9 @@ bool parse_call_parameter(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool parse_block_statement_with_braces(std::shared_ptr<ast_node> parent);
+bool parse_block_statement_with_braces(ast_node& parent);
 
-bool parse_type_expression_function_parameter(std::shared_ptr<ast_node> parent) {
+bool parse_type_expression_function_parameter(ast_node& parent) {
     lgx_ast_node_t* function_parameter = ast_node_new(ast, FUNCTION_TYPE_DECL_PARAMETER);
     ast_node_append_child(parent, function_parameter);
 
@@ -216,15 +316,15 @@ bool parse_type_expression_function_parameter(std::shared_ptr<ast_node> parent) 
     return 0;
 }
 
-bool parse_type_expression_struct(std::shared_ptr<ast_node> parent) {
+bool parse_type_expression_struct(ast_node& parent) {
     return 0;
 }
 
-bool parse_type_expression_interface(std::shared_ptr<ast_node> parent) {
+bool parse_type_expression_interface(ast_node& parent) {
     return 0;
 }
 
-bool parse_type_expression(std::shared_ptr<ast_node> parent) {
+bool parse_type_expression(ast_node& parent) {
     lgx_ast_node_t* type_expression = ast_node_new(ast, TYPE_EXPRESSION);
     ast_node_append_child(parent, type_expression);
 
@@ -316,7 +416,7 @@ bool parse_type_expression(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_array_expression(std::shared_ptr<ast_node> parent) {
+bool parse_array_expression(ast_node& parent) {
     lgx_ast_node_t* array_expression = ast_node_new(ast, ARRAY_EXPRESSION);
     ast_node_append_child(parent, array_expression);
 
@@ -353,7 +453,7 @@ bool parse_array_expression(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_struct_expression(std::shared_ptr<ast_node> parent) {
+bool parse_struct_expression(ast_node& parent) {
     lgx_ast_node_t* struct_expression = ast_node_new(ast, STRUCT_EXPRESSION);
     ast_node_append_child(parent, struct_expression);
 
@@ -400,7 +500,7 @@ bool parse_struct_expression(std::shared_ptr<ast_node> parent) {
 }
 
 // pri_expr -> ID | '(' sub_expr ')'
-bool parse_pri_expression(std::shared_ptr<ast_node> parent) {
+bool parse_pri_expression(ast_node& parent) {
     switch (ast->cur_token) {
         case TK_LEFT_PAREN:
             return parse_expression_with_parentheses(parent);
@@ -413,7 +513,7 @@ bool parse_pri_expression(std::shared_ptr<ast_node> parent) {
 }
 
 // suf_expr -> pri_expr { '->' ID | '.' ID | '[' sub_expr ']' | funcargs }
-bool parse_suf_expression(std::shared_ptr<ast_node> parent) {
+bool parse_suf_expression(ast_node& parent) {
     if (parse_pri_expression(parent)) {
         return 1;
     }
@@ -491,7 +591,7 @@ bool parse_suf_expression(std::shared_ptr<ast_node> parent) {
 }
 
 // bsc_expr -> NUMBER | STRING | ARRAY | STRUCT | true | false | null | suf_expr
-bool parse_bsc_expression(std::shared_ptr<ast_node> parent) {
+bool parse_bsc_expression(ast_node& parent) {
     lgx_ast_node_t* node;
     switch (ast->cur_token) {
         case TK_LITERAL_LONG:
@@ -603,7 +703,7 @@ bool ast_operator_precedence(int token) {
 }
 
 // sub_expr -> (bsc_expr | unary_op sub_expr) { binary_op sub_expr }
-bool parse_sub_expression(std::shared_ptr<ast_node> parent, int precedence) {
+bool parse_sub_expression(ast_node& parent, int precedence) {
     switch (ast->cur_token) {
         case TK_LOGIC_NOT: // 逻辑非运算符
         case TK_NOT: // 按位取反运算符
@@ -687,7 +787,7 @@ bool parse_sub_expression(std::shared_ptr<ast_node> parent, int precedence) {
 }
 
 // 解析带括号的表达式
-bool parse_expression_with_parentheses(std::shared_ptr<ast_node> parent) {
+bool parse_expression_with_parentheses(ast_node& parent) {
     if (ast->cur_token != TK_LEFT_PAREN) {
         ast_error(ast, "'(' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
@@ -707,18 +807,18 @@ bool parse_expression_with_parentheses(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_expression(std::shared_ptr<ast_node> parent) {
+bool parse_expression(ast_node& parent) {
     return parse_sub_expression(ast, parent, 15);
 }
 
-bool parse_block_statement(std::shared_ptr<ast_node> parent) {
+bool parse_block_statement(ast_node& parent) {
     lgx_ast_node_t* block_statement = ast_node_new(ast, BLOCK_STATEMENT);
     ast_node_append_child(parent, block_statement);
     
     return parse_statement(ast, block_statement);
 }
 
-bool parse_block_statement_with_braces(std::shared_ptr<ast_node> parent) {
+bool parse_block_statement_with_braces(ast_node& parent) {
     if (ast->cur_token != TK_LEFT_BRACE) {
         ast_error(ast, "'{' expected before `%.*s`\n", ast->cur_length, ast->cur_start);
         return 1;
@@ -738,7 +838,7 @@ bool parse_block_statement_with_braces(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_if_statement(std::shared_ptr<ast_node> parent) {
+bool parse_if_statement(ast_node& parent) {
     lgx_ast_node_t* if_statement = ast_node_new(ast, IF_STATEMENT);
     ast_node_append_child(parent, if_statement);
 
@@ -767,7 +867,7 @@ bool parse_if_statement(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool parse_for_statement(std::shared_ptr<ast_node> parent) {
+bool parse_for_statement(ast_node& parent) {
     lgx_ast_node_t* for_statement = ast_node_new(ast, FOR_STATEMENT);
     ast_node_append_child(parent, for_statement);
 
@@ -831,7 +931,7 @@ bool parse_for_statement(std::shared_ptr<ast_node> parent) {
     return parse_block_statement_with_braces(ast, for_statement);
 }
 
-bool parse_while_statement(std::shared_ptr<ast_node> parent) {
+bool parse_while_statement(ast_node& parent) {
     lgx_ast_node_t* while_statement = ast_node_new(ast, WHILE_STATEMENT);
     ast_node_append_child(parent, while_statement);
 
@@ -845,7 +945,7 @@ bool parse_while_statement(std::shared_ptr<ast_node> parent) {
     return parse_block_statement_with_braces(ast, while_statement);
 }
 
-bool parse_do_statement(std::shared_ptr<ast_node> parent) {
+bool parse_do_statement(ast_node& parent) {
     lgx_ast_node_t* do_statement = ast_node_new(ast, DO_STATEMENT);
     ast_node_append_child(parent, do_statement);
 
@@ -865,7 +965,7 @@ bool parse_do_statement(std::shared_ptr<ast_node> parent) {
     return parse_expression_with_parentheses(ast, do_statement);
 }
 
-bool parse_break_statement(std::shared_ptr<ast_node> parent) {
+bool parse_break_statement(ast_node& parent) {
     lgx_ast_node_t* break_statement = ast_node_new(ast, BREAK_STATEMENT);
     ast_node_append_child(parent, break_statement);
 
@@ -875,7 +975,7 @@ bool parse_break_statement(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_continue_statement(std::shared_ptr<ast_node> parent) {
+bool parse_continue_statement(ast_node& parent) {
     lgx_ast_node_t* continue_statement = ast_node_new(ast, CONTINUE_STATEMENT);
     ast_node_append_child(parent, continue_statement);
 
@@ -885,7 +985,7 @@ bool parse_continue_statement(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_case_statement(std::shared_ptr<ast_node> parent) {
+bool parse_case_statement(ast_node& parent) {
     lgx_ast_node_t* case_statement = ast_node_new(ast, CASE_STATEMENT);
     ast_node_append_child(parent, case_statement);
 
@@ -909,7 +1009,7 @@ bool parse_case_statement(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool parse_default_statement(std::shared_ptr<ast_node> parent) {
+bool parse_default_statement(ast_node& parent) {
     lgx_ast_node_t* default_statement = ast_node_new(ast, DEFAULT_STATEMENT);
     ast_node_append_child(parent, default_statement);
 
@@ -929,7 +1029,7 @@ bool parse_default_statement(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool parse_switch_statement(std::shared_ptr<ast_node> parent) {
+bool parse_switch_statement(ast_node& parent) {
     lgx_ast_node_t* switch_statement = ast_node_new(ast, SWITCH_STATEMENT);
     ast_node_append_child(parent, switch_statement);
 
@@ -970,7 +1070,7 @@ bool parse_switch_statement(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_try_statement(std::shared_ptr<ast_node> parent) {
+bool parse_try_statement(ast_node& parent) {
     lgx_ast_node_t* try_statement = ast_node_new(ast, TRY_STATEMENT);
     ast_node_append_child(parent, try_statement);
 
@@ -1006,7 +1106,7 @@ bool parse_try_statement(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_throw_statement(std::shared_ptr<ast_node> parent) {
+bool parse_throw_statement(ast_node& parent) {
     lgx_ast_node_t* throw_statement = ast_node_new(ast, THROW_STATEMENT);
     ast_node_append_child(parent, throw_statement);
 
@@ -1016,7 +1116,7 @@ bool parse_throw_statement(std::shared_ptr<ast_node> parent) {
     return parse_expression(ast, throw_statement);
 }
 
-bool parse_return_statement(std::shared_ptr<ast_node> parent) {
+bool parse_return_statement(ast_node& parent) {
     lgx_ast_node_t* return_statement = ast_node_new(ast, RETURN_STATEMENT);
     ast_node_append_child(parent, return_statement);
 
@@ -1026,7 +1126,7 @@ bool parse_return_statement(std::shared_ptr<ast_node> parent) {
     return parse_expression(ast, return_statement);
 }
 
-bool parse_echo_statement(std::shared_ptr<ast_node> parent) {
+bool parse_echo_statement(ast_node& parent) {
     lgx_ast_node_t* echo_statement = ast_node_new(ast, ECHO_STATEMENT);
     ast_node_append_child(parent, echo_statement);
 
@@ -1036,7 +1136,7 @@ bool parse_echo_statement(std::shared_ptr<ast_node> parent) {
     return parse_expression(ast, echo_statement);
 }
 
-bool parse_co_statement(std::shared_ptr<ast_node> parent) {
+bool parse_co_statement(ast_node& parent) {
     lgx_ast_node_t* co_statement = ast_node_new(ast, CO_STATEMENT);
     ast_node_append_child(parent, co_statement);
 
@@ -1046,14 +1146,14 @@ bool parse_co_statement(std::shared_ptr<ast_node> parent) {
     return parse_expression(ast, co_statement);
 }
 
-bool parse_expression_statement(std::shared_ptr<ast_node> parent) {
+bool parse_expression_statement(ast_node& parent) {
     lgx_ast_node_t* expression_statement = ast_node_new(ast, EXPRESSION_STATEMENT);
     ast_node_append_child(parent, expression_statement);
     
     return parse_expression(ast, expression_statement);
 }
 
-bool parse_import_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_import_declaration(ast_node& parent) {
     lgx_ast_node_t* import_declaration = ast_node_new(ast, IMPORT_DECLARATION);
     ast_node_append_child(parent, import_declaration);
 
@@ -1069,7 +1169,7 @@ bool parse_import_declaration(std::shared_ptr<ast_node> parent) {
     return parse_string_token(ast, import_declaration);
 }
 
-bool parse_export_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_export_declaration(ast_node& parent) {
     lgx_ast_node_t* export_declaration = ast_node_new(ast, EXPORT_DECLARATION);
     ast_node_append_child(parent, export_declaration);
 
@@ -1081,7 +1181,7 @@ bool parse_export_declaration(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_variable_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_variable_declaration(ast_node& parent) {
     lgx_ast_node_t* variable_declaration = ast_node_new(ast, VARIABLE_DECLARATION);
     ast_node_append_child(parent, variable_declaration);
 
@@ -1124,7 +1224,7 @@ bool parse_variable_declaration(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_constant_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_constant_declaration(ast_node& parent) {
     lgx_ast_node_t* constant_declaration = ast_node_new(ast, CONSTANT_DECLARATION);
     ast_node_append_child(parent, constant_declaration);
 
@@ -1169,7 +1269,7 @@ bool parse_constant_declaration(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_function_receiver(std::shared_ptr<ast_node> parent) {
+bool parse_function_receiver(ast_node& parent) {
     lgx_ast_node_t* function_receiver = ast_node_new(ast, FUNCTION_RECEIVER);
     ast_node_append_child(parent, function_receiver);\
 
@@ -1180,7 +1280,7 @@ bool parse_function_receiver(std::shared_ptr<ast_node> parent) {
     return parse_decl_parameter_with_parentheses(ast, function_receiver);
 }
 
-bool parse_function_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_function_declaration(ast_node& parent) {
     lgx_ast_node_t* function_declaration = ast_node_new(ast, FUNCTION_DECLARATION);
     ast_node_append_child(parent, function_declaration);
 
@@ -1215,7 +1315,7 @@ bool parse_function_declaration(std::shared_ptr<ast_node> parent) {
     return 0;
 }
 
-bool parse_type_declaration(std::shared_ptr<ast_node> parent) {
+bool parse_type_declaration(ast_node& parent) {
     lgx_ast_node_t* type_declaration = ast_node_new(ast, TYPE_DECLARATION);
     ast_node_append_child(parent, type_declaration);
 
@@ -1235,7 +1335,7 @@ bool parse_type_declaration(std::shared_ptr<ast_node> parent) {
 */
 
 /*
-bool ast::parse_statement(std::shared_ptr<ast_node> parent) {
+bool ast::parse_statement(ast_node& parent) {
     while(true) {
         switch (cur_token.type) {
             case tokenizer::TK_RIGHT_BRACE:
@@ -1330,7 +1430,7 @@ bool ast::parse_statement(std::shared_ptr<ast_node> parent) {
     }
 }
 
-bool ast::parse_declaration(std::shared_ptr<ast_node> parent) {
+bool ast::parse_declaration(ast_node& parent) {
     // 解析语句
     while (true) {
         switch (cur_token.type) {
@@ -1377,25 +1477,6 @@ bool ast::parse_declaration(std::shared_ptr<ast_node> parent) {
         }
     }
 }
-
-bool ast::parse_package_declaration(std::shared_ptr<ast_node> parent) {
-    assert(cur_token == tokenizer::TK_PACKAGE);
-
-    // cur_token == TK_PACKAGE
-    next();
-
-    // TODO 解析包名
-    if (cur_token != tokenizer::TK_IDENTIFIER) {
-        syntax_error({"`<identifier>` expected before '",cur_token.literal,"'\n"});
-        return 1;
-    }
-
-    // cur_token == TK_IDENTIFIER
-    next();
-
-    return true;
-}
-
-
 */
+
 }
