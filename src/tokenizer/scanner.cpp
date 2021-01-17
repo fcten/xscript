@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cassert>
 #include <unordered_map>
 #include "scanner.hpp"
 
@@ -133,30 +134,30 @@ std::unordered_map<std::string_view, token_t> reserved_words = {
     {"echo",        TK_ECHO}
 };
 
-std::unordered_map<char, trie> scanner::trie_root = scanner::init_trie();
+std::unordered_map<char, trie*> scanner::trie_root = scanner::init_trie();
 
-std::unordered_map<char, trie> scanner::init_trie() {
-    std::unordered_map<char, trie> root;
+std::unordered_map<char, trie*> scanner::init_trie() {
+    std::unordered_map<char, trie*> root;
 
     // 初始化 trie
     for (auto iter = tokens.begin(); iter != tokens.end(); ++iter) {
         trie *node = nullptr;
-        for (int i = 0 ; i < iter->first.length() ; i++) {
+        for (size_t i = 0 ; i < iter->first.length() ; i++) {
             char n = iter->first.at(i);
             if (node == nullptr) {
                 auto it = root.find(n);
                 if (it == root.end()) {
-                    root[n] = trie();
+                    root[n] = new trie();
                     it = root.find(n);
                 }
-                node = &it->second;
+                node = it->second;
             } else {
                 auto it = node->children.find(n);
                 if (it == node->children.end()) {
-                    node->children[n] = trie();
+                    node->children[n] = new trie();
                     it = node->children.find(n);
                 }
-                node = &it->second;
+                node = it->second;
             }
         }
         
@@ -235,14 +236,14 @@ token_t scanner::step_to_eot() {
             if (it == trie_root.end()) {
                 break;
             }
-            node = &it->second;
+            node = it->second;
         } else {
             auto it = node->children.find(n);
             if (it == node->children.end()) {
                 offset--;
                 break;
             }
-            node = &it->second;
+            node = it->second;
         }
         if (node->token != TK_UNKNOWN) {
             t = node->token;

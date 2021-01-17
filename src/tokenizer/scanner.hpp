@@ -11,8 +11,8 @@ typedef util::trie<token_t, char> trie;
 
 class scanner {
 private:
-    static std::unordered_map<char, trie> trie_root;
-    static std::unordered_map<char, trie> init_trie();
+    static std::unordered_map<char, trie*> trie_root;
+    static std::unordered_map<char, trie*> init_trie();
 
     std::string_view source;
 

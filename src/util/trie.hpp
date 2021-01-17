@@ -6,14 +6,12 @@
 
 namespace xscript::util {
 
-template<typename T, typename N> class trie;
-
 template<typename T, typename N>
 class trie {
 public:
     T token;
 
-    std::unordered_map<N, trie<T, N>> children;
+    std::unordered_map<N, trie<T, N>*> children;
 
 };
 
