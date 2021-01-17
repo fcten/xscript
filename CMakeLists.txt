@@ -5,7 +5,7 @@
 # line utility including the "-i" option.
 
 set(CMAKE_LEGACY_CYGWIN_WIN32 0)
-set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD 17)
 
 project(xscript)
 
