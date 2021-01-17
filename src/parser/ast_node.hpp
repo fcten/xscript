@@ -7,8 +7,16 @@
 namespace xscript::parser {
 
 typedef enum {
+    // Declaration
+    PACKAGE_DECLARATION = 1,
+    IMPORT_DECLARATION,
+    EXPORT_DECLARATION,
+    VARIABLE_DECLARATION,
+    CONSTANT_DECLARATION,
+    FUNCTION_DECLARATION,
+    TYPE_DECLARATION,
     // Statement
-    BLOCK_STATEMENT = 1,
+    BLOCK_STATEMENT,
     IF_STATEMENT,
     IF_ELSE_STATEMENT,
     FOR_STATEMENT,
@@ -26,14 +34,6 @@ typedef enum {
     THROW_STATEMENT,
     ECHO_STATEMENT,
     CO_STATEMENT,
-    // Declaration
-    PACKAGE_DECLARATION,
-    IMPORT_DECLARATION,
-    EXPORT_DECLARATION,
-    VARIABLE_DECLARATION,
-    CONSTANT_DECLARATION,
-    FUNCTION_DECLARATION,
-    TYPE_DECLARATION,
     // Parameter
     FUNCTION_CALL_PARAMETER,
     FUNCTION_DECL_PARAMETER,
@@ -61,8 +61,8 @@ typedef enum {
 
 class ast_node {
 private:
-    std::weak_ptr<ast_node> parent;
-    std::vector<std::shared_ptr<ast_node>> children;
+    ast_node* parent;
+    std::vector<ast_node> children;
 
     type_t type;
 
@@ -73,10 +73,11 @@ private:
     size_t row;
 
 public:
-    ast_node(type_t node_type);
+    ast_node();
+    ast_node(ast_node& p, type_t t);
 
-    std::weak_ptr<ast_node> get_parent();
-    void add_child(std::shared_ptr<ast_node> child);
+    ast_node* get_parent();
+    void add_child(ast_node& child);
 };
 
 }

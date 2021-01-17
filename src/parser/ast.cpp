@@ -1,14 +1,19 @@
-#include <sstream>
 #include <cassert>
+#include <iostream>
+#include <fstream>
+#include <sstream>
 #include "ast.hpp"
 
 namespace xscript::parser {
 
-ast::ast(std::string path) :
-    scanner(path),
-    line(1)
+ast::ast(std::string s) :
+    source(s),
+    scanner(source),
+    parsed(false)
 {
-
+    // TODO
+    scanner.print();
+    scanner.reset();
 }
 
 // 解析下一个 token
@@ -71,6 +76,22 @@ void ast::syntax_error(std::initializer_list<std::string_view> args) {
     errors.push_back(ss.str());
 }
 
+// compilation_unit <- package_declaration? import_declarations? type_expression_declarations?
+bool ast::parse() {
+    if (parsed) {
+        return false;
+    }
+
+    // 读取一个 token
+    next();
+
+    // TODO
+
+    parsed = true;
+    return true;
+}
+
+/*
 bool ast::parse_string_token(std::shared_ptr<ast_node> parent) {
     std::shared_ptr<ast_node> string_token = std::make_shared<ast_node>(STRING_TOKEN);
     parent->add_child(string_token);
@@ -85,7 +106,7 @@ bool ast::parse_string_token(std::shared_ptr<ast_node> parent) {
 
     return true;
 }
-/*
+
 bool parse_decl_parameter(std::shared_ptr<ast_node> parent) {
     lgx_ast_node_t* param_list = ast_node_new(ast, FUNCTION_DECL_PARAMETER);
     ast_node_append_child(parent, param_list);
@@ -1375,15 +1396,6 @@ bool ast::parse_package_declaration(std::shared_ptr<ast_node> parent) {
     return true;
 }
 
-bool ast::parse() {
-    // 初始化根节点(包作用域)
-    ast_root = std::make_shared<ast_node>(BLOCK_STATEMENT);
 
-    // 读取一个 token
-    next();
-
-    // TODO
-    return false;
-}
 */
 }

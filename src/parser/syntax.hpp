@@ -3,39 +3,21 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include "../tokenizer/scanner.hpp"
-#include "syntax_rule.hpp"
+#include "ast.hpp"
 
 namespace xscript::parser {
 
-typedef util::trie<std::string_view, std::string_view> trie;
-
 class syntax {
 private:
-    tokenizer::scanner scanner;
-
-    std::vector<syntax_rule> rules;
-    
-    trie trie_root;
-
-    // 起始符
-
-    // 
-
-    // 终止符
-
-    // 词法分析相关数据
-    tokenizer::token prev_token;
-    tokenizer::token cur_token;
-
-    size_t line;
-
-    void next();
+    std::unordered_map<std::string, std::unique_ptr<ast>> packages;
 
 public:
-    syntax(std::string path);
+    syntax();
 
-    bool parse();
+    bool load(std::string path);
+    bool reload(std::string path);
 
 };
 

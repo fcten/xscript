@@ -1,96 +1,44 @@
+#include <cassert>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 #include "syntax.hpp"
 
 namespace xscript::parser {
 
-syntax::syntax(std::string path) :
-    scanner(path),
-    line(1)
-{
+syntax::syntax() {
 
 }
 
-// 解析下一个 token
-void syntax::next() {
-    while (true) {
-        tokenizer::token token = scanner.next();
-        switch (token.type) {
-            case tokenizer::TK_SPACE:
-            case tokenizer::TK_TAB:
-                // 忽略空格与制表符
-                break;
-            case tokenizer::TK_COMMENT_LINE:
-                // 跳过单行注释
-                while (token != tokenizer::TK_EOF && token != tokenizer::TK_EOL) {
-                    token = scanner.next();
-                    if (token == tokenizer::TK_EOL) {
-                        line++;
-                    }
-                }
-                break;
-            case tokenizer::TK_COMMENT_BEGIN:
-                // 跳过多行注释
-                while (token != tokenizer::TK_EOF && token != tokenizer::TK_COMMENT_END) {
-                    token = scanner.next();
-                    if (token == tokenizer::TK_EOL) {
-                        line++;
-                    }
-                }
-                break;
-            case tokenizer::TK_EOL:
-                line++;
-                prev_token = cur_token;
-                cur_token = token;
-                return;
-            case tokenizer::TK_EOF:
-                // 扫描结束
-                if (cur_token == tokenizer::TK_EOF) {
-                    return;
-                }
-            default:
-                prev_token = cur_token;
-                cur_token = token;
-                return;
-        }
+bool syntax::load(std::string path) {
+    auto it = packages.find(path);
+    if (it != packages.end()) {
+        return true;
     }
-}
 
-bool syntax::parse() {
-    while (cur_token != tokenizer::TK_EOF) {
-        syntax_rule rule;
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        // TODO report error
+        return false;
+    }
 
-        // 读取规则名
-        next();
-        if (cur_token != tokenizer::TK_IDENTIFIER) {
-            if (cur_token == tokenizer::TK_EOL) {
-                // 跳过空行
-                continue;
-            } else if (cur_token == tokenizer::TK_EOF) {
-                return true;
-            }
-            std::cout << "[syntax error] [main.x:" << line << "] `identifier` expected, `" << cur_token.literal << "`(" << cur_token.type << ") found" << std::endl;
-            return false;
-        }
-        rule.name = cur_token.literal;
+    std::stringstream buffer;
+    buffer << file.rdbuf();
 
-        // 读取 <-
-        next();
-        if (cur_token != tokenizer::TK_LEFT_ARROW) {
-            std::cout << "[syntax error] [main.x:" << line << "] `<-` expected, `" << cur_token.literal << "`(" << cur_token.type << ") found" << std::endl;
-            return false;
-        }
-
-        // 读取规则序列
-        next();
-        while (cur_token != tokenizer::TK_EOF && cur_token != tokenizer::TK_EOL) {
-            rule.chain.push_back(cur_token.literal);
-            next();
-        }
-
-        rules.push_back(rule);
+    packages[path] = std::make_unique<ast>(buffer.str());
+    if (!packages[path]->parse()) {
+        packages.erase(path);
+        return false;
     }
 
     return true;
 }
+
+bool syntax::reload(std::string path) {
+    packages.erase(path);
+    return load(path);
+}
+
+
 
 }

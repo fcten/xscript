@@ -11,6 +11,7 @@
 
 using xscript::tokenizer::scanner;
 using xscript::parser::syntax;
+using xscript::parser::ast;
 
 int main(int argc, char* argv[]) {
     /*
@@ -62,8 +63,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    syntax s(argv[1]);
-    s.parse();
+    syntax s;
+    for (int i = 1 ; i < argc ; i++) {
+        s.load(argv[i]);
+    }
     
     return 0;
 }

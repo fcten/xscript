@@ -3,5 +3,6 @@
 
 #include "tokenizer/scanner.hpp"
 #include "parser/syntax.hpp"
+#include "parser/ast.hpp"
 
 #endif // _XSCRIPT_HPP_

@@ -11,17 +11,19 @@ namespace xscript::parser {
 
 class ast {
 private:
+    std::string source;
     tokenizer::scanner scanner;
+
+    bool parsed;
+
+    ast_node root;
 
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
 
-    std::shared_ptr<ast_node> ast_root;
-
     // 词法分析相关数据
     tokenizer::token prev_token;
     tokenizer::token cur_token;
-
     size_t line;
 
     void syntax_error(std::initializer_list<std::string_view> args);
@@ -53,8 +55,9 @@ private:
 
     bool parse_declaration(std::shared_ptr<ast_node> parent);
     bool parse_statement(std::shared_ptr<ast_node> parent);
+
 public:
-    ast(std::string path);
+    ast(std::string s);
 
     bool parse();
 };

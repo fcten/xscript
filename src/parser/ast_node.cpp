@@ -2,17 +2,25 @@
 
 namespace xscript::parser {
 
-ast_node::ast_node(type_t node_type) :
-    type(node_type)
+ast_node::ast_node() :
+    parent(nullptr),
+    type(PACKAGE_DECLARATION)
 {
 
 }
 
-void ast_node::add_child(std::shared_ptr<ast_node> child) {
+ast_node::ast_node(ast_node& p, type_t t) :
+    parent(&p),
+    type(t)
+{
+
+}
+
+void ast_node::add_child(ast_node& child) {
     children.push_back(child);
 }
 
-std::weak_ptr<ast_node> ast_node::get_parent() {
+ast_node* ast_node::get_parent() {
     return parent;
 }
 

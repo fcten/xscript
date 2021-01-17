@@ -136,10 +136,6 @@ typedef enum {
 
     TK_LENGTH
 } token_t;
-
-extern std::unordered_map<std::string_view, token_t> tokens;
-extern std::unordered_map<std::string_view, token_t> reserved_words;
-
 class token {
 public:
     token_t type;

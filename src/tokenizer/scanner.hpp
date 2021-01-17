@@ -11,9 +11,9 @@ typedef util::trie<token_t, char> trie;
 
 class scanner {
 private:
-    std::unordered_map<char, trie> trie_root;
+    static std::unordered_map<char, trie> trie_root;
+    static std::unordered_map<char, trie> init_trie();
 
-    std::string data;
     std::string_view source;
 
     // 当前偏移
@@ -21,8 +21,6 @@ private:
 
     // 当前 token 起始偏移
     size_t milestone;
-
-    void add_token(token t);
 
     bool is_next(char n);
     void step_to_eos(char n);
@@ -34,13 +32,14 @@ private:
     token_t step_to_eot();
 
  public:
-    scanner(std::string path);
+    scanner(std::string_view s);
 
     token next();
 
     std::string_view get_literal();
 
     void print();
+    void reset();
 };
 
 }

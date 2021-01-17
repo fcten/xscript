@@ -1,36 +1,4 @@
-/*
-内置终止符：
-$identifier 标识符
 
-$number 数字
-$string 字符串
-$boolean 布尔
-
-
-约定：规则名大写，其余小写
-
-1、规则唯一性：不允许存在名字不同而规则相同的规则
-
-2、最长匹配原则：当输入满足多条规则时，长的规则优先匹配
-
-R1 <- abcde
-R2 <- abc
-
-输入：abcdeabc
-输出：abcde abc
-
-3、规则重叠：前面的规则优先匹配
-
-R <- R a R
-R <- R b R
-R <- c
-
-输入：cbcac
-输出：R1 
-
-*/
-
-// 
 
 compilation_unit <- package_declaration? import_declarations? type_expression_declarations?
 
