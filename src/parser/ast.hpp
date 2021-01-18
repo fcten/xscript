@@ -96,6 +96,8 @@ public:
     bool parse();
 
     void print();
+    void print(std::unique_ptr<ast_node>& node);
+    void print(std::unique_ptr<ast_node>& node, int indent);
 };
 
 }

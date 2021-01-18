@@ -130,11 +130,19 @@ bool ast::process_failover(std::string f, int l, std::set<tokenizer::token_t> to
 }
 
 void ast::print() {
-    // TODO print ast
+    print(root);
 
     for (auto it = errors.begin() ; it != errors.end() ; it++) {
         std::cout << *it << std::endl;
     }
+}
+
+void ast::print(std::unique_ptr<ast_node>& node) {
+    print(node, 0);
+}
+
+void ast::print(std::unique_ptr<ast_node>& node, int indent) {
+    node->print(indent);
 }
 
 // root <- package_declaration import_declarations? global_declarations?
@@ -369,7 +377,7 @@ bool ast::parse_type_declarator(std::unique_ptr<ast_node>& parent) {
         cur_token != tokenizer::TK_FLOAT &&
         cur_token != tokenizer::TK_BOOL &&
         cur_token != tokenizer::TK_STRING) {
-        return failover({"<type declarator> expected"});
+        return syntax_error({"<type declarator> expected"});
     }
     next();
 
@@ -603,21 +611,23 @@ bool ast::parse_function_declaration(std::unique_ptr<ast_node>& parent) {
     }
     next();
 
+    bool ret = true;
+
     if (!parse_function_decl_parameter(node)) {
-        return false;
+        ret = false;
     }
 
     if (predict_type_declarator()) {
         if (!parse_type_declarator(node)) {
-            return false;
+            ret = false;
         }
     }
 
     if (parse_block(node)) {
-        return false;
+        ret = false;
     }
 
-    return true;
+    return ret;
 }
 
 // function_decl_parameter <- TK_LEFT_PAREN [ variable_declarator [ TK_COMMA variable_declaration ]* ]? TK_RIGHT_PAREN

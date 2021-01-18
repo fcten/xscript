@@ -20,21 +20,16 @@ typedef enum {
     TYPE_DECLARATION,
     // Statement
     IF_STATEMENT,
-    IF_ELSE_STATEMENT,
     FOR_STATEMENT,
     WHILE_STATEMENT,
     DO_STATEMENT,
     CONTINUE_STATEMENT,
     BREAK_STATEMENT,
     SWITCH_STATEMENT,
-    CASE_STATEMENT,
-    DEFAULT_STATEMENT,
     RETURN_STATEMENT,
     EXPRESSION_STATEMENT,
     TRY_STATEMENT,
-    CATCH_STATEMENT,
     THROW_STATEMENT,
-    ECHO_STATEMENT,
     CO_STATEMENT,
     // Parameter
     FUNCTION_CALL_PARAMETER,
@@ -80,6 +75,8 @@ public:
     std::unique_ptr<ast_node>& add_child(type_t t);
     std::unique_ptr<ast_node>& replace_child(type_t t);
     void set_token(tokenizer::token t);
+
+    void print(int indent);
 };
 
 }
