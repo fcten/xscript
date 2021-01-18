@@ -10,7 +10,8 @@ namespace xscript::parser {
 ast::ast(std::string s) :
     source(s),
     scanner(source),
-    parsed(false)
+    parsed(false),
+    line(1)
 {
     // TODO remove debug code
     //scanner.print();
@@ -263,9 +264,12 @@ bool ast::parse_global_declarations(ast_node& parent) {
 // variable_declaration <- TK_VAR TK_IDENTIFIER type_declarator? variable_initializer? ;
 bool ast::parse_variable_declaration(ast_node& parent) {
     ast_node& node = parent.add_child(VARIABLE_DECLARATION);
+
+    if (cur_token != tokenizer::TK_VAR) {
+        return failover({"'var' expected"});
+    }
+    next();
 /*
-    assert(ast->cur_token == TK_VAR);
-    ast_step(ast);
 
     while (1) {
         if (!variable_declaration) {
@@ -307,9 +311,11 @@ bool ast::parse_variable_declaration(ast_node& parent) {
 bool ast::parse_function_declaration(ast_node& parent) {
     ast_node& node = parent.add_child(FUNCTION_DECLARATION);
 
+    if (cur_token != tokenizer::TK_FUNCTION) {
+        return failover({"'func' expected"});
+    }
+    next();
     /*
-    assert(ast->cur_token == TK_FUNCTION);
-    ast_step(ast);
 
     // 接收者
     if (parse_function_receiver(ast, function_declaration)) {
