@@ -38,6 +38,9 @@ private:
 
     std::string_view get_literal();
 
+    size_t get_offset();
+    size_t get_milestone();
+
     void print();
     void reset();
 };

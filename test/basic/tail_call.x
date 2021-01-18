@@ -1,13 +1,13 @@
 package main;
 
-func tail_call(n int) int {
+func tail_call(var n int) int {
     if (n <= 1) {
         return n;
     }
     return tail_call(n - 1);
 }
 
-func call(n int) int {
+func call(var n int) int {
     if (n <= 1) {
         return n;
     }

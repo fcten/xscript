@@ -3,11 +3,13 @@
 
 #include <memory>
 #include <vector>
+#include "../tokenizer/token.hpp"
 
 namespace xscript::parser {
 
 typedef enum {
-    AST_ROOT = 1,
+    ROOT = 1,
+    BLOCK,
     // Declaration
     PACKAGE_DECLARATION,
     IMPORT_DECLARATION,
@@ -17,7 +19,6 @@ typedef enum {
     FUNCTION_DECLARATION,
     TYPE_DECLARATION,
     // Statement
-    BLOCK_STATEMENT,
     IF_STATEMENT,
     IF_ELSE_STATEMENT,
     FOR_STATEMENT,
@@ -47,27 +48,22 @@ typedef enum {
     STRUCT_EXPRESSION,
     TYPE_EXPRESSION,
     // Token
-    IDENTIFIER_TOKEN,
-    LONG_TOKEN,
-    DOUBLE_TOKEN,
-    CHAR_TOKEN,
-    STRING_TOKEN,
-    TRUE_TOKEN,
-    FALSE_TOKEN,
-    NULL_TOKEN,
+    TOKEN,
     // Other
     PACKAGE_NAME,
     PACKAGE_RENAME,
+    TYPE_DECLARATOR,
+    VARIABLE_INITIALIZER,
     FOR_CONDITION,
     FUNCTION_RECEIVER
 } type_t;
 
 class ast_node {
 private:
-    ast_node* parent;
-    std::vector<ast_node> children;
+    std::vector<std::unique_ptr<ast_node>> children;
 
     type_t type;
+    tokenizer::token token;
 
     // 当前节点对应的代码位置
     size_t offset;
@@ -77,11 +73,13 @@ private:
 
 public:
     ast_node();
-    ast_node(ast_node& p, type_t t);
+    ast_node(type_t t);
     
-    ast_node* get_parent();
     type_t get_type();
-    ast_node& add_child(type_t t);
+    bool is_empty();
+    std::unique_ptr<ast_node>& add_child(type_t t);
+    std::unique_ptr<ast_node>& replace_child(type_t t);
+    void set_token(tokenizer::token t);
 };
 
 }

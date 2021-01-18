@@ -1,10 +1,5 @@
 // statement
 
-statement <- if_statement | while_statement | do_statement | for_statement | continue_statement | break_statement | switch_statement | return_statement | try_statement | co_statement | expression_statement | empty_statement
-
-block_statement <- variable_declaration | statement
-
-if_statement <- if ( expression ) block else block | if ( expression ) block
 
 while_statement <- while ( expression ) block
 
@@ -12,13 +7,7 @@ do_statement <- do block while ( expression ) ;
 
 for_statement <- 
 
-continue_statement <- continue ;
-
-break_statement <- break ;
-
 switch_statement <-
-
-return_statement <- return expression ; | return ;
 
 try_statement <-
 
@@ -32,7 +21,6 @@ empty_statement <- ;
 
 // expression
 
-expression <- ( expression ) | assignment_expression
 
 statement_expression <- assignment_expression
 
@@ -55,13 +43,7 @@ variable_modifiers <-
 // other
 
 
-function_decl_parameter <- variable_declaration , function_decl_parameter | variable_declaration
-
 function_call_parameter <-
-
-block <- { block_statements? }
-
-block_statements <- block_statement block_statements | block_statement
 
 case_label <- case : 
 

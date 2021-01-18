@@ -133,7 +133,6 @@ typedef enum {
     TK_PACKAGE,
 
     TK_AS,
-    TK_ECHO,
 
     TK_LENGTH
 } token_t;

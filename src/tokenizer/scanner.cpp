@@ -130,8 +130,7 @@ std::unordered_map<std::string_view, token_t> reserved_words = {
     {"export",      TK_EXPORT},
     {"package",     TK_PACKAGE},
 
-    {"as",          TK_AS},
-    {"echo",        TK_ECHO}
+    {"as",          TK_AS}
 };
 
 std::unordered_map<char, trie*> scanner::trie_root = scanner::init_trie();
@@ -377,6 +376,14 @@ void scanner::print() {
 void scanner::reset() {
     offset = 0;
     milestone = 0;
+}
+
+size_t scanner::get_offset() {
+    return offset;
+}
+
+size_t scanner::get_milestone() {
+    return milestone;
 }
 
 }
