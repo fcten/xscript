@@ -1,5 +1,6 @@
 #include <iostream>
 #include "ast_node.hpp"
+#include "../util/log.hpp"
 
 namespace xscript::parser {
 
@@ -97,9 +98,13 @@ void ast_node::print(int indent) {
     }
     auto it = type_names.find(type);
     if (it != type_names.end()) {
-        std::cout << it->second << std::endl;
+        std::cout << COLOR_WHITE << it->second;
+        if (type == TOKEN) {
+            std::cout << " " COLOR_GRAY << token.literal;
+        }
+        std::cout << COLOR_RESET << std::endl;
     } else {
-        std::cout << "UNKNOWN_AST_NODE" << std::endl;
+        std::cout << COLOR_WHITE "UNKNOWN_AST_NODE" COLOR_RESET << std::endl;
     }
     for (auto it = children.begin() ; it != children.end() ; it ++) {
         (*it)->print(indent + 2);

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include "syntax.hpp"
+#include "../util/log.hpp"
 
 namespace xscript::parser {
 
@@ -18,7 +19,7 @@ bool syntax::load(std::string path) {
 
     std::ifstream file(path);
     if (!file.is_open()) {
-        // TODO report error
+        std::cout <<  "[" COLOR_RED "error" COLOR_RESET "] can't open source file: " COLOR_WHITE << path <<  COLOR_RESET << std::endl;
         return false;
     }
 

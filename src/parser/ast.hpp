@@ -36,9 +36,9 @@ private:
 
     bool append_syntax_error(std::string f, int l, std::initializer_list<std::string_view> args);
     
-    bool process_failover(std::string f, int l, std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens);
-    bool process_failover(std::string f, int l, std::initializer_list<std::string_view> args);
-    bool process_failover(std::string f, int l, std::set<tokenizer::token_t> tokens);
+    bool process_failover(std::string f, int l, std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens, bool step_over);
+    bool process_failover(std::string f, int l, std::initializer_list<std::string_view> args, bool step_over);
+    bool process_failover(std::string f, int l, std::set<tokenizer::token_t> tokens, bool step_over);
 
     bool parse_package_declaration(std::unique_ptr<ast_node>& parent);
     bool parse_import_declaration(std::unique_ptr<ast_node>& parent);
@@ -60,7 +60,6 @@ private:
     bool parse_try_statement(std::unique_ptr<ast_node>& parent);
     bool parse_throw_statement(std::unique_ptr<ast_node>& parent);
     bool parse_echo_statement(std::unique_ptr<ast_node>& parent);
-    bool parse_co_statement(std::unique_ptr<ast_node>& parent);
     bool parse_expression_statement(std::unique_ptr<ast_node>& parent);
 
     bool parse_declaration(std::unique_ptr<ast_node>& parent);

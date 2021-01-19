@@ -4,6 +4,7 @@
 #include <sstream>
 #include <exception>
 #include "ast.hpp"
+#include "../util/log.hpp"
 
 namespace xscript::parser {
 
@@ -89,11 +90,11 @@ protected:
 bool ast::append_syntax_error(std::string f, int l, std::initializer_list<std::string_view> args) {
     std::stringstream ss;
     
-    ss << f << ":" << l << "\n";
-    ss << "[syntax error] [main.x:" << line << ":" << scanner.get_offset() - line_offset << "] ";
+    ss <<  COLOR_GRAY << f << ":" << l << COLOR_RESET "\n";
+    ss << "[" COLOR_RED "syntax error" COLOR_RESET "] [main.x:" << line << ":" << scanner.get_offset() - line_offset << "] ";
 
     for (auto it = args.begin(); it != args.end(); ++it) {
-        ss << *it;
+        ss << COLOR_WHITE << *it << COLOR_RESET;
     }
     
     errors.push_back(ss.str());
@@ -106,27 +107,28 @@ bool ast::append_syntax_error(std::string f, int l, std::initializer_list<std::s
 }
 
 #define syntax_error(args) append_syntax_error(__FILE__, __LINE__, args)
-#define failover(...) process_failover(__FILE__, __LINE__, __VA_ARGS__)
+#define failover(...) process_failover(__FILE__, __LINE__, __VA_ARGS__, true)
+#define failbefore(...) process_failover(__FILE__, __LINE__, __VA_ARGS__, false)
 
-bool ast::process_failover(std::string f, int l, std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens) {
+bool ast::process_failover(std::string f, int l, std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens, bool step_over) {
     if (args.size() > 0) {
         append_syntax_error(f, l, args);
     }
     while (cur_token != tokenizer::TK_EOF && tokens.find(cur_token.type) == tokens.end()) {
         next();
     }
-    if (cur_token != tokenizer::TK_EOF) {
+    if (step_over && cur_token != tokenizer::TK_EOF) {
         next();
     }
     return false;
 }
 
-bool ast::process_failover(std::string f, int l, std::initializer_list<std::string_view> args) {
-    return process_failover(f, l, args, {tokenizer::TK_SEMICOLON});
+bool ast::process_failover(std::string f, int l, std::initializer_list<std::string_view> args, bool step_over) {
+    return process_failover(f, l, args, {tokenizer::TK_SEMICOLON}, step_over);
 }
 
-bool ast::process_failover(std::string f, int l, std::set<tokenizer::token_t> tokens) {
-    return process_failover(f, l, {}, tokens);
+bool ast::process_failover(std::string f, int l, std::set<tokenizer::token_t> tokens, bool step_over) {
+    return process_failover(f, l, {}, tokens, step_over);
 }
 
 void ast::print() {
@@ -205,16 +207,18 @@ bool ast::parse_package_name(std::unique_ptr<ast_node>& parent) {
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
         return failover({"<package declaration> expected"});
+    } else {
+        parse_token(node);
     }
-    next();
 
     while (cur_token == tokenizer::TK_DOT) {
         next();
 
         if (cur_token != tokenizer::TK_IDENTIFIER) {
             return failover({"illegal <package name>"});
+        } else {
+            parse_token(node);
         }
-        next();
     }
 
     return true;
@@ -267,8 +271,9 @@ bool ast::parse_package_rename(std::unique_ptr<ast_node>& parent) {
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
         return failover({"<identifier> expected"});
+    } else {
+        parse_token(node);
     }
-    next();
 
     return true;
 }
@@ -292,14 +297,14 @@ bool ast::parse_global_declarations(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
-// variable_declaration_statement <- variable_declarator ;
+// variable_declaration <- variable_declarator ;
 bool ast::parse_variable_declaration(std::unique_ptr<ast_node>& parent) {
     if (!parse_variable_declarator(parent)) {
         return failover({tokenizer::TK_SEMICOLON});
     }
 
     if (cur_token != tokenizer::TK_SEMICOLON) {
-        return syntax_error({"expected ';' after variable declaration statement"});
+        return syntax_error({"expected ';' after variable declaration"});
     }
     next();
 
@@ -317,8 +322,9 @@ bool ast::parse_variable_declarator(std::unique_ptr<ast_node>& parent) {
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
         return failover({"<identifier> expected"});
+    } else {
+        parse_token(node);
     }
-    next();
 
     if (predict_type_declarator()) {
         if (!parse_type_declarator(node)) {
@@ -346,8 +352,9 @@ bool ast::parse_constant_declaration(std::unique_ptr<ast_node>& parent) {
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
         return failover({"<identifier> expected"});
+    } else {
+        parse_token(node);
     }
-    next();
 
     if (predict_type_declarator()) {
         if (!parse_type_declarator(node)) {
@@ -378,8 +385,9 @@ bool ast::parse_type_declarator(std::unique_ptr<ast_node>& parent) {
         cur_token != tokenizer::TK_BOOL &&
         cur_token != tokenizer::TK_STRING) {
         return syntax_error({"<type declarator> expected"});
+    } else {
+        parse_token(node);
     }
-    next();
 
     return true;
 }
@@ -469,6 +477,7 @@ bool ast::parse_expression(std::unique_ptr<ast_node>& parent, int precedence) {
         case tokenizer::TK_SUB: // 负号运算符
         case tokenizer::TK_INC: // 自增运算符
         case tokenizer::TK_DEC: // 自减运算符
+        case tokenizer::TK_CO:  // 协程运算符
         {
             std::unique_ptr<ast_node>& unary_expression = parent->add_child(UNARY_EXPRESSION);
             if (!parse_token(unary_expression)) {
@@ -607,9 +616,10 @@ bool ast::parse_function_declaration(std::unique_ptr<ast_node>& parent) {
     next();
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
-        return failover({"<identifier> expected"});
+        return failbefore({"<identifier> expected"},{tokenizer::TK_LEFT_PAREN});
+    } else {
+        parse_token(node);
     }
-    next();
 
     bool ret = true;
 
@@ -635,13 +645,13 @@ bool ast::parse_function_decl_parameter(std::unique_ptr<ast_node>& parent) {
     std::unique_ptr<ast_node>& node = parent->add_child(FUNCTION_DECL_PARAMETER);
 
     if (cur_token != tokenizer::TK_LEFT_PAREN) {
-        return failover({"'(' expected"}, {tokenizer::TK_RIGHT_PAREN});
+        syntax_error({"'(' expected"});
     }
     next();
 
     while (cur_token == tokenizer::TK_VAR) {
         if (!parse_variable_declarator(node)) {
-            failover({tokenizer::TK_VAR, tokenizer::TK_RIGHT_PAREN});
+            failbefore({tokenizer::TK_VAR, tokenizer::TK_RIGHT_PAREN});
             continue;
         }
 
@@ -700,10 +710,12 @@ bool ast::parse_block_statements(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
-// block_statement <- variable_declaration | statement
+// block_statement <- variable_declaration | constant_declaration | statement
 bool ast::parse_block_statement(std::unique_ptr<ast_node>& parent) {
     if (cur_token == tokenizer::TK_VAR) {
         return parse_variable_declaration(parent);
+    } else if (cur_token == tokenizer::TK_CONST) {
+        return parse_constant_declaration(parent);
     } else {
         return parse_statement(parent);
     }
@@ -721,7 +733,6 @@ bool ast::parse_statement(std::unique_ptr<ast_node>& parent) {
         case tokenizer::TK_SWITCH: return parse_switch_statement(parent);
         case tokenizer::TK_RETURN: return parse_return_statement(parent);
         case tokenizer::TK_TRY: return parse_try_statement(parent);
-        case tokenizer::TK_CO: return parse_co_statement(parent);
         default:
             if (predict_expression_statement()) {
                 return parse_expression_statement(parent);
@@ -775,7 +786,7 @@ bool ast::parse_if_statement(std::unique_ptr<ast_node>& parent) {
 
     if (cur_token != tokenizer::TK_RIGHT_PAREN) {
         if (!parse_expression(node)) {
-            failover({tokenizer::TK_RIGHT_PAREN});
+            failbefore({tokenizer::TK_RIGHT_PAREN});
         }
     }
 
@@ -878,12 +889,20 @@ bool ast::parse_try_statement(std::unique_ptr<ast_node>& parent) {
     return failover({"unsupport try statement"});
 }
 
-bool ast::parse_co_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport co statement"});
-}
-
+// expression_statement <- expression TK_SEMICOLON
 bool ast::parse_expression_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport expresion statement"});
+    std::unique_ptr<ast_node>& node = parent->add_child(EXPRESSION_STATEMENT);
+
+    if (!parse_expression(node)) {
+        return failover({tokenizer::TK_SEMICOLON});
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        return syntax_error({"';' expected after expression statement"});
+    }
+    next();
+
+    return true;
 }
 
 bool ast::predict_type_declarator() {
@@ -927,6 +946,7 @@ bool ast::predict_expression_statement() {
         case tokenizer::TK_INC:
         case tokenizer::TK_DEC:
         case tokenizer::TK_LEFT_PAREN:
+        case tokenizer::TK_CO:
             return true;
         default:
             return false;
