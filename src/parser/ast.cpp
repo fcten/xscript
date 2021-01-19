@@ -91,7 +91,7 @@ bool ast::append_syntax_error(std::string f, int l, std::initializer_list<std::s
     std::stringstream ss;
     
     ss <<  COLOR_GRAY << f << ":" << l << COLOR_RESET "\n";
-    ss << "[" COLOR_RED "syntax error" COLOR_RESET "] [main.x:" << line << ":" << scanner.get_offset() - line_offset << "] ";
+    ss << "[" COLOR_RED "syntax error" COLOR_RESET "] [main.x:" << line << ":" << scanner.get_milestone() - line_offset + 1 << "] ";
 
     for (auto it = args.begin(); it != args.end(); ++it) {
         ss << COLOR_WHITE << *it << COLOR_RESET;
@@ -206,7 +206,7 @@ bool ast::parse_package_name(std::unique_ptr<ast_node>& parent) {
     std::unique_ptr<ast_node>& node = parent->add_child(PACKAGE_NAME);
 
     if (cur_token != tokenizer::TK_IDENTIFIER) {
-        return failover({"<package declaration> expected"});
+        return failover({"<package name> expected"});
     } else {
         parse_token(node);
     }
@@ -300,7 +300,7 @@ bool ast::parse_global_declarations(std::unique_ptr<ast_node>& parent) {
 // variable_declaration <- variable_declarator ;
 bool ast::parse_variable_declaration(std::unique_ptr<ast_node>& parent) {
     if (!parse_variable_declarator(parent)) {
-        return failover({tokenizer::TK_SEMICOLON});
+        return false;
     }
 
     if (cur_token != tokenizer::TK_SEMICOLON) {
@@ -534,11 +534,8 @@ bool ast::parse_expression(std::unique_ptr<ast_node>& parent, int precedence) {
         }
 
         if (t == tokenizer::TK_LEFT_PAREN) {
-            if (cur_token != tokenizer::TK_RIGHT_PAREN) {
-                // TODO 
-                if (!parse_expression(binary_expression)) {
-                    return false;
-                }
+            if (!parse_function_call_parameter(binary_expression)) {
+                return false;
             }
 
             if (cur_token != tokenizer::TK_RIGHT_PAREN) {
@@ -638,6 +635,29 @@ bool ast::parse_function_declaration(std::unique_ptr<ast_node>& parent) {
     }
 
     return ret;
+}
+
+// function_call_parameter <- [ expression [ TK_COMMA expression ]* ]?
+bool ast::parse_function_call_parameter(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(FUNCTION_CALL_PARAMETER);
+
+    if (cur_token == tokenizer::TK_RIGHT_PAREN) {
+        return true;
+    }
+
+    if (!parse_expression(node)) {
+        return false;
+    }
+
+    while (cur_token == tokenizer::TK_COMMA) {
+        next();
+
+        if (!parse_expression(node)) {
+            return failbefore({tokenizer::TK_RIGHT_PAREN});
+        }
+    }
+
+    return true;
 }
 
 // function_decl_parameter <- TK_LEFT_PAREN [ variable_declarator [ TK_COMMA variable_declaration ]* ]? TK_RIGHT_PAREN
@@ -769,7 +789,7 @@ bool ast::parse_type_declaration(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
-// if_statement <- TK_IF TK_LEFT_PAREN expression TK_RIGHT_PAREN block [ TK_ELSE block ]?
+// if_statement <- TK_IF TK_LEFT_PAREN expression TK_RIGHT_PAREN block [ TK_ELSE [ block | if_statement ] ]?
 bool ast::parse_if_statement(std::unique_ptr<ast_node>& parent) {
     std::unique_ptr<ast_node>& node = parent->add_child(IF_STATEMENT);
 
@@ -805,6 +825,47 @@ bool ast::parse_if_statement(std::unique_ptr<ast_node>& parent) {
     }
     next();
 
+    if (cur_token == tokenizer::TK_IF) {
+        if (parse_if_statement(node)) {
+            return false;
+        }
+    } else {
+        if (!parse_block(node)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+// while_statement <- TK_WHILE TK_LEFT_PAREN expression TK_RIGHT_PAREN block
+bool ast::parse_while_statement(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(WHILE_STATEMENT);
+
+    if (cur_token != tokenizer::TK_WHILE) {
+        return failover({"'while' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_LEFT_PAREN) {
+        syntax_error({"'(' expected"});
+    } else {
+        next();
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        if (!parse_expression(node)) {
+            failbefore({tokenizer::TK_RIGHT_PAREN});
+        }
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        syntax_error({"')' expected"});
+    } else {
+        next();
+    }
+
     if (!parse_block(node)) {
         return false;
     }
@@ -812,16 +873,104 @@ bool ast::parse_if_statement(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
-bool ast::parse_while_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport while statement"});
-}
-
+// do_statement <- TK_DO block TK_WHILE TK_LEFT_PAREN expression TK_RIGHT_PAREN TK_SEMICOLON
 bool ast::parse_do_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport do statement"});
+    std::unique_ptr<ast_node>& node = parent->add_child(DO_STATEMENT);
+
+    if (cur_token != tokenizer::TK_DO) {
+        return failover({"'do' expected"});
+    }
+    next();
+
+    if (!parse_block(node)) {
+        return false;
+    }
+
+    if (cur_token != tokenizer::TK_WHILE) {
+        return failover({"'while' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_LEFT_PAREN) {
+        syntax_error({"'(' expected"});
+    } else {
+        next();
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        if (!parse_expression(node)) {
+            failbefore({tokenizer::TK_RIGHT_PAREN});
+        }
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        syntax_error({"')' expected"});
+    } else {
+        next();
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        return syntax_error({"';' expected after do-while statement"});
+    }
+    next();
+
+    return true;
 }
 
+// for_statement <- TK_FOR TK_LEFT_PAREN [ expression | variable_declarator ] TK_SEMICOLON expression TK_SEMICOLON expression TK_RIGHT_PAREN block
 bool ast::parse_for_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport for statement"});
+    std::unique_ptr<ast_node>& node = parent->add_child(FOR_STATEMENT);
+
+    if (cur_token != tokenizer::TK_FOR) {
+        return failover({"'for' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_LEFT_PAREN) {
+        syntax_error({"'(' expected"});
+    } else {
+        next();
+    }
+
+    if (cur_token != tokenizer::TK_VAR) {
+        if (!parse_expression(node)) {
+            failbefore({tokenizer::TK_SEMICOLON});
+        }
+    } else {
+        if (!parse_variable_declarator(node)) {
+            failbefore({tokenizer::TK_SEMICOLON});
+        }
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        syntax_error({"';' expected"});
+    }
+    next();
+
+    if (!parse_expression(node)) {
+        failbefore({tokenizer::TK_SEMICOLON});
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        syntax_error({"';' expected"});
+    }
+    next();
+
+    if (!parse_expression(node)) {
+        failbefore({tokenizer::TK_SEMICOLON});
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        syntax_error({"')' expected"});
+    } else {
+        next();
+    }
+
+    if (!parse_block(node)) {
+        return false;
+    }
+
+    return true;
 }
 
 // continue_statement <- TK_CONTINUE TK_SEMICOLON

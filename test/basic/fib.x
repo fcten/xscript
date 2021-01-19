@@ -1,6 +1,6 @@
 package main;
 
-func fib(n int) int {
+func fib(var n int) int {
     if (n < 2) {
         return n;
     }

@@ -79,6 +79,7 @@ private:
     bool parse_variable_declarator(std::unique_ptr<ast_node>& parent);
     bool parse_variable_initializer(std::unique_ptr<ast_node>& parent);
     bool parse_function_decl_parameter(std::unique_ptr<ast_node>& parent);
+    bool parse_function_call_parameter(std::unique_ptr<ast_node>& parent);
     bool parse_block(std::unique_ptr<ast_node>& parent);
     bool parse_block_statements(std::unique_ptr<ast_node>& parent);
 

@@ -7,7 +7,8 @@ package main;
 import "io";
 
 func main() {
-    var a = 100, b = 0;
+    var a = 100;
+    var b = 0;
 
     while (a > 0) {
         b = b + a;

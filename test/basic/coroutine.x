@@ -1,6 +1,6 @@
 package main;
 
-func test(from int, to int) {
+func test(var from int, var to int) {
     var i int;
     for (i = from; i <= to; i = i + 1) {
         echo(i);

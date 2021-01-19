@@ -6,7 +6,8 @@ package main;
 
 func main() {
     var a = 1;
-    var b int, c int;
+    var b int;
+    var c int;
 
     do {
         var a = 2;

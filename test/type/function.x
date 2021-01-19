@@ -22,4 +22,9 @@ func main() {
 
     f2 = add;
     echo(f2(1, 2));
+
+    var f3 = func(var x int, var y int) {
+        return x * y;
+    }
+    echo(f3(1, 2));
 }

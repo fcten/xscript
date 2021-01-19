@@ -5,7 +5,8 @@
 package main;
 
 func main() {
-    var a = 0, b = 0;
+    var a = 0;
+    var b = 0;
 
     while (a < 10) {
         a = a + 1;

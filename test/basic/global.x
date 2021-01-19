@@ -7,7 +7,7 @@ package main;
 
 var a = 1;
 
-func add(b int) int {
+func add(var b int) int {
     return a + b;
 }
 

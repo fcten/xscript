@@ -1,5 +1,5 @@
-array<int> nums = [1,2,3,4,5];
+list<int> nums = [1,2,3,4,5];
 
-array<string, string> info = [
+map<string, string> info = [
     "hello" : "world",
 ];

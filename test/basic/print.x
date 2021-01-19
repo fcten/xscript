@@ -13,7 +13,8 @@ func main() {
 
     echo(1 > 2);
 
-    var a = 33, b = true;
+    var a = 33;
+    var b = true;
     echo(a > 1);
     echo(!b);
 
