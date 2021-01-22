@@ -70,6 +70,8 @@ private:
     bool parse_basic_expression(std::unique_ptr<ast_node>& parent);
 
     bool parse_token(std::unique_ptr<ast_node>& parent);
+    bool parse_array_literal(std::unique_ptr<ast_node>& parent);
+    bool parse_object_literal(std::unique_ptr<ast_node>& parent);
 
     bool parse_package_name(std::unique_ptr<ast_node>& parent);
     bool parse_package_rename(std::unique_ptr<ast_node>& parent);
@@ -82,6 +84,7 @@ private:
     bool parse_function_call_parameter(std::unique_ptr<ast_node>& parent);
     bool parse_block(std::unique_ptr<ast_node>& parent);
     bool parse_block_statements(std::unique_ptr<ast_node>& parent);
+    bool parse_key_value_pair(std::unique_ptr<ast_node>& parent);
 
     bool predict_type_declarator();
     bool predict_block_statements();

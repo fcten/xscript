@@ -574,9 +574,86 @@ bool ast::parse_token(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
+// array_literal <- TK_LEFT_BRACK [ expression [ TK_COMMA expression ]* ]? TK_RIGHT_BRACK
+bool ast::parse_array_literal(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(LITERAL_ARRAY_EXPRESSION);
+
+    if (cur_token != tokenizer::TK_LEFT_BRACK) {
+        return syntax_error({"'[' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_RIGHT_BRACK) {
+        if (!parse_expression(node)) {
+            failbefore({tokenizer::TK_COMMA, tokenizer::TK_RIGHT_BRACK});
+        }
+        while (cur_token == tokenizer::TK_COMMA) {
+            next();
+            if (!parse_expression(node)) {
+                failbefore({tokenizer::TK_COMMA, tokenizer::TK_RIGHT_BRACK});
+            }
+        }
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_BRACK) {
+        return syntax_error({"']' expected"});
+    }
+
+    return true;
+}
+
+// object_literal <- TK_LEFT_BRACE [ key_value_pair [ TK_COMMA key_value_pair ]* ]? TK_RIGHT_BRACE
+bool ast::parse_object_literal(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(LITERAL_OBJECT_EXPRESSION);
+
+    if (cur_token != tokenizer::TK_LEFT_BRACE) {
+        return syntax_error({"'{' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_RIGHT_BRACE) {
+        if (!parse_key_value_pair(node)) {
+            failbefore({tokenizer::TK_COMMA, tokenizer::TK_RIGHT_BRACE});
+        }
+        while (cur_token == tokenizer::TK_COMMA) {
+            next();
+            if (!parse_key_value_pair(node)) {
+                failbefore({tokenizer::TK_COMMA, tokenizer::TK_RIGHT_BRACE});
+            }
+        }
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_BRACE) {
+        return syntax_error({"'}' expected"});
+    }
+
+    return true;
+}
+
+// key_value_pair <- TK_STRING TK_COLON expression
+bool ast::parse_key_value_pair(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(KEY_VALUE_PAIR);
+
+    if (cur_token != tokenizer::TK_STRING) {
+        syntax_error({"<string> expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_COLON) {
+        syntax_error({"':' expected"});
+    }
+    next();
+
+    if (!parse_expression(node)) {
+        return false;
+    }
+
+    return true;
+}
+
 // basic_expression -> TK_LITERAL_LONG | TK_LITERAL_DOUBLE | TK_LITERAL_STRING |
 //     TK_LITERAL_CHAR | TK_TRUE | TK_FALSE | TK_NULL | TK_IDENTIFIER |
-//     TK_LEFT_PAREN expression TK_RIGHT_PAREN
+//     literal | TK_LEFT_PAREN expression TK_RIGHT_PAREN
 bool ast::parse_basic_expression(std::unique_ptr<ast_node>& parent) {
     switch (cur_token.type) {
         case tokenizer::TK_LITERAL_LONG:
@@ -588,6 +665,10 @@ bool ast::parse_basic_expression(std::unique_ptr<ast_node>& parent) {
         case tokenizer::TK_NULL:
         case tokenizer::TK_IDENTIFIER:
             return parse_token(parent);
+        case tokenizer::TK_LEFT_BRACK:
+            return parse_array_literal(parent);
+        case tokenizer::TK_LEFT_BRACE:
+            return parse_object_literal(parent);
         case tokenizer::TK_LEFT_PAREN:
             next();
             if (!parse_expression(parent)) {

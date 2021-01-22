@@ -63,10 +63,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    int ret = 0;
+
     syntax s;
     for (int i = 1 ; i < argc ; i++) {
-        s.load(argv[i]);
+        if (!s.load(argv[i])) {
+            ret = 1;
+        }
     }
     
-    return 0;
+    return ret;
 }
