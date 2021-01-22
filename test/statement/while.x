@@ -4,7 +4,7 @@
 
 package main;
 
-import "io";
+import std.io;
 
 func main() {
     var a = 100;

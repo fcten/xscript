@@ -598,6 +598,7 @@ bool ast::parse_array_literal(std::unique_ptr<ast_node>& parent) {
     if (cur_token != tokenizer::TK_RIGHT_BRACK) {
         return syntax_error({"']' expected"});
     }
+    next();
 
     return true;
 }
@@ -626,6 +627,7 @@ bool ast::parse_object_literal(std::unique_ptr<ast_node>& parent) {
     if (cur_token != tokenizer::TK_RIGHT_BRACE) {
         return syntax_error({"'}' expected"});
     }
+    next();
 
     return true;
 }
