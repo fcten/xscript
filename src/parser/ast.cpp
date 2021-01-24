@@ -1090,8 +1090,99 @@ bool ast::parse_break_statement(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
+// switch_statement <- TK_SWITCH TK_LEFT_PAREN expression TK_RIGHT_PAREN switch_block
 bool ast::parse_switch_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport switch statement"});
+    std::unique_ptr<ast_node>& node = parent->add_child(SWITCH_STATEMENT);
+
+    if (cur_token != tokenizer::TK_SWITCH) {
+        return failover({"'switch' expected"});
+    }
+    next();
+
+    if (cur_token != tokenizer::TK_LEFT_PAREN) {
+        syntax_error({"'(' expected"});
+    } else {
+        next();
+    }
+
+    if (!parse_expression(node)) {
+        failbefore({tokenizer::TK_RIGHT_PAREN});
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_PAREN) {
+        syntax_error({"')' expected"});
+    } else {
+        next();
+    }
+
+    if (!parse_switch_block(node)) {
+        return false;
+    }
+
+    return true;
+}
+
+// switch_block <- TK_LEFT_BRACE [ switch_label ]* TK_RIGHT_BRACE
+bool ast::parse_switch_block(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(BLOCK);
+
+    if (cur_token != tokenizer::TK_LEFT_BRACE) {
+        return syntax_error({"'{' expected"});
+    }
+    next();
+
+    while (cur_token == tokenizer::TK_CASE || cur_token == tokenizer::TK_DEFAULT) {
+        if (!parse_switch_label(node)) {
+            return false;
+        }
+    }
+
+    if (cur_token != tokenizer::TK_RIGHT_BRACE) {
+        return syntax_error({"'}' expected"});
+    }
+    next();
+
+    return true;
+}
+
+// switch_label <- [ TK_CASE expression | TK_DEFAULT ] TK_COLON [ block | block_statement* ]?
+bool ast::parse_switch_label(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(SWITCH_LABEL);
+
+    if (cur_token == tokenizer::TK_CASE) {
+        parse_token(node);
+
+        if (!parse_expression(node)) {
+            failbefore({tokenizer::TK_COLON});
+        }
+    } else if (cur_token == tokenizer::TK_DEFAULT) {
+        parse_token(node);
+    } else {
+        return syntax_error({"'case' or 'default' expected"});
+    }
+
+    if (cur_token != tokenizer::TK_COLON) {
+        syntax_error({"':' expected"});
+    } else {
+        next();
+    }
+
+    while (cur_token != tokenizer::TK_CASE &&
+        cur_token != tokenizer::TK_DEFAULT &&
+        cur_token != tokenizer::TK_RIGHT_BRACE
+    ) {
+        if (cur_token == tokenizer::TK_LEFT_BRACE) {
+            if (!parse_block(node)) {
+                return false;
+            }
+        } else {
+            if (!parse_block_statement(node)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 // return_statement <- TK_RETURN expression? TK_SEMICOLON

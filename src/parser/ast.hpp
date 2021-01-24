@@ -85,6 +85,8 @@ private:
     bool parse_block(std::unique_ptr<ast_node>& parent);
     bool parse_block_statements(std::unique_ptr<ast_node>& parent);
     bool parse_key_value_pair(std::unique_ptr<ast_node>& parent);
+    bool parse_switch_block(std::unique_ptr<ast_node>& parent);
+    bool parse_switch_label(std::unique_ptr<ast_node>& parent);
 
     bool predict_type_declarator();
     bool predict_block_statements();

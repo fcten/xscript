@@ -47,7 +47,8 @@ typedef enum {
     PACKAGE_RENAME,
     TYPE_DECLARATOR,
     VARIABLE_INITIALIZER,
-    KEY_VALUE_PAIR
+    KEY_VALUE_PAIR,
+    SWITCH_LABEL
 } type_t;
 
 class ast_node {

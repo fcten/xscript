@@ -86,7 +86,8 @@ std::unordered_map<type_t, std::string_view> type_names = {
     {PACKAGE_RENAME, "PACKAGE_RENAME"},
     {TYPE_DECLARATOR, "TYPE_DECLARATOR"},
     {VARIABLE_INITIALIZER, "VARIABLE_INITIALIZER"},
-    {KEY_VALUE_PAIR, "KEY_VALUE_PAIR"}
+    {KEY_VALUE_PAIR, "KEY_VALUE_PAIR"},
+    {SWITCH_LABEL, "SWITCH_LABEL"}
 };
 
 void ast_node::print(int indent) {
