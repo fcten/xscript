@@ -22,6 +22,10 @@ private:
     // 当前 token 起始偏移
     size_t milestone;
 
+    // 0 - 最长匹配模式
+    // 1 - 立即匹配模式
+    int mode;
+
     bool is_next(char n);
     void step_to_eos(char n);
     token_t step_to_eon();
@@ -43,6 +47,8 @@ private:
 
     void print();
     void reset();
+
+    void set_mode(int m);
 };
 
 }

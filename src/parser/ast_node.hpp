@@ -48,7 +48,8 @@ typedef enum {
     TYPE_DECLARATOR,
     VARIABLE_INITIALIZER,
     KEY_VALUE_PAIR,
-    SWITCH_LABEL
+    SWITCH_LABEL,
+    CATCH_BLOCK
 } type_t;
 
 class ast_node {

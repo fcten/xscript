@@ -95,6 +95,8 @@ std::unordered_map<std::string_view, token_t> reserved_words = {
     {"float",       TK_FLOAT},
     {"bool",        TK_BOOL},
     {"string",      TK_STRING},
+    {"array",       TK_ARRAY},
+    {"map",         TK_MAP},
     {"struct",      TK_STRUCT},
     {"interface",   TK_INTERFACE},
     {"func",        TK_FUNCTION},
@@ -170,7 +172,8 @@ std::unordered_map<char, trie*> scanner::init_trie() {
 
 scanner::scanner(std::string_view s) :
     offset(0),
-    milestone(0)
+    milestone(0),
+    mode(0)
 {
     source = s;
 }
@@ -225,6 +228,10 @@ token scanner::next() {
     return token(t, get_literal());
 }
 
+void scanner::set_mode(int m) {
+    mode = m;
+}
+
 // token
 token_t scanner::step_to_eot() {
     trie *node = nullptr;
@@ -247,6 +254,10 @@ token_t scanner::step_to_eot() {
         }
         if (node->token != TK_UNKNOWN) {
             t = node->token;
+
+            if (mode == 1) {
+                return t;
+            }
         }    
     }
 

@@ -1,10 +1,10 @@
 package main;
 
-func add(x int, y int) int {
+func add(var x int, var y int) int {
     return x + y;
 }
 
-func sub(x int, y int) int {
+func sub(var x int, var y int) int {
     return x - y;
 }
 

@@ -2,7 +2,7 @@
 package main;
 
 func main() {
-    var arr1 []int = [];
+    var arr1 array<int> = [];
     echo(arr1);
 
     var arr2 = [1];
@@ -20,7 +20,7 @@ func main() {
     var arr6 = [["123","456"],["789"],["321","654"]];
     echo(arr6[0][1]);
 
-    var arr7 []int = [];
+    var arr7 array<int> = [];
     arr7[] = 3;
     arr7[] = 4;
     arr7[] = 5;
@@ -29,7 +29,7 @@ func main() {
     echo(arr7);
     echo(arr7[3]);
 
-    var arr8 [][]int = [];
+    var arr8 array<array<int>> = [];
     arr8[] = arr1;
     arr8[] = [];
     echo(arr8);

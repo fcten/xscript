@@ -376,17 +376,51 @@ bool ast::parse_constant_declaration(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
-// type_declarator <- TK_INT | TK_FLOAT | TK_BOOL | TK_STRING
+// type_declarator <- TK_INT | TK_FLOAT | TK_BOOL | TK_STRING | TK_IDENTIFIER |
+//      [ TK_ARRAY | TK_MAP ] TK_LESS [ type_declarator [ TK_COMMA type_declarator ]* ] TK_GREATER
 bool ast::parse_type_declarator(std::unique_ptr<ast_node>& parent) {
     std::unique_ptr<ast_node>& node = parent->add_child(TYPE_DECLARATOR);
 
-    if (cur_token != tokenizer::TK_INT &&
-        cur_token != tokenizer::TK_FLOAT &&
-        cur_token != tokenizer::TK_BOOL &&
-        cur_token != tokenizer::TK_STRING) {
-        return syntax_error({"<type declarator> expected"});
-    } else {
+    if (cur_token == tokenizer::TK_INT ||
+        cur_token == tokenizer::TK_FLOAT ||
+        cur_token == tokenizer::TK_BOOL ||
+        cur_token == tokenizer::TK_STRING ||
+        cur_token == tokenizer::TK_IDENTIFIER
+    ) {
         parse_token(node);
+    } else if (cur_token == tokenizer::TK_ARRAY ||
+        cur_token == tokenizer::TK_MAP
+    ) {
+        scanner.set_mode(1);
+
+        parse_token(node);
+
+        if (cur_token != tokenizer::TK_LESS) {
+            syntax_error({"'<' expected"});
+        } else {
+            next();
+        }
+
+        while (true) {
+            if (!parse_type_declarator(node)) {
+                break;
+            }
+
+            if (cur_token != tokenizer::TK_COMMA) {
+                break;
+            }
+            next();
+        }
+
+        if (cur_token != tokenizer::TK_GREATER) {
+            syntax_error({"'>' expected"});
+        } else {
+            next();
+        }
+
+        scanner.set_mode(0);
+    } else {
+        return syntax_error({"<type declarator> expected"});
     }
 
     return true;
@@ -837,6 +871,7 @@ bool ast::parse_statement(std::unique_ptr<ast_node>& parent) {
         case tokenizer::TK_SWITCH: return parse_switch_statement(parent);
         case tokenizer::TK_RETURN: return parse_return_statement(parent);
         case tokenizer::TK_TRY: return parse_try_statement(parent);
+        case tokenizer::TK_THROW: return parse_throw_statement(parent);
         default:
             if (predict_expression_statement()) {
                 return parse_expression_statement(parent);
@@ -844,6 +879,27 @@ bool ast::parse_statement(std::unique_ptr<ast_node>& parent) {
                 return failover({"<statement> expected"});
             }
     }
+}
+
+// throw_statement <- TK_THROW expression TK_SEMICOLON
+bool ast::parse_throw_statement(std::unique_ptr<ast_node>& parent) {
+    std::unique_ptr<ast_node>& node = parent->add_child(THROW_STATEMENT);
+
+    if (cur_token != tokenizer::TK_THROW) {
+        return failover({"'throw' expected"});
+    }
+    next();
+
+    if (!parse_expression(node)) {
+        return failover({tokenizer::TK_SEMICOLON});
+    }
+
+    if (cur_token != tokenizer::TK_SEMICOLON) {
+        return syntax_error({"';' expected after throw statement"});
+    }
+    next();
+
+    return true;
 }
 
 // type_declaration <- TK_TYPE TK_IDENTIFIER type_declarator TK_SEMICOLON
@@ -1209,8 +1265,37 @@ bool ast::parse_return_statement(std::unique_ptr<ast_node>& parent) {
     return true;
 }
 
+// try_statement <- TK_TRY block [ TK_CATCH function_decl_parameter block ]+
 bool ast::parse_try_statement(std::unique_ptr<ast_node>& parent) {
-    return failover({"unsupport try statement"});
+    std::unique_ptr<ast_node>& node = parent->add_child(TRY_STATEMENT);
+
+    if (cur_token != tokenizer::TK_TRY) {
+        return failover({"'try' expected"});
+    }
+    next();
+
+    if (!parse_block(node)) {
+        return false;
+    }
+
+    do {
+        std::unique_ptr<ast_node>& catch_block = node->add_child(CATCH_BLOCK);
+
+        if (cur_token != tokenizer::TK_CATCH) {
+            return failover({"'catch' expected"});
+        }
+        next();
+
+        if (!parse_function_decl_parameter(catch_block)) {
+            return false;
+        }
+
+        if (!parse_block(catch_block)) {
+            return false;
+        }   
+    } while (cur_token == tokenizer::TK_CATCH);
+
+    return true;
 }
 
 // expression_statement <- expression TK_SEMICOLON
@@ -1233,7 +1318,11 @@ bool ast::predict_type_declarator() {
     if (cur_token == tokenizer::TK_INT ||
         cur_token == tokenizer::TK_FLOAT ||
         cur_token == tokenizer::TK_BOOL ||
-        cur_token == tokenizer::TK_STRING) {
+        cur_token == tokenizer::TK_STRING ||
+        cur_token == tokenizer::TK_IDENTIFIER ||
+        cur_token == tokenizer::TK_ARRAY ||
+        cur_token == tokenizer::TK_MAP
+    ) {
         return true;
     }
     return false;
@@ -1253,6 +1342,7 @@ bool ast::predict_block_statement() {
         case tokenizer::TK_CO:
         case tokenizer::TK_VAR:
         case tokenizer::TK_CONST:
+        case tokenizer::TK_THROW:
             return true;
         default:
             return predict_expression_statement();

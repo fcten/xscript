@@ -97,6 +97,8 @@ typedef enum {
     TK_FLOAT,
     TK_BOOL,
     TK_STRING,
+    TK_ARRAY,
+    TK_MAP,
     TK_STRUCT,
     TK_INTERFACE,
     TK_FUNCTION,
