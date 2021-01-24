@@ -102,6 +102,7 @@ typedef enum {
     TK_FUNCTION,
 
     TK_TYPE,
+    TK_TYPEOF,
 
     TK_TRUE,
     TK_FALSE,

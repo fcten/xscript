@@ -100,6 +100,7 @@ std::unordered_map<std::string_view, token_t> reserved_words = {
     {"func",        TK_FUNCTION},
 
     {"type",        TK_TYPE},
+    {"typeof",      TK_TYPEOF},
 
     {"true",        TK_TRUE},
     {"false",       TK_FALSE},

@@ -1,9 +1,7 @@
 package main;
 
-import "basic/export_test.x";
+import std.io;
 
 func main() {
-    export_test();
-
-    echo("import end");
+    io.print("import end");
 }

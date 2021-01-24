@@ -478,6 +478,7 @@ bool ast::parse_expression(std::unique_ptr<ast_node>& parent, int precedence) {
         case tokenizer::TK_INC: // 自增运算符
         case tokenizer::TK_DEC: // 自减运算符
         case tokenizer::TK_CO:  // 协程运算符
+        case tokenizer::TK_TYPEOF: // 类型运算符
         {
             std::unique_ptr<ast_node>& unary_expression = parent->add_child(UNARY_EXPRESSION);
             if (!parse_token(unary_expression)) {
