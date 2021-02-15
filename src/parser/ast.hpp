@@ -21,7 +21,6 @@ private:
     std::unique_ptr<ast_node> root;
 
     std::vector<std::string> errors;
-    std::vector<std::string> warnings;
 
     // 词法分析相关数据
     tokenizer::token prev_token;
@@ -95,14 +94,17 @@ private:
 
     int operator_precedence(tokenizer::token_t t);
     
+    void print(std::unique_ptr<ast_node>& node);
+    void print(std::unique_ptr<ast_node>& node, int indent);
+
 public:
     ast(std::string s);
 
     bool parse();
 
+    std::unique_ptr<ast_node>& get_root();
+
     void print();
-    void print(std::unique_ptr<ast_node>& node);
-    void print(std::unique_ptr<ast_node>& node, int indent);
 };
 
 }

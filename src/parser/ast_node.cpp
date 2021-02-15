@@ -1,23 +1,51 @@
 #include <iostream>
+#include <cassert>
 #include "ast_node.hpp"
 #include "../util/log.hpp"
 
 namespace xscript::parser {
 
 ast_node::ast_node() :
+    parent(nullptr),
     type(ROOT)
 {
 
 }
 
-ast_node::ast_node(type_t t) :
+ast_node::ast_node(type_t t, ast_node* p) :
+    parent(p),
     type(t)
 {
+    assert(parent != nullptr);
+
+    if (t == ROOT || t == BLOCK) {
+        symbols = std::make_shared<symbol_table>();
+    } else {
+        symbols = parent->get_symbols();
+    }
+
+    if (t == ROOT || t == FUNCTION_DECLARATION) {
+        regs = std::make_unique<register_allocator>();
+    } else {
+        regs = parent->get_regs();
+    }
 
 }
 
+std::vector<std::unique_ptr<ast_node>>& ast_node::get_children() {
+    return children;
+}
+
+std::shared_ptr<symbol_table>& ast_node::get_symbols() {
+    return symbols;
+}
+
+std::shared_ptr<register_allocator>& ast_node::get_regs() {
+    return regs;
+}
+
 std::unique_ptr<ast_node>& ast_node::add_child(type_t t) {
-    children.push_back(std::make_unique<ast_node>(t));
+    children.push_back(std::make_unique<ast_node>(t, this));
     return children.back();
 }
 

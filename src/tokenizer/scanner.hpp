@@ -1,6 +1,7 @@
 #ifndef _XSCRIPT_TOKENIZER_SCANNER_HPP_
 #define _XSCRIPT_TOKENIZER_SCANNER_HPP_
 
+#include <unordered_map>
 #include <string>
 #include "token.hpp"
 #include "../util/trie.hpp"

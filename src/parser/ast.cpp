@@ -21,6 +21,10 @@ ast::ast(std::string s) :
     //scanner.reset();
 }
 
+std::unique_ptr<ast_node>& ast::get_root() {
+    return root;
+}
+
 void ast::next_line() {
     line++;
     line_offset = scanner.get_offset();
@@ -133,10 +137,6 @@ bool ast::process_failover(std::string f, int l, std::set<tokenizer::token_t> to
 
 void ast::print() {
     print(root);
-
-    for (auto it = errors.begin() ; it != errors.end() ; it++) {
-        std::cout << *it << std::endl;
-    }
 }
 
 void ast::print(std::unique_ptr<ast_node>& node) {
