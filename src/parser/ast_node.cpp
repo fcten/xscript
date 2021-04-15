@@ -71,7 +71,7 @@ void ast_node::set_token(tokenizer::token t) {
 }
 
 bool ast_node::is_empty() {
-    return children.size() == 0;
+    return children.empty();
 }
 
 std::unordered_map<type_t, std::string_view> type_names = {
@@ -132,8 +132,9 @@ void ast_node::print(int indent) {
     } else {
         std::cout << COLOR_WHITE "UNKNOWN_AST_NODE" COLOR_RESET << std::endl;
     }
-    for (auto it = children.begin() ; it != children.end() ; it ++) {
-        (*it)->print(indent + 2);
+
+    for (auto & child : children) {
+        child->print(indent + 2);
     }
 }
 
