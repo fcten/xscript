@@ -51,8 +51,7 @@ bool compiler::compile_root(std::unique_ptr<parser::ast_node>& node) {
     bool ret = true;
 
     auto& children = node->get_children();
-    for (auto it = children.begin() ; it != children.end() ; it ++) {
-        auto& n = (*it);
+    for (auto & n : children) {
         switch (n->get_type()) {
             case parser::FUNCTION_DECLARATION:
                 if (!compile_function_declaration(n)) {
