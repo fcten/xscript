@@ -15,7 +15,7 @@ void command::init(int argc, char* argv[]) {
     int c;
     int oi = -1;
     if(argv == NULL) return;
-    while((c = getopt_long(argc, argv, ":c:e:dvVh", long_options, &oi)) != -1){
+    while((c = getopt_long(argc, argv, ":c:e:dvh", long_options, &oi)) != -1){
         switch(c) {
         case 'c':
             fprintf(stderr, "-%c %s\n", c, optarg);
@@ -27,16 +27,16 @@ void command::init(int argc, char* argv[]) {
             fprintf(stderr, "-%c\n", c);
             break;
         case 'v':
-            //_ver_short = true;
-            fprintf(stderr, "-%c\n", c);
+            fprintf(stderr, "xscript " _VERSION_MAJOR_ "." _VERSION_MINOR_ "." _VERSION_MICRO_ " (built: " _TIMESTAMP_ ")\n");
             exit(1);
             break;
         case 'h':
             fprintf(stderr, "Usage: xscript source_file [options]\n");
-            fprintf(stderr, "    -c  --config file_path]\n");
-            fprintf(stderr, "    -e  --env name=value]\n");
-            fprintf(stderr, "    -d  --daemon\n");
-            fprintf(stderr, "    -h  --help\n");
+            fprintf(stderr, "    -c --config   file_path\n");
+            fprintf(stderr, "    -e --env      name=value\n");
+            fprintf(stderr, "    -d --daemon\n");
+            fprintf(stderr, "    -v --version\n");
+            fprintf(stderr, "    -h --help\n");
             exit(1);
             break;
         case ':':

@@ -17,8 +17,8 @@ using xscript::parser::ast;
 
 int main(int argc, char* argv[]) {
 
-    command cmd;
-    cmd.init(argc, argv);
+    command::instance().init(argc, argv);
+
     /*
     lgx_token_init();
 
@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     int ret = 0;
     syntax s;
     
-    for (auto source : cmd.get_source_files()) {
+    for (auto source : command::instance().get_source_files()) {
         if (!s.load(source)) {
             ret = 1;
         }

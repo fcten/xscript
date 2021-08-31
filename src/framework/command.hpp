@@ -6,10 +6,11 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include "../util/singleton.hpp"
 
 namespace xscript::framework {
 
-class command {
+class command : public util::singleton<command> {
 private:
     std::vector<std::string> source_files;
 
