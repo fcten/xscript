@@ -19,7 +19,7 @@ bool syntax::load(std::string path) {
 
     std::ifstream file(path);
     if (!file.is_open()) {
-        std::cout <<  "[" COLOR_RED "error" COLOR_RESET "] can't open source file: " COLOR_WHITE << path <<  COLOR_RESET << std::endl;
+        XLOG(FATAL) << "can't open source file: " << path << std::endl;
         return false;
     }
 

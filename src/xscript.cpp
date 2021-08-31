@@ -8,12 +8,17 @@
 */
 
 #include "xscript.hpp"
+#include "framework/command.hpp"
 
+using xscript::framework::command;
 using xscript::tokenizer::scanner;
 using xscript::parser::syntax;
 using xscript::parser::ast;
 
 int main(int argc, char* argv[]) {
+
+    command cmd;
+    cmd.init(argc, argv);
     /*
     lgx_token_init();
 
@@ -59,15 +64,11 @@ int main(int argc, char* argv[]) {
     lgx_token_cleanup();
     */
 
-    if (argc < 2) {
-        return 1;
-    }
-
     int ret = 0;
-
     syntax s;
-    for (int i = 1 ; i < argc ; i++) {
-        if (!s.load(argv[i])) {
+    
+    for (auto source : cmd.get_source_files()) {
+        if (!s.load(source)) {
             ret = 1;
         }
     }

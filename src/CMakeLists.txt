@@ -2,6 +2,7 @@ set(XSCRIPT_SRCS xscript.cpp)
 
 # Add block directories
 aux_source_directory(common XSCRIPT_SRCS)
+aux_source_directory(framework XSCRIPT_SRCS)
 aux_source_directory(tokenizer XSCRIPT_SRCS)
 aux_source_directory(parser XSCRIPT_SRCS)
 #aux_source_directory(optimizer XSCRIPT_SRCS)

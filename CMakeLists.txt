@@ -14,6 +14,8 @@ cmake_minimum_required(VERSION 2.8)
 
 set (VERSION 0.7.0)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__FILENAME__='\"$(subst ${CMAKE_SOURCE_DIR}/,,$(abspath $<))\"'")
+
 if (WIN32)
 	execute_process(COMMAND cmd /c echo %DATE% %TIME% OUTPUT_VARIABLE TIMESTAMP
 			OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -21,8 +23,8 @@ else (WIN32)
 	execute_process(COMMAND date "+%F %T%z" OUTPUT_VARIABLE TIMESTAMP
 			OUTPUT_STRIP_TRAILING_WHITESPACE)
 	add_definitions (-D_DEBUG)
-	SET(CMAKE_C_FLAGS "-O0 -Wall -g -ggdb")
-	SET(CMAKE_CXX_FLAGS "-O0 -Wall -g -ggdb")
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -Wall -g -ggdb")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -Wall -g -ggdb")
 
 #	SET(CMAKE_C_FLAGS "-O3 -Wall")
 #	SET(CMAKE_CXX_FLAGS "-O3 -Wall")

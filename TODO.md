@@ -43,3 +43,5 @@ array<string, string>
 支持 struct, typedef
 
 多线程 cluster
+
+coroutine local
