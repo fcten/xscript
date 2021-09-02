@@ -88,8 +88,6 @@ protected:
 	std::string m_s;
 };
 
-#define syntax_error(args) append_syntax_error(__FILE__, __LINE__, args)
-
 // 追加一条错误信息
 bool ast::append_syntax_error(std::string f, int l, std::initializer_list<std::string_view> args) {
     std::stringstream ss;
@@ -110,9 +108,9 @@ bool ast::append_syntax_error(std::string f, int l, std::initializer_list<std::s
     return false;
 }
 
-#define syntax_error(args) append_syntax_error(__FILE__, __LINE__, args)
-#define failover(...) process_failover(__FILE__, __LINE__, __VA_ARGS__, true)
-#define failbefore(...) process_failover(__FILE__, __LINE__, __VA_ARGS__, false)
+#define syntax_error(args) append_syntax_error(__FILENAME__, __LINE__, args)
+#define failover(...) process_failover(__FILENAME__, __LINE__, __VA_ARGS__, true)
+#define failbefore(...) process_failover(__FILENAME__, __LINE__, __VA_ARGS__, false)
 
 bool ast::process_failover(std::string f, int l, std::initializer_list<std::string_view> args, std::set<tokenizer::token_t> tokens, bool step_over) {
     if (args.size() > 0) {
@@ -133,6 +131,12 @@ bool ast::process_failover(std::string f, int l, std::initializer_list<std::stri
 
 bool ast::process_failover(std::string f, int l, std::set<tokenizer::token_t> tokens, bool step_over) {
     return process_failover(f, l, {}, tokens, step_over);
+}
+
+void ast::print_errors() {
+    for (std::string err_msg : errors) {
+        std::cout << err_msg << std::endl;
+    }
 }
 
 void ast::print() {

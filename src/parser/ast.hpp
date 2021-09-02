@@ -105,6 +105,7 @@ public:
     std::unique_ptr<ast_node>& get_root();
 
     void print();
+    void print_errors();
 };
 
 }

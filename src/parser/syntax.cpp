@@ -30,6 +30,7 @@ bool syntax::load(std::string path) {
     if (!packages[path]->parse()) {
         // TODO remove debug code
         packages[path]->print();
+        packages[path]->print_errors();
 
         packages.erase(path);
         return false;
