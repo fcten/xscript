@@ -16,6 +16,8 @@ private:
 
 public:
     void init(int argc, char* argv[]);
+
+    void show_help();
     
     const std::vector<std::string>& get_source_files();
 };

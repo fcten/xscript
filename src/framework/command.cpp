@@ -31,14 +31,7 @@ void command::init(int argc, char* argv[]) {
             exit(1);
             break;
         case 'h':
-            fprintf(stderr, "Usage: xscript source_file [options]\n");
-            fprintf(stderr, "    -c --config   file_path\n");
-            fprintf(stderr, "    -e --env      name=value\n");
-            fprintf(stderr, "    -d --daemon\n");
-            fprintf(stderr, "    -v --version\n");
-            fprintf(stderr, "    -h --help\n");
-            exit(1);
-            break;
+            show_help();
         case ':':
             // 参数缺失
             fprintf(stderr, "%s: option '-%c' requires an argument\n", argv[0], optopt);
@@ -60,6 +53,16 @@ void command::init(int argc, char* argv[]) {
 
 const std::vector<std::string>& command::get_source_files() {
     return source_files;
+}
+
+void command::show_help() {
+    fprintf(stderr, "Usage: xscript source_file [options]\n");
+    fprintf(stderr, "    -c --config   file_path\n");
+    fprintf(stderr, "    -e --env      name=value\n");
+    fprintf(stderr, "    -d --daemon\n");
+    fprintf(stderr, "    -v --version\n");
+    fprintf(stderr, "    -h --help\n");
+    exit(1);
 }
 
 }

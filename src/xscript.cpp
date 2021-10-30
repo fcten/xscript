@@ -67,6 +67,11 @@ int main(int argc, char* argv[]) {
     int ret = 0;
     syntax s;
     
+    if (command::instance().get_source_files().size() == 0) {
+        // TODO 交互式终端模式
+    }
+
+    // 
     for (auto source : command::instance().get_source_files()) {
         if (!s.load(source)) {
             ret = 1;
